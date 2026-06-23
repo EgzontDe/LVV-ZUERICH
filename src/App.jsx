@@ -146,6 +146,19 @@ const css = `
 .vv--dark .vv-notif-panel{background:#1C1813;box-shadow:0 24px 80px rgba(0,0,0,.45),0 4px 16px rgba(0,0,0,.3)}
 .vv--dark .vv-notif-item{border-bottom-color:rgba(255,255,255,.06)}
 .vv--dark .vv-notif-item:hover{background:#242018}
+.ob-root{min-height:100vh;background:linear-gradient(160deg,#F5F4F0 0%,#EDECE8 100%);display:flex;align-items:center;justify-content:center;padding:20px}
+.ob-wrap{width:100%;max-width:520px;display:flex;flex-direction:column;align-items:center;gap:24px}
+.ob-card{background:#fff;border-radius:24px;width:100%;box-shadow:0 4px 24px rgba(23,18,16,.08),0 1px 3px rgba(23,18,16,.06);overflow:hidden}
+.ob-card-hero{background:linear-gradient(150deg,#D91E16 0%,#8C1009 100%);padding:36px 36px 32px;position:relative;overflow:hidden}
+.ob-card-hero::after{content:"!";position:absolute;right:-20px;bottom:-80px;font-family:'Archivo',sans-serif;font-weight:900;font-size:280px;line-height:1;color:rgba(255,255,255,.06);pointer-events:none}
+.ob-card-body{padding:32px 36px}
+.ob-steps{display:flex;gap:6px;align-items:center}
+.ob-step-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.3);transition:all .25s ease}
+.ob-step-dot.active{background:#fff;width:24px;border-radius:4px}
+.ob-feature-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px}
+.ob-feature{background:#F8F7F3;border-radius:14px;padding:16px;border:1px solid rgba(23,18,16,.06)}
+@keyframes obPop{0%{transform:scale(.7);opacity:0}70%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
+.ob-done-icon{animation:obPop .5s cubic-bezier(.34,1.56,.64,1) both}
 `;
 
 const KUOTA=150;
@@ -3595,6 +3608,7 @@ export default function App(){
   const [dark,setDark]=useState(false);
   const [lang,setLang]=useState("sq");
   const [showLogin,setShowLogin]=useState(false);
+  const [showOnboarding,setShowOnboarding]=useState(false);
 
   useEffect(()=>{
     const h=e=>{
@@ -3623,6 +3637,7 @@ export default function App(){
 
   function handleLogin(r){
     if(r==="apply"){setRole("apply");return;}
+    if(r==="member") setShowOnboarding(true);
     setRole(r);
     setTab("home");
   }
@@ -3634,6 +3649,15 @@ export default function App(){
   if(role==="apply") return <LangCtx.Provider value={lang}><div className={`vv${dark?" vv--dark":""}`}><style>{css}</style><ApplyForm onBack={()=>{setRole(null);setShowLogin(false);}}/></div></LangCtx.Provider>;
 
   const me=role==="member"?members.find(m=>m.id===5)||members[4]:members.find(m=>m.id===3)||members[2];
+
+  if(role==="member"&&showOnboarding) return(
+    <LangCtx.Provider value={lang}>
+      <div className={`vv${dark?" vv--dark":""}`}>
+        <style>{css}</style>
+        <OnboardingFlow me={me} onDone={()=>setShowOnboarding(false)}/>
+      </div>
+    </LangCtx.Provider>
+  );
 
   function renderMemberTab(){
     switch(tab){
@@ -3691,5 +3715,163 @@ export default function App(){
         </Shell>
       </div>
     </LangCtx.Provider>
+  );
+}
+
+function OnboardingFlow({me,onDone}){
+  const TOTAL=4;
+  const [step,setStep]=useState(0);
+  const [phone,setPhone]=useState(me.phone||"");
+
+  const next=()=>step<TOTAL-1?setStep(s=>s+1):onDone();
+  const prev=()=>setStep(s=>Math.max(s-1,0));
+
+  const features=[
+    {icon:<Calendar size={20} color={C.red}/>,title:"Eventet",desc:"Regjistrohu në aktivitete dhe takime të pikës."},
+    {icon:<BarChart2 size={20} color={C.red}/>,title:"Sondazhet",desc:"Voto në sondazhet e organizatës."},
+    {icon:<Newspaper size={20} color={C.red}/>,title:"Njoftimet",desc:"Qëndro i informuar me lajme nga pika."},
+    {icon:<Heart size={20} color={C.red}/>,title:"Donacionet",desc:"Mbaj zhvillimin e organizatës financiarisht."},
+  ];
+
+  const Dots=({override})=>(
+    <div className="ob-steps" style={{marginBottom:28}}>
+      {Array.from({length:TOTAL}).map((_,i)=>(
+        <div key={i} className={`ob-step-dot${i===step?" active":""}`}
+          style={override&&i===step?{background:override,width:24,borderRadius:4}:undefined}/>
+      ))}
+    </div>
+  );
+
+  const Hero=({stepNum,title,sub})=>(
+    <div className="ob-card-hero">
+      <Dots/>
+      <div style={{color:"rgba(255,255,255,.65)",fontSize:11,fontWeight:700,letterSpacing:".09em",textTransform:"uppercase",marginBottom:8}}>Hapi {stepNum} nga {TOTAL}</div>
+      <h2 style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:26,color:"#fff",lineHeight:1.1,marginBottom:sub?8:0}}>{title}</h2>
+      {sub&&<p style={{color:"rgba(255,255,255,.75)",fontSize:13,lineHeight:1.55,position:"relative",zIndex:1,margin:0}}>{sub}</p>}
+    </div>
+  );
+
+  return(
+    <div className="ob-root">
+      <div className="ob-wrap">
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div className="vv-emblem">VV</div>
+          <div>
+            <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:13,lineHeight:1}}>VETËVENDOSJE!</div>
+            <div style={{fontSize:11,color:C.inkSoft}}>Pika Winterthur</div>
+          </div>
+        </div>
+
+        <div className="ob-card">
+
+          {step===0&&<>
+            <div className="ob-card-hero">
+              <Dots/>
+              <div style={{color:"rgba(255,255,255,.65)",fontSize:11,fontWeight:700,letterSpacing:".09em",textTransform:"uppercase",marginBottom:8}}>Hapi 1 nga {TOTAL}</div>
+              <h1 style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:30,color:"#fff",lineHeight:1.05,marginBottom:10}}>Mirë se erdhe,<br/>{me.name.split(" ")[0]}!</h1>
+              <p style={{color:"rgba(255,255,255,.8)",fontSize:14,lineHeight:1.6,position:"relative",zIndex:1,margin:0}}>Jeni anëtar i ri i Pikës Winterthur. Ja çfarë ju pret në platformë.</p>
+            </div>
+            <div className="ob-card-body">
+              <div className="ob-feature-grid">
+                {features.map(f=>(
+                  <div key={f.title} className="ob-feature">
+                    <div style={{marginBottom:8}}>{f.icon}</div>
+                    <div style={{fontWeight:700,fontSize:13,marginBottom:4}}>{f.title}</div>
+                    <div style={{color:C.inkSoft,fontSize:12,lineHeight:1.5}}>{f.desc}</div>
+                  </div>
+                ))}
+              </div>
+              <button className="vv-btn" style={{width:"100%",justifyContent:"center"}} onClick={next}>
+                Fillo<ChevronRight size={15}/>
+              </button>
+            </div>
+          </>}
+
+          {step===1&&<>
+            <Hero stepNum={2} title="Konfirmo profilin" sub="Verifikoni të dhënat tuaja bazike."/>
+            <div className="ob-card-body">
+              <div style={{display:"grid",gap:12,marginBottom:24}}>
+                {[[User,"Emri i plotë",me.name],[Mail,"Email",me.email],[MapPin,"Kantoni",me.kanton]].map(([Icon,lbl,val])=>(
+                  <div key={lbl}>
+                    <div style={{fontSize:11,fontWeight:600,color:C.inkSoft,marginBottom:5,textTransform:"uppercase",letterSpacing:".07em"}}>{lbl}</div>
+                    <div style={{display:"flex",alignItems:"center",gap:10,background:"#F8F7F3",borderRadius:10,padding:"11px 14px",border:`1px solid ${C.line}`}}>
+                      <Icon size={14} color={C.inkSoft}/>
+                      <span style={{fontSize:14,color:C.inkSoft,flex:1}}>{val}</span>
+                      <BadgeCheck size={14} color={C.green}/>
+                    </div>
+                  </div>
+                ))}
+                <div>
+                  <div style={{fontSize:11,fontWeight:600,color:C.inkSoft,marginBottom:5,textTransform:"uppercase",letterSpacing:".07em"}}>Numri i telefonit</div>
+                  <div style={{display:"flex",alignItems:"center",gap:10,background:"#fff",borderRadius:10,border:`1.5px solid ${C.line}`,padding:"2px 14px 2px 10px"}}>
+                    <Phone size={14} color={C.inkSoft}/>
+                    <input className="vv-input" style={{border:"none",background:"transparent",padding:"9px 0",flex:1,fontSize:14}} type="tel" placeholder="+41 XX XXX XX XX" value={phone} onChange={e=>setPhone(e.target.value)}/>
+                  </div>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:10}}>
+                <button className="vv-btn ghost" style={{flex:1,justifyContent:"center"}} onClick={prev}><ChevronLeft size={15}/>Kthehu</button>
+                <button className="vv-btn" style={{flex:2,justifyContent:"center"}} onClick={next}>Konfirmo<ChevronRight size={15}/></button>
+              </div>
+            </div>
+          </>}
+
+          {step===2&&<>
+            <Hero stepNum={3} title="Kuota e anëtarësimit" sub="Kontributi juaj mban organizatën aktive."/>
+            <div className="ob-card-body">
+              <div style={{background:"linear-gradient(135deg,#E7F4ED,#D5EEE1)",border:"1px solid rgba(30,138,76,.15)",borderRadius:14,padding:"18px 20px",display:"flex",alignItems:"center",gap:14,marginBottom:20}}>
+                <div style={{width:44,height:44,borderRadius:12,background:C.green,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  <Banknote size={22} color="#fff"/>
+                </div>
+                <div>
+                  <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:28,color:C.green,lineHeight:1}}>CHF 150</div>
+                  <div style={{fontSize:12,color:C.inkSoft,marginTop:2}}>Kuota vjetore · 2026</div>
+                </div>
+                <div style={{marginLeft:"auto",background:"#FEF3C7",border:"1px solid #F59E0B",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:700,color:"#92400E"}}>Papaguar</div>
+              </div>
+              <div style={{background:"#F8F7F3",borderRadius:12,padding:"16px 18px",marginBottom:16,border:`1px solid ${C.line}`}}>
+                <div style={{fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:".08em",color:C.inkSoft,marginBottom:12}}>Transfertë bankare</div>
+                {[["IBAN","CH56 0483 5012 3456 7800 9"],["Përfituesi","VV Pika Winterthur"],["Qëllimi",`Kuota 2026 – ${me.name}`],["Shuma","CHF 150.00"]].map(([lbl,val])=>(
+                  <div key={lbl} style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"6px 0",borderBottom:`1px solid ${C.line}`}}>
+                    <span style={{fontSize:12,color:C.inkSoft,fontWeight:600}}>{lbl}</span>
+                    <span style={{fontSize:12,fontWeight:700,textAlign:"right",maxWidth:"62%"}}>{val}</span>
+                  </div>
+                ))}
+              </div>
+              <p style={{fontSize:12,color:C.inkSoft,lineHeight:1.55,marginBottom:20,display:"flex",gap:6,alignItems:"flex-start"}}>
+                <AlertCircle size={13} style={{flexShrink:0,marginTop:1}}/>
+                <span>Mund të paguani edhe me para në dorë në takimin e radhës ose me QR-kod. Administratori do t'ju konfirmojë pagesën.</span>
+              </p>
+              <div style={{display:"flex",gap:10}}>
+                <button className="vv-btn ghost" style={{flex:1,justifyContent:"center"}} onClick={prev}><ChevronLeft size={15}/>Kthehu</button>
+                <button className="vv-btn" style={{flex:2,justifyContent:"center"}} onClick={next}>E kuptova<ChevronRight size={15}/></button>
+              </div>
+            </div>
+          </>}
+
+          {step===3&&(
+            <div className="ob-card-body" style={{textAlign:"center",padding:"52px 36px"}}>
+              <div className="ob-done-icon" style={{width:80,height:80,borderRadius:"50%",background:"linear-gradient(135deg,#E7F4ED,#C8EBD7)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 24px"}}>
+                <CheckCircle2 size={42} color={C.green}/>
+              </div>
+              <div className="ob-steps" style={{justifyContent:"center",marginBottom:24}}>
+                {Array.from({length:TOTAL}).map((_,i)=>(
+                  <div key={i} className={`ob-step-dot${i===step?" active":""}`}
+                    style={{background:i===step?"#1E8A4C":"rgba(30,138,76,.25)",width:i===step?24:8,borderRadius:i===step?4:50}}/>
+                ))}
+              </div>
+              <h2 style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:28,marginBottom:10}}>Gati, {me.name.split(" ")[0]}!</h2>
+              <p style={{color:C.inkSoft,lineHeight:1.65,fontSize:14,marginBottom:32,maxWidth:320,margin:"0 auto 32px"}}>
+                Mirë se erdhe në familjen e Pikës Winterthur. Platforma është gati — eksploroni eventet, votoni në sondazhe dhe qëndroni të lidhur.
+              </p>
+              <button className="vv-btn" style={{justifyContent:"center",paddingLeft:28,paddingRight:28}} onClick={onDone}>
+                <Zap size={15}/>Hyr në platformë
+              </button>
+            </div>
+          )}
+
+        </div>
+      </div>
+    </div>
   );
 }
