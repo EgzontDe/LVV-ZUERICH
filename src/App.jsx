@@ -3,7 +3,7 @@ import {
   Users, CreditCard, Calendar, Megaphone, Settings, LayoutDashboard,
   User, FileText, Download, Search, Plus, LogOut, Bell, CheckCircle2,
   Clock, XCircle, ShieldCheck, Archive, FileDown, Send, HardDriveDownload,
-  Building2, Mail, Phone, MapPin, ChevronRight, Filter, BadgeCheck, X,
+  Building2, Mail, Phone, MapPin, ChevronRight, ChevronLeft, Filter, BadgeCheck, X,
   CalendarCheck, CalendarX, Newspaper, KeyRound, Activity,
   ChevronDown, Zap, Target, Video, Star, MessageSquare, Image as ImageIcon,
   Heart, BarChart2, TrendingUp, UserPlus, ThumbsUp, ThumbsDown, Globe, Grid,
@@ -553,14 +553,14 @@ function StatCard({label,value,color=C.ink,icon,sub,accent,delay=0}){
 }
 
 
-function Login({onLogin,lang="sq",onLangToggle}){
+function Login({onLogin,lang="sq",onLangToggle,onBack}){
   const t=useT();
   return(
     <div className="vv-login">
       <div className="vv-login-hero">
         <div>
           <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:40}}>
-            <div className="vv-emblem lg">V!</div>
+            <div className="vv-emblem lg">VV</div>
             <div>
               <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:22,letterSpacing:"-0.5px"}}>VETËVENDOSJE!</div>
               <div style={{opacity:.8,fontSize:14}}>Pika Winterthur — Zvicër</div>
@@ -580,7 +580,8 @@ function Login({onLogin,lang="sq",onLangToggle}){
         <div style={{opacity:.7,fontSize:13}}>Lëvizja VETËVENDOSJE! © 2026</div>
       </div>
       <div className="vv-login-panel">
-        <div style={{display:"flex",justifyContent:"flex-end",marginBottom:24}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
+          {onBack?<button onClick={onBack} className="vv-btn ghost" style={{fontSize:13,padding:"6px 12px",fontWeight:600,display:"flex",alignItems:"center",gap:5}}><ChevronLeft size={15}/>Kthehu</button>:<div/>}
           <button onClick={onLangToggle} className="vv-btn ghost" style={{fontSize:13,padding:"6px 12px",fontWeight:700}}>
             {lang==="sq"?"🇦🇱 Shqip":"🇩🇪 Deutsch"}
           </button>
@@ -655,6 +656,185 @@ function ApplyForm({onBack}){
     </div>
   );
 }
+
+function PublicHome({onLogin,onApply}){
+  const pubEvents=seedEvents.filter(e=>e.public&&!e.past);
+  const [menuOpen,setMenuOpen]=useState(false);
+  return(
+    <div style={{fontFamily:"'Inter',sans-serif",color:"#171210",background:"#EDECE8",minHeight:"100vh"}}>
+      <style>{`
+        .ph-nav{position:sticky;top:0;z-index:30;background:rgba(237,236,232,.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid rgba(23,18,16,.08);padding:0 5vw;display:flex;align-items:center;justify-content:space-between;height:64px}
+        .ph-hero{background:linear-gradient(150deg,#D91E16 0%,#8C1009 100%);color:#fff;padding:96px 5vw 80px;position:relative;overflow:hidden}
+        .ph-hero::after{content:"!";position:absolute;right:-40px;bottom:-120px;font-family:'Archivo',sans-serif;font-weight:900;font-size:500px;line-height:1;color:rgba(255,255,255,.05);pointer-events:none}
+        .ph-hero::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 80% 0%,rgba(255,255,255,.12),transparent 60%)}
+        .ph-section{padding:72px 5vw}
+        .ph-grid{display:grid;gap:20px}
+        @media(min-width:700px){.ph-grid-2{grid-template-columns:1fr 1fr}.ph-grid-3{grid-template-columns:1fr 1fr 1fr}}
+        .ph-card{background:#fff;border-radius:18px;padding:24px;border:1px solid rgba(23,18,16,.07);box-shadow:0 1px 4px rgba(23,18,16,.05),0 6px 20px rgba(23,18,16,.04)}
+        .ph-stat{text-align:center;background:rgba(255,255,255,.15);border-radius:14px;padding:20px 16px;backdrop-filter:blur(8px)}
+        .ph-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);border-radius:999px;padding:5px 14px;font-size:12px;font-weight:700;letter-spacing:.06em;color:#fff;margin-bottom:20px}
+        .ph-btn-pri{display:inline-flex;align-items:center;gap:8px;background:#fff;color:#E2231A;border:none;border-radius:12px;padding:13px 26px;font-weight:700;font-size:15px;cursor:pointer;font-family:'Inter',sans-serif;box-shadow:0 4px 20px rgba(0,0,0,.18);transition:all .15s}
+        .ph-btn-pri:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,.22)}
+        .ph-btn-sec{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.15);color:#fff;border:1.5px solid rgba(255,255,255,.40);border-radius:12px;padding:13px 26px;font-weight:600;font-size:15px;cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s;text-decoration:none}
+        .ph-btn-sec:hover{background:rgba(255,255,255,.25)}
+        .ph-nav-link{color:#5A524E;font-weight:500;font-size:14px;background:none;border:none;cursor:pointer;padding:4px 8px;transition:color .12s;font-family:'Inter',sans-serif;text-decoration:none}
+        .ph-nav-link:hover{color:#E2231A}
+        .ph-footer{background:#1C1410;color:rgba(255,255,255,.7);padding:48px 5vw;font-size:13px}
+        .ph-chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;letter-spacing:.01em}
+      `}</style>
+
+      {/* Navbar */}
+      <nav className="ph-nav">
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{width:36,height:36,borderRadius:"50%",background:"linear-gradient(135deg,#E2231A,#B5170F)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:15}}>VV</div>
+          <div>
+            <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:13,lineHeight:1}}>VETËVENDOSJE!</div>
+            <div style={{fontSize:11,color:"#5A524E"}}>Pika Winterthur</div>
+          </div>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <a href="#eventet" className="ph-nav-link" style={{display:"none"}}>Eventet</a>
+          <button onClick={onApply} className="ph-nav-link">Apliko</button>
+          <button onClick={onLogin} style={{background:"linear-gradient(135deg,#E2231A,#B5170F)",color:"#fff",border:"none",borderRadius:10,padding:"8px 18px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",boxShadow:"0 2px 8px rgba(226,35,26,.30)"}}>Hyr →</button>
+        </div>
+      </nav>
+
+      {/* Hero */}
+      <section className="ph-hero">
+        <div style={{maxWidth:720,position:"relative",zIndex:1}}>
+          <div className="ph-badge"><span>🇦🇱</span>Lëvizja VETËVENDOSJE! · Zvicër</div>
+          <h1 style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:"clamp(36px,6vw,68px)",lineHeight:1.02,letterSpacing:"-2px",marginBottom:22}}>Pika Winterthur<br/>Bashkë për Kosovën</h1>
+          <p style={{fontSize:18,lineHeight:1.65,opacity:.88,marginBottom:36,maxWidth:540}}>Organizata jonë bashkon shqiptarët e Winterthur-it dhe rajonit në mbështetje të Lëvizjes VETËVENDOSJE! dhe zhvillimit demokratik të Kosovës.</p>
+          <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
+            <button className="ph-btn-pri" onClick={onApply}><UserPlus size={16}/>Bëhu anëtar</button>
+            <button className="ph-btn-sec" onClick={onLogin}>Hyr në platformë →</button>
+          </div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginTop:56,maxWidth:600,position:"relative",zIndex:1}}>
+          {[["32","Anëtarë"],["2018","Themeluar"],["4 Tet","Zgjedhjet"],["CHF 150","Kuota vjetore"]].map(([v,l])=>(
+            <div key={l} className="ph-stat">
+              <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:24,lineHeight:1}}>{v}</div>
+              <div style={{fontSize:11,opacity:.72,marginTop:4,fontWeight:600}}>{l}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Rreth nesh */}
+      <section className="ph-section" style={{background:"#fff"}}>
+        <div style={{maxWidth:1100,margin:"0 auto"}}>
+          <div style={{fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:".1em",color:"#E2231A",marginBottom:8}}>Rreth organizatës</div>
+          <div style={{display:"grid",gap:24}} className="ph-grid ph-grid-2">
+            <div>
+              <h2 style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:32,letterSpacing:"-1px",marginBottom:16,lineHeight:1.15}}>Kush jemi ne?</h2>
+              <p style={{color:"#5A524E",lineHeight:1.75,fontSize:15,marginBottom:14}}>Pika Winterthur është dega lokale e Lëvizjes VETËVENDOSJE! në Zvicër. Veprojmë në Winterthur dhe rajonin e Zürich-ut, duke mobilizuar diasporën shqiptare për zgjedhjet dhe çështjet demokratike të Kosovës.</p>
+              <p style={{color:"#5A524E",lineHeight:1.75,fontSize:15}}>Organizojmë mbledhje të rregullta, manifesime, aktivitete kulturore dhe humanitare — gjithmonë me synim forcimin e lidhjes mes diasporës dhe atdheut.</p>
+            </div>
+            <div style={{display:"grid",gap:14}}>
+              {[["🗳️ Mobilizim zgjedhor","Ndihmojmë anëtarët të regjistrohen dhe votojnë nga Zvicra."],["🤝 Solidaritet","Organizojmë aksione humanitare dhe mbështetje për familjet."],["🎓 Kulturë & Edukim","Evente kulturore, debate dhe formim politik për brezin e ri."],["📢 Zë i Diasporës","Përfaqësojmë interesat e shqiptarëve të Winterthur-it."]].map(([t,d])=>(
+                <div key={t} className="ph-card" style={{display:"flex",gap:14,alignItems:"flex-start",padding:"16px 18px"}}>
+                  <span style={{fontSize:22,flexShrink:0}}>{t.split(" ")[0]}</span>
+                  <div>
+                    <div style={{fontWeight:700,fontSize:14,marginBottom:3}}>{t.slice(3)}</div>
+                    <div style={{fontSize:13,color:"#5A524E",lineHeight:1.5}}>{d}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Eventet publike */}
+      {pubEvents.length>0&&(
+        <section id="eventet" className="ph-section">
+          <div style={{maxWidth:1100,margin:"0 auto"}}>
+            <div style={{fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:".1em",color:"#E2231A",marginBottom:8}}>Aktivitetet</div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:24}}>
+              <h2 style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:28,letterSpacing:"-1px"}}>Eventet e ardhshme</h2>
+              <button onClick={onApply} style={{background:"none",border:"none",color:"#E2231A",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>Regjistrohu →</button>
+            </div>
+            <div className="ph-grid ph-grid-3" style={{display:"grid"}}>
+              {pubEvents.map(ev=>(
+                <div key={ev.id} className="ph-card">
+                  <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap"}}>
+                    <span className="ph-chip" style={{background:"#FEE2E2",color:"#C8342B"}}>{ev.type}</span>
+                    <span className="ph-chip" style={{background:"#EDE9FF",color:"#6B21A8"}}>Publik</span>
+                  </div>
+                  <div style={{fontWeight:700,fontSize:16,marginBottom:10,lineHeight:1.3}}>{ev.title}</div>
+                  <div style={{fontSize:13,color:"#5A524E",display:"flex",flexDirection:"column",gap:5}}>
+                    <span>📅 {ev.date} · {ev.time}</span>
+                    <span>📍 {ev.place}</span>
+                    <span>👥 {ev.rsvp.length} të regjistruar</span>
+                  </div>
+                  <button onClick={onApply} style={{marginTop:14,width:"100%",background:"#171210",color:"#fff",border:"none",borderRadius:10,padding:"9px",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>Regjistrohu</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Njoftime */}
+      <section className="ph-section" style={{background:"#fff"}}>
+        <div style={{maxWidth:1100,margin:"0 auto"}}>
+          <div style={{fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:".1em",color:"#E2231A",marginBottom:8}}>Lajme</div>
+          <h2 style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:28,letterSpacing:"-1px",marginBottom:24}}>Njoftimet e fundit</h2>
+          <div style={{display:"grid",gap:14}}>
+            {seedAnnouncements.map(a=>(
+              <div key={a.id} className="ph-card" style={{display:"flex",gap:16,alignItems:"flex-start"}}>
+                {a.pinned&&<span style={{flexShrink:0,background:"#E2231A",color:"#fff",borderRadius:8,padding:"4px 8px",fontSize:11,fontWeight:700,marginTop:2}}>📌</span>}
+                <div>
+                  <div style={{fontWeight:700,fontSize:15,marginBottom:4}}>{a.title}</div>
+                  <div style={{color:"#5A524E",fontSize:14,lineHeight:1.6}}>{a.body}</div>
+                  <div style={{fontSize:12,color:"#9A938F",marginTop:6}}>{a.date}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section style={{background:"linear-gradient(135deg,#E2231A,#8C1009)",color:"#fff",padding:"72px 5vw",textAlign:"center",position:"relative",overflow:"hidden"}}>
+        <div style={{position:"absolute",left:"50%",top:"50%",transform:"translate(-50%,-50%)",fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:400,color:"rgba(255,255,255,.04)",pointerEvents:"none",userSelect:"none",lineHeight:1}}>!</div>
+        <div style={{position:"relative",zIndex:1}}>
+          <h2 style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:"clamp(28px,5vw,52px)",letterSpacing:"-1.5px",marginBottom:16}}>Bëhu pjesë e lëvizjes</h2>
+          <p style={{fontSize:17,opacity:.88,marginBottom:36,maxWidth:480,margin:"0 auto 36px"}}>Bashkohu me 32 anëtarët e Pikës Winterthur. Apliko tani — kryesia do të të kontaktojë brenda 3–5 ditëve.</p>
+          <div style={{display:"flex",gap:14,justifyContent:"center",flexWrap:"wrap"}}>
+            <button className="ph-btn-pri" onClick={onApply}><UserPlus size={16}/>Apliko për anëtarësim</button>
+            <button className="ph-btn-sec" onClick={onLogin}>Hyr si anëtar →</button>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="ph-footer">
+        <div style={{maxWidth:1100,margin:"0 auto",display:"grid",gap:32}} className="ph-grid ph-grid-3">
+          <div>
+            <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:16,color:"#fff",marginBottom:8}}>VETËVENDOSJE!</div>
+            <div style={{marginBottom:4}}>Pika Winterthur — Zvicër</div>
+            <div style={{opacity:.55,fontSize:12}}>Themeluar 2018</div>
+          </div>
+          <div>
+            <div style={{fontWeight:700,color:"rgba(255,255,255,.9)",marginBottom:10,fontSize:13}}>Kontakt</div>
+            <div>📧 winterthur@vetevendosje.org</div>
+            <div style={{marginTop:4}}>📍 Winterthur, Kanton Zürich</div>
+          </div>
+          <div>
+            <div style={{fontWeight:700,color:"rgba(255,255,255,.9)",marginBottom:10,fontSize:13}}>Lëvizja</div>
+            <a href="https://vetevendosje.org" target="_blank" rel="noopener noreferrer" style={{color:"rgba(255,255,255,.7)",display:"block",marginBottom:4,textDecoration:"none",fontSize:13}}>vetevendosje.org</a>
+            <a href="https://evz.rks-gov.net" target="_blank" rel="noopener noreferrer" style={{color:"rgba(255,255,255,.7)",display:"block",textDecoration:"none",fontSize:13}}>Regjistrohu për votim →</a>
+          </div>
+        </div>
+        <div style={{borderTop:"1px solid rgba(255,255,255,.08)",marginTop:36,paddingTop:20,textAlign:"center",opacity:.45,fontSize:12}}>
+          © 2026 Lëvizja VETËVENDOSJE! Pika Winterthur · Të gjitha të drejtat të rezervuara
+        </div>
+      </footer>
+    </div>
+  );
+}
+
 
 const SEARCH_TYPE={
   member:{icon:<User size={13}/>,label:"Anëtar",color:"#1E8A4C",bg:"#E7F4ED"},
@@ -923,7 +1103,7 @@ function Shell({role,tab,setTab,onLogout,children,adminTabs,memberTabs,dark,onTo
       {sideOpen&&<div className="vv-mob-overlay" onClick={()=>setSideOpen(false)}/>}
       <aside className={`vv-side${sideOpen?" open":""}`}>
         <div style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",marginBottom:18}}>
-          <div className="vv-emblem">V!</div>
+          <div className="vv-emblem">VV</div>
           <div style={{flex:1}}><div style={{fontWeight:800,fontSize:13,fontFamily:"'Archivo',sans-serif",color:"#fff"}}>VETËVENDOSJE!</div><div style={{fontSize:11,color:"rgba(255,255,255,0.5)"}}>Pika Winterthur</div></div>
           <button className="vv-hamburger" onClick={()=>setSideOpen(false)} style={{color:"rgba(255,255,255,.55)"}}><X size={18}/></button>
         </div>
@@ -3414,6 +3594,7 @@ export default function App(){
   const [polls,setPolls]=useLocalState("vv-polls",seedPolls);
   const [dark,setDark]=useState(false);
   const [lang,setLang]=useState("sq");
+  const [showLogin,setShowLogin]=useState(false);
 
   useEffect(()=>{
     const h=e=>{
@@ -3445,11 +3626,12 @@ export default function App(){
     setRole(r);
     setTab("home");
   }
-  function handleLogout(){setRole(null);setTab("home");}
+  function handleLogout(){setRole(null);setTab("home");setShowLogin(false);}
   function handleRsvpChange(eventId,newRsvp){setEvents(prev=>prev.map(e=>e.id===eventId?{...e,rsvp:newRsvp}:e));}
 
-  if(!role) return <LangCtx.Provider value={lang}><div className={`vv${dark?" vv--dark":""}`}><style>{css}</style><Login onLogin={handleLogin} lang={lang} onLangToggle={()=>setLang(l=>l==="sq"?"de":"sq")}/></div></LangCtx.Provider>;
-  if(role==="apply") return <LangCtx.Provider value={lang}><div className={`vv${dark?" vv--dark":""}`}><style>{css}</style><ApplyForm onBack={()=>setRole(null)}/></div></LangCtx.Provider>;
+  if(!role&&!showLogin) return <PublicHome onLogin={()=>setShowLogin(true)} onApply={()=>setRole("apply")}/>;
+  if(!role&&showLogin) return <LangCtx.Provider value={lang}><div className={`vv${dark?" vv--dark":""}`}><style>{css}</style><Login onLogin={handleLogin} lang={lang} onLangToggle={()=>setLang(l=>l==="sq"?"de":"sq")} onBack={()=>setShowLogin(false)}/></div></LangCtx.Provider>;
+  if(role==="apply") return <LangCtx.Provider value={lang}><div className={`vv${dark?" vv--dark":""}`}><style>{css}</style><ApplyForm onBack={()=>{setRole(null);setShowLogin(false);}}/></div></LangCtx.Provider>;
 
   const me=role==="member"?members.find(m=>m.id===5)||members[4]:members.find(m=>m.id===3)||members[2];
 
