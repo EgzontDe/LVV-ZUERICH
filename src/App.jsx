@@ -3654,7 +3654,6 @@ const memberTabs=[
   {key:"news",label:"Njoftimet",icon:<Newspaper size={15}/>},
   {key:"polls",label:"Sondazhet",icon:<ClipboardList size={15}/>},
   {key:"donate",label:"Dono",icon:<Heart size={15}/>,section:"Kontributi"},
-  {key:"card",label:"Karta ime",icon:<QrCode size={15}/>},
   {key:"messages",label:"Mesazhe",icon:<MessageSquare size={15}/>},
   {key:"minutes",label:"Procesverbale",icon:<Scroll size={15}/>},
   {key:"meso",label:"Mëso",icon:<BookOpen size={15}/>,section:"Edukimi"},
