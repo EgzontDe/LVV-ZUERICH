@@ -209,6 +209,14 @@ const seedLog=[
   {id:3,who:"Sami Biqkaj",action:"Publikoi njoftimin «Mbledhja e radhës»",date:"10.06.2026 09:10"},
   {id:4,who:"Egzont Demiri",action:"Krijoi eventin «Festa e Flamurit»",date:"02.06.2026 11:48"},
 ];
+const seedApplications=[
+  {id:1,name:"Arbresha Dida",email:"arbresha.d@gmail.com",phone:"+41 76 111 22 33",kanton:"Zürich",prof:"Mësuese",dob:"14.03.1994",note:"Dua të kontribuoj aktivisht në organizatë dhe të ndihmoj me edukim.",applied:"20.06.2026",status:"aplikim",referredBy:null},
+  {id:2,name:"Mentor Osmani",email:"mentor.o@gmail.com",phone:"+41 79 222 33 44",kanton:"Aargau",prof:"Arkitekt",dob:"05.11.1988",note:"Kam qenë anëtar i organizatës në Kosovë. Tani jetoj në Aargau.",applied:"18.06.2026",status:"aprovuar",referredBy:"Blerim Gashi",approvedDate:"21.06.2026"},
+  {id:3,name:"Lirije Rama",email:"lirije.r@gmail.com",phone:"+41 76 333 44 55",kanton:"Zürich",prof:"Studente",dob:"22.08.2003",note:"",applied:"15.06.2026",status:"pret_pagesen",referredBy:"Fatlinda Berisha",approvedDate:"17.06.2026"},
+  {id:4,name:"Kushtrim Aliu",email:"kushtrim.a@gmail.com",phone:"+41 79 444 55 66",kanton:"Thurgau",prof:"Mekanik",dob:"07.01.1986",note:"Isha pjesë e degës në Bern për 3 vjet.",applied:"10.06.2026",status:"aktiv",referredBy:null,approvedDate:"12.06.2026",paidDate:"14.06.2026"},
+  {id:5,name:"Shqipe Bytyqi",email:"shqipe.b@gmail.com",phone:"+41 76 555 66 77",kanton:"Zürich",prof:"Infermiere",dob:"30.04.1991",note:"Dëshiroj të ndihmoj me organizimin e eventeve.",applied:"05.06.2026",status:"refuzuar",referredBy:null},
+  {id:6,name:"Erjon Hyseni",email:"erjon.h@gmail.com",phone:"+41 79 666 77 88",kanton:"St. Gallen",prof:"Shofer",dob:"19.09.1983",note:"",applied:"22.06.2026",status:"aplikim",referredBy:null},
+];
 const VOTE_STATUS_CONFIG={
   pa_kontaktuar:{label:"Pa kontaktuar",bg:"#F3F2EF",color:"#5A524E"},
   i_kontaktuar:{label:"I kontaktuar",bg:"#FEF3C7",color:"#92400E"},
@@ -3578,6 +3586,7 @@ const memberTabs=[
 const adminTabs=[
   {key:"home",label:"Paneli",icon:<LayoutDashboard size={15}/>,section:"Kryesore"},
   {key:"members",label:"Anëtarët",icon:<Users size={15}/>},
+  {key:"onboarding",label:"Onboarding",icon:<UserPlus size={15}/>},
   {key:"payments",label:"Pagesat",icon:<CreditCard size={15}/>},
   {key:"finance",label:"Financat",icon:<BarChart2 size={15}/>},
   {key:"growth",label:"Rritja",icon:<LineChart size={15}/>},
@@ -3677,6 +3686,7 @@ export default function App(){
     switch(tab){
       case"home": return <AdminHome members={members} events={events}/>;
       case"members": return <AdminMembers members={members} setMembers={setMembers} events={events} polls={polls}/>;
+      case"onboarding": return <AdminOnboarding/>;
       case"payments": return <AdminPayments members={members} setMembers={setMembers}/>;
       case"finance": return <AdminFinance/>;
       case"events": return <AdminEvents events={events} setEvents={setEvents} members={members}/>;
@@ -3872,6 +3882,221 @@ function OnboardingFlow({me,onDone}){
 
         </div>
       </div>
+    </div>
+  );
+}
+
+const OB_STAGES=[
+  {key:"aplikim",label:"Aplikim",color:C.amber,bg:"#FEF3C7",border:"#F59E0B"},
+  {key:"aprovuar",label:"Aprovuar",color:"#7C3AED",bg:"#EDE9FE",border:"#A78BFA"},
+  {key:"pret_pagesen",label:"Pret pagesën",color:"#0369A1",bg:"#E0F2FE",border:"#38BDF8"},
+  {key:"aktiv",label:"Aktiv",color:C.green,bg:"#E7F4ED",border:"#6EE7A0"},
+  {key:"refuzuar",label:"Refuzuar",color:"#9F1239",bg:"#FFE4E6",border:"#FDA4AF"},
+];
+function obStage(key){return OB_STAGES.find(s=>s.key===key)||OB_STAGES[0];}
+
+function AdminOnboarding(){
+  const [apps,setApps]=useState(seedApplications);
+  const [selected,setSelected]=useState(null);
+  const [filter,setFilter]=useState("all");
+  const [toast,showToast]=useToast();
+
+  const counts=Object.fromEntries(OB_STAGES.map(s=>[s.key,apps.filter(a=>a.status===s.key).length]));
+  const stageOrder=["aplikim","aprovuar","pret_pagesen","aktiv"];
+
+  function move(id,newStatus){
+    const today="23.06.2026";
+    setApps(prev=>prev.map(a=>a.id===id?{...a,status:newStatus,
+      approvedDate:newStatus==="aprovuar"?today:a.approvedDate,
+      paidDate:newStatus==="aktiv"?today:a.paidDate,
+    }:a));
+    setSelected(s=>s&&s.id===id?{...s,status:newStatus,
+      approvedDate:newStatus==="aprovuar"?today:s.approvedDate,
+      paidDate:newStatus==="aktiv"?today:s.paidDate,
+    }:s);
+    const labels={aprovuar:"Aplikimi u aprovua",pret_pagesen:"U shënua si pret pagesën",aktiv:"Anëtari u aktivizua",refuzuar:"Aplikimi u refuzua",aplikim:"U kthye në aplikim"};
+    showToast(labels[newStatus]||"Statusi u ndryshua");
+  }
+
+  const visible=filter==="all"?apps.filter(a=>a.status!=="refuzuar"):apps.filter(a=>a.status===filter);
+
+  const ACTIONS={
+    aplikim:[{label:"Aprovo",cls:"grn",next:"aprovuar"},{label:"Refuzo",cls:"ghost",next:"refuzuar"}],
+    aprovuar:[{label:"Email mirëseardhjeje",cls:"ghost",fn:(a)=>showToast(`Email u dërgua tek ${a.email}`)},{label:"Konfirmo dërgim kuotë",cls:"grn",next:"pret_pagesen"}],
+    pret_pagesen:[{label:"Konfirmo pagesën ✓",cls:"grn",next:"aktiv"}],
+    aktiv:[],
+    refuzuar:[{label:"Rishiko",cls:"ghost",next:"aplikim"}],
+  };
+
+  const sel=selected?apps.find(a=>a.id===selected.id)||selected:null;
+
+  return(
+    <div style={{padding:24,maxWidth:1100,margin:"0 auto"}}>
+      <SectionTitle title="Onboarding i anëtarëve të rinj" sub="Pipeline i aplikimeve dhe integrimit"/>
+
+      {/* Stats */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
+        {[
+          ["Aktive gjithsej",counts.aplikim+counts.aprovuar+counts.pret_pagesen,C.ink,"#F3F2EF"],
+          ["Presin aprovim",counts.aplikim,C.amber,"#FEF3C7"],
+          ["Pret pagesën",counts.pret_pagesen,"#0369A1","#E0F2FE"],
+          ["U onboarduan",counts.aktiv,C.green,"#E7F4ED"],
+        ].map(([lbl,val,col,bg])=>(
+          <div key={lbl} style={{background:bg,borderRadius:14,padding:"16px 18px",border:`1px solid ${col}22`}}>
+            <div style={{fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:".07em",color:col,marginBottom:6}}>{lbl}</div>
+            <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:32,color:col,lineHeight:1}}>{val}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filter tabs */}
+      <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
+        {[["all","Të gjitha",null],["aplikim","Aplikim",counts.aplikim],["aprovuar","Aprovuar",counts.aprovuar],["pret_pagesen","Pret pagesën",counts.pret_pagesen],["aktiv","Aktiv",counts.aktiv],["refuzuar","Refuzuar",counts.refuzuar]].map(([k,l,c])=>(
+          <button key={k} onClick={()=>setFilter(k)}
+            style={{padding:"5px 14px",borderRadius:999,fontSize:12,fontWeight:600,border:"1.5px solid",
+              borderColor:filter===k?C.red:"rgba(23,18,16,.12)",
+              background:filter===k?C.red:"transparent",
+              color:filter===k?"#fff":C.inkSoft,cursor:"pointer"}}>
+            {l}{c!==null&&c!==undefined?" ("+c+")":""}
+          </button>
+        ))}
+      </div>
+
+      {/* Application rows */}
+      <div style={{display:"grid",gap:8}}>
+        {visible.length===0&&<div style={{textAlign:"center",padding:"40px",color:C.inkSoft,fontSize:14}}>Nuk ka aplikime.</div>}
+        {visible.map(app=>{
+          const st=obStage(app.status);
+          const initials=app.name.split(" ").map(w=>w[0]).join("").slice(0,2);
+          return(
+            <div key={app.id} className="vv-card" style={{padding:"14px 18px",display:"flex",alignItems:"center",gap:14,cursor:"pointer"}}
+              onClick={()=>setSelected(app)}
+              onMouseEnter={e=>e.currentTarget.style.boxShadow="0 4px 20px rgba(23,18,16,.10)"}
+              onMouseLeave={e=>e.currentTarget.style.boxShadow=""}>
+              <div style={{width:40,height:40,borderRadius:"50%",background:st.bg,border:`2px solid ${st.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:13,color:st.color,flexShrink:0}}>{initials}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:700,fontSize:14}}>{app.name}</div>
+                <div style={{fontSize:12,color:C.inkSoft,marginTop:2}}>{app.prof} · {app.kanton} · {app.applied}</div>
+              </div>
+              {app.referredBy&&<div style={{fontSize:11,color:C.inkSoft,display:"flex",alignItems:"center",gap:4,flexShrink:0,whiteSpace:"nowrap"}}><UserPlus size={11}/>{app.referredBy}</div>}
+              <div style={{background:st.bg,color:st.color,border:`1px solid ${st.border}`,borderRadius:999,padding:"3px 10px",fontSize:11,fontWeight:700,flexShrink:0,whiteSpace:"nowrap"}}>{st.label}</div>
+              <ChevronRight size={15} color={C.inkSoft} style={{flexShrink:0}}/>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Detail modal */}
+      {sel&&(
+        <Modal title={sel.name} onClose={()=>setSelected(null)}>
+          <div style={{display:"grid",gap:20}}>
+
+            {/* Pipeline progress */}
+            <div>
+              <div className="vv-eyebrow" style={{marginBottom:12}}>Faza e onboardingut</div>
+              <div style={{display:"flex",alignItems:"center"}}>
+                {stageOrder.map((sk,i)=>{
+                  const s=obStage(sk);
+                  const done=stageOrder.indexOf(sel.status)>=i&&sel.status!=="refuzuar";
+                  return(
+                    <React.Fragment key={sk}>
+                      <div style={{textAlign:"center",flex:1}}>
+                        <div style={{width:30,height:30,borderRadius:"50%",margin:"0 auto 5px",display:"flex",alignItems:"center",justifyContent:"center",background:done?s.color:"#E8E7E3",border:`2px solid ${done?s.color:"#D0CFC9"}`}}>
+                          {done?<CheckCircle2 size={14} color="#fff"/>:<div style={{width:8,height:8,borderRadius:"50%",background:"#C0BDB8"}}/>}
+                        </div>
+                        <div style={{fontSize:10,fontWeight:600,color:done?s.color:C.inkSoft}}>{s.label}</div>
+                      </div>
+                      {i<stageOrder.length-1&&<div style={{height:2,flex:"0 0 16px",background:stageOrder.indexOf(sel.status)>i&&sel.status!=="refuzuar"?C.green:"#E0DFD9",marginBottom:14}}/>}
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Personal info grid */}
+            <div style={{background:"#F8F7F3",borderRadius:14,padding:"16px 18px"}}>
+              <div className="vv-eyebrow" style={{marginBottom:12}}>Të dhënat personale</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px 20px"}}>
+                {[[Mail,"Email",sel.email],[Phone,"Telefon",sel.phone],[MapPin,"Kantoni",sel.kanton],[User,"Profesioni",sel.prof],[Cake,"Datëlindja",sel.dob],[CalendarCheck,"Aplikoi",sel.applied]].map(([Icon,lbl,val])=>(
+                  <div key={lbl} style={{display:"flex",alignItems:"flex-start",gap:8}}>
+                    <Icon size={13} color={C.inkSoft} style={{marginTop:3,flexShrink:0}}/>
+                    <div>
+                      <div style={{fontSize:10,color:C.inkSoft,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em"}}>{lbl}</div>
+                      <div style={{fontSize:13,fontWeight:600,marginTop:1}}>{val||"—"}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Referral */}
+            {sel.referredBy&&(
+              <div style={{display:"flex",alignItems:"center",gap:10,background:"#E7F4ED",borderRadius:12,padding:"10px 14px",border:"1px solid #6EE7A044"}}>
+                <UserPlus size={15} color={C.green}/>
+                <span style={{fontSize:13,fontWeight:600,color:C.green}}>Referuar nga <b>{sel.referredBy}</b></span>
+              </div>
+            )}
+
+            {/* Note */}
+            {sel.note&&(
+              <div>
+                <div className="vv-eyebrow" style={{marginBottom:6}}>Arsyeja e aplikimit</div>
+                <div style={{background:"#F8F7F3",borderRadius:12,padding:"12px 14px",fontSize:13,lineHeight:1.65,color:C.ink,fontStyle:"italic",borderLeft:`3px solid ${C.red}`}}>"{sel.note}"</div>
+              </div>
+            )}
+
+            {/* Payment details — show when approved/waiting */}
+            {(sel.status==="aprovuar"||sel.status==="pret_pagesen")&&(
+              <div style={{background:"#E0F2FE",borderRadius:14,padding:"14px 16px",border:"1px solid #38BDF844"}}>
+                <div className="vv-eyebrow" style={{color:"#0369A1",marginBottom:10}}>Detajet e pagesës — CHF 150</div>
+                {[["IBAN","CH56 0483 5012 3456 7800 9"],["Përfituesi","VV Pika Winterthur"],["Qëllimi",`Kuota 2026 – ${sel.name}`],["Shuma","CHF 150.00"]].map(([lbl,val])=>(
+                  <div key={lbl} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid rgba(3,105,161,.1)"}}>
+                    <span style={{fontSize:12,color:"#0369A1",fontWeight:600}}>{lbl}</span>
+                    <span style={{fontSize:12,fontWeight:700}}>{val}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Onboarding checklist */}
+            <div>
+              <div className="vv-eyebrow" style={{marginBottom:10}}>Kronologjia</div>
+              {[
+                {label:"Aplikimi u dërgua",date:sel.applied,done:true},
+                {label:"Aprovuar nga kryesia",date:sel.approvedDate,done:!!sel.approvedDate},
+                {label:"Email mirëseardhjeje u dërgua",date:sel.approvedDate,done:!!sel.approvedDate},
+                {label:"Detajet e pagesës u dërguan",date:sel.approvedDate,done:!!sel.approvedDate},
+                {label:"Pagesa e kuotës u konfirmua",date:sel.paidDate,done:!!sel.paidDate},
+                {label:"Hyrje në platformë e aktivizuar",date:sel.paidDate,done:sel.status==="aktiv"},
+              ].map((ev,i)=>(
+                <div key={i} style={{display:"flex",gap:10,alignItems:"flex-start",padding:"5px 0",borderBottom:i<5?`1px solid ${C.line}`:"none"}}>
+                  <div style={{width:20,height:20,borderRadius:"50%",flexShrink:0,background:ev.done?C.green:"#E8E7E3",display:"flex",alignItems:"center",justifyContent:"center",marginTop:1}}>
+                    {ev.done?<CheckCircle2 size={11} color="#fff"/>:<div style={{width:6,height:6,borderRadius:"50%",background:"#C0BDB8"}}/>}
+                  </div>
+                  <div style={{flex:1}}>
+                    <span style={{fontSize:13,fontWeight:ev.done?600:400,color:ev.done?C.ink:C.inkSoft}}>{ev.label}</span>
+                    {ev.done&&ev.date&&<span style={{fontSize:11,color:C.inkSoft,marginLeft:8}}>{ev.date}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Actions */}
+            {ACTIONS[sel.status]&&ACTIONS[sel.status].length>0&&(
+              <div style={{display:"flex",gap:10,flexWrap:"wrap",paddingTop:8,borderTop:`1px solid ${C.line}`}}>
+                {ACTIONS[sel.status].map(act=>(
+                  <button key={act.label} className={`vv-btn${act.cls===" ghost"?" ghost":act.cls==="ghost"?" ghost":act.cls==="grn"?" grn":""}`}
+                    onClick={()=>{act.next?move(sel.id,act.next):act.fn&&act.fn(sel);}}>
+                    {act.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+          </div>
+        </Modal>
+      )}
+      <Toast msg={toast}/>
     </div>
   );
 }
