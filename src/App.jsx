@@ -3646,7 +3646,10 @@ export default function App(){
 
   function handleLogin(r){
     if(r==="apply"){setRole("apply");return;}
-    if(r==="member") setShowOnboarding(true);
+    if(r==="member"){
+      const m=members.find(x=>x.id===5);
+      if(!m?.hasOnboarded) setShowOnboarding(true);
+    }
     setRole(r);
     setTab("home");
   }
@@ -3663,7 +3666,14 @@ export default function App(){
     <LangCtx.Provider value={lang}>
       <div className={`vv${dark?" vv--dark":""}`}>
         <style>{css}</style>
-        <OnboardingFlow me={me} onDone={()=>setShowOnboarding(false)}/>
+        <OnboardingFlow
+          me={me}
+          onDone={()=>{
+            setShowOnboarding(false);
+            setMembers(prev=>prev.map(m=>m.id===5?{...m,hasOnboarded:true}:m));
+          }}
+          onSavePhone={(phone)=>setMembers(prev=>prev.map(m=>m.id===5?{...m,phone}:m))}
+        />
       </div>
     </LangCtx.Provider>
   );
@@ -3728,7 +3738,7 @@ export default function App(){
   );
 }
 
-function OnboardingFlow({me,onDone}){
+function OnboardingFlow({me,onDone,onSavePhone}){
   const TOTAL=4;
   const [step,setStep]=useState(0);
   const [phone,setPhone]=useState(me.phone||"");
@@ -3821,7 +3831,7 @@ function OnboardingFlow({me,onDone}){
               </div>
               <div style={{display:"flex",gap:10}}>
                 <button className="vv-btn ghost" style={{flex:1,justifyContent:"center"}} onClick={prev}><ChevronLeft size={15}/>Kthehu</button>
-                <button className="vv-btn" style={{flex:2,justifyContent:"center"}} onClick={next}>Konfirmo<ChevronRight size={15}/></button>
+                <button className="vv-btn" style={{flex:2,justifyContent:"center"}} onClick={()=>{onSavePhone&&onSavePhone(phone);next();}}>Konfirmo<ChevronRight size={15}/></button>
               </div>
             </div>
           </>}
@@ -3837,7 +3847,7 @@ function OnboardingFlow({me,onDone}){
                   <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:28,color:C.green,lineHeight:1}}>CHF 150</div>
                   <div style={{fontSize:12,color:C.inkSoft,marginTop:2}}>Kuota vjetore · 2026</div>
                 </div>
-                <div style={{marginLeft:"auto",background:"#FEF3C7",border:"1px solid #F59E0B",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:700,color:"#92400E"}}>Papaguar</div>
+                <div style={{marginLeft:"auto",background:me.pay==="papaguar"?"#FEF3C7":"#E7F4ED",border:`1px solid ${me.pay==="papaguar"?"#F59E0B":"#6EE7A0"}`,borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:700,color:me.pay==="papaguar"?"#92400E":C.green}}>{me.pay==="papaguar"?"Papaguar":"Paguar ✓"}</div>
               </div>
               <div style={{background:"#F8F7F3",borderRadius:12,padding:"16px 18px",marginBottom:16,border:`1px solid ${C.line}`}}>
                 <div style={{fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:".08em",color:C.inkSoft,marginBottom:12}}>Transfertë bankare</div>
@@ -3905,7 +3915,7 @@ function AdminOnboarding(){
   const stageOrder=["aplikim","aprovuar","pret_pagesen","aktiv"];
 
   function move(id,newStatus){
-    const today="23.06.2026";
+    const today=new Date().toLocaleDateString("de-CH");
     setApps(prev=>prev.map(a=>a.id===id?{...a,status:newStatus,
       approvedDate:newStatus==="aprovuar"?today:a.approvedDate,
       paidDate:newStatus==="aktiv"?today:a.paidDate,
