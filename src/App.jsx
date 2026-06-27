@@ -8,7 +8,8 @@ import {
   ChevronDown, Zap, Target, Video, Star, MessageSquare, Image as ImageIcon,
   Heart, BarChart2, TrendingUp, UserPlus, ThumbsUp, ThumbsDown, Globe, Grid,
   Banknote, ClipboardList, QrCode, BellRing, ClipboardCheck, LineChart,
-  UserCheck, Cake, AlertCircle, RefreshCw, Menu
+  UserCheck, Cake, AlertCircle, RefreshCw, Menu,
+  BookOpen, Flag, Flame, Scroll, GraduationCap
 } from "lucide-react";
 
 const C = {
@@ -3582,6 +3583,7 @@ const memberTabs=[
   {key:"news",label:"Njoftimet",icon:<Newspaper size={15}/>},
   {key:"polls",label:"Sondazhet",icon:<ClipboardList size={15}/>},
   {key:"donate",label:"Dono",icon:<Heart size={15}/>,section:"Kontributi"},
+  {key:"meso",label:"Mëso",icon:<BookOpen size={15}/>,section:"Edukimi"},
 ];
 const adminTabs=[
   {key:"home",label:"Paneli",icon:<LayoutDashboard size={15}/>,section:"Kryesore"},
@@ -3688,6 +3690,7 @@ export default function App(){
       case"card": return <MemberCard me={me}/>;
       case"donate": return <MemberDonate me={me}/>;
       case"polls": return <MemberPolls me={me} polls={polls} setPolls={setPolls}/>;
+      case"meso": return <MemberMeso/>;
       default: return <MemberHome me={me} events={events} announcements={announcements}/>;
     }
   }
@@ -4107,6 +4110,161 @@ function AdminOnboarding(){
         </Modal>
       )}
       <Toast msg={toast}/>
+    </div>
+  );
+}
+
+/* ─── MESO SEED DATA ─────────────────────────────────────────────────────── */
+const MESO_EVENTS=[
+  // VV
+  {id:1,cat:"vv",day:10,month:2,year:2005,title:"Themelimi i LVV",desc:"Albin Kurti themelon Lëvizjen VETËVENDOSJE! në Prishtinë si lëvizje qytetare për pavarësi dhe vetëvendosje të plotë."},
+  {id:2,cat:"vv",day:1,month:2,year:2010,title:"Hyrja e parë në Kuvend",desc:"LVV hyn për herë të parë në Kuvendin e Kosovës me 10 deputetë pas suksesit në zgjedhjet parlamentare."},
+  {id:3,cat:"vv",day:24,month:1,year:2014,title:"Aksioni i gazit lotsjellës",desc:"Deputetët e VV-së lëshojnë gaz lotsjellës në sallën e Kuvendit kundër marrëveshjes Beograd–Prishtinë, duke e bllokuar ratifikimin."},
+  {id:4,cat:"vv",day:6,month:10,year:2019,title:"Fitoi zgjedhjet 2019",desc:"LVV del partia e parë në zgjedhjet parlamentare me 26% të votave — rezultat historik deri në atë kohë."},
+  {id:5,cat:"vv",day:14,month:2,year:2021,title:"Fitoi zgjedhjet me 58%",desc:"VV fiton shumicë absolute historike — 58% e votave, fitore e paprecedentë në historinë politike të Kosovës."},
+  {id:6,cat:"vv",day:22,month:3,year:2021,title:"Albin Kurti betohet Kryeministër",desc:"Albin Kurti betohet si Kryeministër i Kosovës për herë të dytë, duke formuar Qeverinë Kurti II me koalicion të qëndrueshëm."},
+  // Kosova
+  {id:7,cat:"ks",day:28,month:11,year:1443,title:"Skënderbeu kthehet në Shqipëri",desc:"Gjergj Kastrioti dezerton nga ushtria osmane në Betejën e Nishit dhe çliron Krujën — fillimi i rezistencës 25-vjeçare kundër Perandorisë Osmane."},
+  {id:8,cat:"ks",day:5,month:3,year:1998,title:"Beteja e Prekaz — Rënia e Jasharajve",desc:"Forcat serbe sulmojnë familjen Jashari në Prekaz. Adem Jashari bie me gjithë familjen duke refuzuar kapitullimin. UÇK del hapur — fillimi i luftës çlirimtare."},
+  {id:9,cat:"ks",day:15,month:1,year:1999,title:"Masakra e Reçakut",desc:"45 civilë shqiptarë u masakruan nga forcat policore serbe në fshatin Reçak — ngjarje që shpejtoi ndërhyrjen humanitare të NATO-s."},
+  {id:10,cat:"ks",day:24,month:3,year:1999,title:"NATO fillon bombardimet",desc:"NATO nis Operacionin 'Allied Force' kundër Jugosllavisë — 78 ditë bombardimesh për të ndalur gjenocidin ndaj shqiptarëve të Kosovës."},
+  {id:11,cat:"ks",day:10,month:6,year:1999,title:"Rezoluta 1244 e OKB-së",desc:"Këshilli i Sigurimit miraton Rezolutën 1244. Forcat ushtarake serbe tërhiqen nga Kosova. Kosova kalon nën administrimin e UNMIK-ut."},
+  {id:12,cat:"ks",day:12,month:6,year:1999,title:"KFOR hyn në Kosovë",desc:"Forcat ndërkombëtare të NATO-s hyjnë në Kosovë — fillim i një faqeje të re pas dekadash shtypjeje dhe luftës çlirimtare."},
+  {id:13,cat:"ks",day:17,month:2,year:2008,title:"Shpallja e Pavarësisë së Kosovës",desc:"Kuvendi i Kosovës shpall Pavarësinë e plotë. Kosova bëhet shteti i ri në Europë — i njohur nga mbi 100 vende anëtare të OKB-së."},
+  {id:14,cat:"ks",day:9,month:4,year:2008,title:"Kushtetuta e Kosovës hyn në fuqi",desc:"Kushtetuta e Republikës së Kosovës hyn në fuqi, duke garantuar të drejtat themelore dhe pavarësinë institucionale të shtetit të ri."},
+  {id:15,cat:"ks",day:28,month:11,year:1912,title:"Dita e Flamurit — 28 Nëntori",desc:"Data e shpalljes së Pavarësisë festohet edhe nga shqiptarët e Kosovës si Ditë e Flamurit Kombëtar Shqiptar."},
+  // Shqipëria
+  {id:16,cat:"al",day:28,month:11,year:1912,title:"Shpallja e Pavarësisë",desc:"Ismail Qemali ngre flamurin kuqezi në Vlorë dhe shpall Pavarësinë e Shqipërisë — dita e festës kombëtare, 28 Nëntori."},
+  {id:17,cat:"al",day:29,month:11,year:1944,title:"Çlirimi i Shqipërisë",desc:"Shqipëria çlirohet plotësisht nga pushtimi nazifashist. Dita e Çlirimit festohet si ditë kombëtare."},
+  {id:18,cat:"al",day:11,month:1,year:1946,title:"Republika Popullore e Shqipërisë",desc:"Shpallohet zyrtarisht Republika Popullore e Shqipërisë. Fillon periudha e regjimit komunist nën Enver Hoxhën, njëri nga më të izoluarit në botë."},
+  {id:19,cat:"al",day:11,month:12,year:1990,title:"Themelimi i Partisë Demokratike",desc:"Studentët themelojnë Partinë Demokratike — fillimi i lëvizjes kundërkomuniste dhe tranzicionit demokratik në Shqipëri."},
+  {id:20,cat:"al",day:20,month:2,year:1991,title:"Rrëzimi i bustit të Hoxhës",desc:"Protestuesit rrëzojnë bustin e Enver Hoxhës në sheshin kryesor të Tiranës — imazhi ikonik i rënies së komunizmit shqiptar."},
+  {id:21,cat:"al",day:22,month:3,year:1992,title:"Zgjedhjet e para demokratike",desc:"Partia Demokratike fiton zgjedhjet e para pluraliste të lira. Fillon zyrtarisht tranzicioni demokratik i Shqipërisë."},
+  {id:22,cat:"al",day:28,month:11,year:1998,title:"Kushtetuta e re e Shqipërisë",desc:"Shqipëria miraton Kushtetutën e re përmes referendumit kombëtar — themeli ligjor i demokracisë moderne shqiptare."},
+];
+
+const MESO_FIGURES=[
+  {id:1,name:"Gjergj Kastrioti Skënderbeu",years:"~1405 – 1468",role:"Hero kombëtar",cat:"al",desc:"Bashkoi principatat shqiptare dhe bëri mur mbrojtës të Europës kundër Perandorisë Osmane për 25 vjet. Nofka 'Skënderbeu' i dhënë nga osmanët vetë."},
+  {id:2,name:"Ismail Qemali",years:"1844 – 1919",role:"Pavarësia e Shqipërisë",cat:"al",desc:"Patrioti që ngriti flamurin kuqezi në Vlorë më 28 nëntor 1912 dhe shpalli Pavarësinë — themelues i shtetit shqiptar modern."},
+  {id:3,name:"Naim Frashëri",years:"1846 – 1900",role:"Poeti kombëtar",cat:"al",desc:"Poeti i madh rilindas. Vepra 'Bagëti e Bujqësia' dhe 'Histori e Skënderbeut' janë kulm i letërsisë shqipe. Vëllai i Sami dhe Abdylit Frashëri."},
+  {id:4,name:"Sami Frashëri",years:"1850 – 1904",role:"Ideologu i Rilindjes",cat:"al",desc:"Enciklopedist, gjuhëtar dhe ideologu kryesor i Lëvizjes Kombëtare. Autor i 'Shqipëria — ç'ka qenë, ç'është e ç'do të bëhetë'."},
+  {id:5,name:"Fan S. Noli",years:"1882 – 1965",role:"Klerik · Politikan · Patriot",cat:"al",desc:"Peshkop Ortodoks, shkrimtar dhe politikan. Kreu 'Revolucionin e Qershorit' 1924. Themelues i Kishës Ortodokse Autoqefale Shqiptare."},
+  {id:6,name:"Adem Jashari",years:"1955 – 1998",role:"Komandant legjendë i UÇK-ut",cat:"ks",desc:"Ra bashkë me 58 anëtarë të familjes në Prekaz, duke refuzuar kapitullimin. Simbol i pakompromisit dhe i lirisë së Kosovës — 'Epopeja e Jasharajve'."},
+  {id:7,name:"Ibrahim Rugova",years:"1944 – 2006",role:"Presidenti i parë i Kosovës",cat:"ks",desc:"Lideri historik i LDK-së dhe i rezistencës paqësore gjatë viteve '90. Presidenti i parë i Kosovës së pavarur — 'Gandi i Ballkanit'."},
+  {id:8,name:"Albin Kurti",years:"1975 –",role:"Kryetar LVV · Kryeministër",cat:"vv",desc:"Themelues i Lëvizjes VETËVENDOSJE! dhe Kryeministër i Kosovës. Ndërtoi lëvizjen nga rezistenca qytetare në parti qeverisëse me 58% të votave."},
+];
+
+const CAT_META={
+  vv:{label:"VETËVENDOSJE!",color:C.red,bg:"#FDE8E7",border:"rgba(226,35,26,.2)",Icon:Flame},
+  ks:{label:"Kosova",color:"#0369A1",bg:"#E0F2FE",border:"rgba(3,105,161,.2)",Icon:Flag},
+  al:{label:"Shqipëria",color:"#7C3AED",bg:"#EDE9FE",border:"rgba(124,58,237,.2)",Icon:Scroll},
+};
+
+function MemberMeso(){
+  const [tab,setTab]=useState("all");
+  const today=new Date();
+  const td=today.getDate(),tm=today.getMonth()+1;
+  const currentYear=today.getFullYear();
+  const todayEvents=MESO_EVENTS.filter(e=>e.day===td&&e.month===tm);
+  const MONTHS=["","janar","shkurt","mars","prill","maj","qershor","korrik","gusht","shtator","tetor","nëntor","dhjetor"];
+  const TABS=[{k:"all",l:"Të gjitha"},{k:"vv",l:"VV"},{k:"ks",l:"Kosova"},{k:"al",l:"Shqipëria"},{k:"figura",l:"Figura"}];
+  const visible=tab==="figura"?[]:tab==="all"?MESO_EVENTS:MESO_EVENTS.filter(e=>e.cat===tab);
+  const visibleFigs=tab==="figura"?MESO_FIGURES:tab==="all"?MESO_FIGURES:MESO_FIGURES.filter(f=>f.cat===tab);
+
+  function FigGrid({figs}){
+    return(
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:14}}>
+        {figs.map(fig=>{
+          const meta=CAT_META[fig.cat];
+          return(
+            <div key={fig.id} className="vv-card" style={{padding:"18px 20px"}}>
+              <div style={{display:"flex",alignItems:"flex-start",gap:12,marginBottom:12}}>
+                <div style={{width:44,height:44,borderRadius:"50%",background:meta.bg,border:`2px solid ${meta.border}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  <GraduationCap size={20} color={meta.color}/>
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:14,color:C.ink,lineHeight:1.2,marginBottom:3}}>{fig.name}</div>
+                  <div style={{fontSize:11,color:C.inkSoft}}>{fig.years}</div>
+                </div>
+              </div>
+              <div style={{background:meta.bg,color:meta.color,border:`1px solid ${meta.border}`,borderRadius:8,padding:"3px 10px",fontSize:11,fontWeight:700,display:"inline-block",marginBottom:10}}>{fig.role}</div>
+              <div style={{fontSize:13,color:C.inkSoft,lineHeight:1.65}}>{fig.desc}</div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  return(
+    <div style={{padding:24,maxWidth:900,margin:"0 auto"}}>
+      <SectionTitle title="Mëso" sub="Historia e lëvizjes, e Kosovës dhe e kombit shqiptar"/>
+
+      {todayEvents.length>0&&(
+        <div style={{background:"linear-gradient(135deg,#D91E16,#8C1009)",borderRadius:18,padding:"22px 26px",marginBottom:24,position:"relative",overflow:"hidden"}}>
+          <div style={{position:"absolute",right:-20,bottom:-60,fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:200,lineHeight:1,color:"rgba(255,255,255,.06)",pointerEvents:"none"}}>!</div>
+          <div style={{color:"rgba(255,255,255,.7)",fontSize:11,fontWeight:700,letterSpacing:".1em",textTransform:"uppercase",marginBottom:10}}>
+            Sot në histori · {td} {MONTHS[tm]}
+          </div>
+          {todayEvents.map(e=>{
+            const meta=CAT_META[e.cat];
+            return(
+              <div key={e.id} style={{marginBottom:todayEvents.length>1?14:0}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,flexWrap:"wrap"}}>
+                  <div style={{background:"rgba(255,255,255,.15)",borderRadius:6,padding:"2px 10px",fontSize:11,fontWeight:700,color:"#fff"}}>{meta.label}</div>
+                  <div style={{color:"rgba(255,255,255,.6)",fontSize:12}}>{e.year} · {currentYear-e.year} vjet më parë</div>
+                </div>
+                <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:20,color:"#fff",marginBottom:4}}>{e.title}</div>
+                <div style={{color:"rgba(255,255,255,.8)",fontSize:13,lineHeight:1.6}}>{e.desc}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div style={{display:"flex",gap:6,marginBottom:20,flexWrap:"wrap"}}>
+        {TABS.map(({k,l})=>(
+          <button key={k} onClick={()=>setTab(k)}
+            style={{padding:"6px 18px",borderRadius:999,fontSize:13,fontWeight:600,border:"1.5px solid",cursor:"pointer",
+              borderColor:tab===k?C.red:"rgba(23,18,16,.12)",
+              background:tab===k?C.red:"transparent",
+              color:tab===k?"#fff":C.inkSoft}}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      {visible.length>0&&(
+        <div style={{display:"grid",gap:12,marginBottom:28}}>
+          {visible.map(ev=>{
+            const meta=CAT_META[ev.cat];
+            const IconC=meta.Icon;
+            return(
+              <div key={ev.id} className="vv-card" style={{padding:"18px 20px",display:"flex",gap:16,alignItems:"flex-start"}}>
+                <div style={{width:40,height:40,borderRadius:12,background:meta.bg,border:`1px solid ${meta.border}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:2}}>
+                  <IconC size={18} color={meta.color}/>
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:5,flexWrap:"wrap"}}>
+                    <div style={{background:meta.bg,color:meta.color,border:`1px solid ${meta.border}`,borderRadius:999,padding:"2px 10px",fontSize:11,fontWeight:700}}>{meta.label}</div>
+                    <div style={{fontSize:12,color:C.inkSoft,fontWeight:600}}>{ev.day} {MONTHS[ev.month]} {ev.year}</div>
+                    <div style={{fontSize:11,color:C.inkSoft,marginLeft:"auto"}}>{currentYear-ev.year} vjet</div>
+                  </div>
+                  <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:15,marginBottom:5,color:C.ink}}>{ev.title}</div>
+                  <div style={{fontSize:13,color:C.inkSoft,lineHeight:1.65}}>{ev.desc}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {visibleFigs.length>0&&(
+        <>
+          <div className="vv-eyebrow" style={{marginBottom:14}}>Figura historike</div>
+          <FigGrid figs={visibleFigs}/>
+        </>
+      )}
     </div>
   );
 }
