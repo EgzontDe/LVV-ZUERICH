@@ -294,6 +294,7 @@ const seedReferrals=[
   {id:4,name:"Arta Krasniqi",code:"WTH-AK04",referred:1,names:["Ramadan Kelmendi"]},
   {id:5,name:"Leotrim Hoxha",code:"WTH-LH08",referred:1,names:["Vjosa Salihu"]},
   {id:6,name:"Vjosa Salihu",code:"WTH-VS09",referred:0,names:[]},
+  {id:7,name:"Blerim Gashi",code:"WTH-BG05",referred:0,names:[]},
 ];
 const GROWTH_DATA=[
   {year:"2018",count:4},{year:"2019",count:8},{year:"2020",count:14},
@@ -1070,6 +1071,12 @@ const seedNotifs=[
   {id:5,type:"request",title:"Kërkesë nga Blerim Gashi",body:"«Si mund ta paguaj kuotën në dy këste?»",time:"3 ditë",read:true},
   {id:6,type:"payment",title:"Arta Krasniqi — pagesa e marrë",body:"CHF 150 paguar me transfertë bankare",time:"5 ditë",read:true},
 ];
+const seedMemberNotifs=[
+  {id:1,type:"payment",title:"Kuota 2026 — papaguar",body:"Pagesa jote e anëtarësisë CHF 150 pret konfirmim. Transfero te IBAN-i i pikës.",time:"tani",read:false},
+  {id:2,type:"poll",title:"Sondazh aktiv — vota mungon",body:"«A duhet Pika të kontribuojë për aksionin humanitar?» · afati 25.07.2026",time:"1 ditë",read:false},
+  {id:3,type:"event",title:"Event nesër — Mbledhja e Rregullt",body:"27 qershor ora 18:00 · Salla e Komunitetit, Winterthur",time:"5 orë",read:true},
+  {id:4,type:"request",title:"Kërkesa jote pret përgjigje",body:"«Si mund ta paguaj kuotën në dy këste?» — pret përgjigje nga kryesia",time:"12 ditë",read:true},
+];
 const NOTIF_CFG={
   payment:{icon:<CreditCard size={15}/>,bg:"#FEE2E2",color:"#C8342B"},
   event:{icon:<Calendar size={15}/>,bg:"#EDE9FF",color:"#6B21A8"},
@@ -1112,7 +1119,7 @@ function Shell({role,tab,setTab,onLogout,children,adminTabs,memberTabs,dark,onTo
   const t=useT();
   const [sideOpen,setSideOpen]=useState(false);
   const [notifOpen,setNotifOpen]=useState(false);
-  const [notifs,setNotifs]=useState(seedNotifs);
+  const [notifs,setNotifs]=useState(role==="member"?seedMemberNotifs:seedNotifs);
   const [syncedAt,setSyncedAt]=useState(new Date());
   const unreadCt=notifs.filter(n=>!n.read).length;
   const {refreshing,pull,trigger}=useRefresh(()=>setSyncedAt(new Date()));
@@ -1211,32 +1218,89 @@ function Shell({role,tab,setTab,onLogout,children,adminTabs,memberTabs,dark,onTo
 }
 
 
-function MemberHome({me,events,announcements}){
+function MemberHome({me,events,announcements,polls}){
   const upcoming=events.filter(e=>!e.past&&e.rsvp.includes(me.id));
+  const myRef=seedReferrals.find(r=>r.name===me.name)||{code:"WTH-XX",referred:0,names:[]};
+  const hasVoted=polls&&polls.some(p=>p.voted.includes(me.id));
+  const hasEvent=events.some(e=>e.rsvp.includes(me.id));
+  const hasReferred=myRef.referred>0;
+  const progressItems=[
+    {label:"Profili i plotësuar",done:!!(me.phone&&me.email)},
+    {label:"Kuota e paguar",done:me.pay==="paguar"},
+    {label:"Regjistruar në event",done:hasEvent},
+    {label:"Votuar në sondazh",done:hasVoted},
+    {label:"Dhuruar donacion",done:false},
+    {label:"Referuar një mik",done:hasReferred},
+  ];
+  const doneCount=progressItems.filter(p=>p.done).length;
+  const waShare=`https://wa.me/?text=${encodeURIComponent(`Bashkoju Lëvizjes VETËVENDOSJE! Pika Winterthur 🦅\nRegjistrohu me kodin tim: ${myRef.code}\n👉 vv-winterthur.ch`)}`;
   return(
     <div>
       <SectionTitle title={`Mirëmëngjesi, ${me.name.split(" ")[0]}!`} sub="Lëvizja VETËVENDOSJE! — Pika Winterthur"/>
       <ElectionCountdown compact/>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:24}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:20}}>
         <StatCard label="Statusi" value="Aktiv" color={C.green} icon={<CheckCircle2 size={28}/>}/>
         <StatCard label="Pagesa 2026" value={me.pay==="paguar"?"Paguar":"Papaguar"} color={me.pay==="paguar"?C.green:C.amber} icon={<CreditCard size={28}/>}/>
         <StatCard label="Eventet tim" value={upcoming.length} icon={<Calendar size={28}/>}/>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:20}}>
-        <Card>
-          <div style={{fontWeight:700,fontSize:15,marginBottom:14}}>Njoftimet e fundit</div>
-          {announcements.slice(0,3).map(a=>(
-            <div key={a.id} style={{padding:"12px 0",borderBottom:`1px solid ${C.line}`}}>
-              {a.pinned&&<span className="vv-chip" style={{background:C.red,color:"#fff",fontSize:11,marginBottom:6}}>Ngjitur</span>}
-              <div style={{fontWeight:600,fontSize:14}}>{a.title}</div>
-              <div style={{fontSize:13,color:C.inkSoft,marginTop:3}}>{a.body.slice(0,80)}…</div>
-              <div style={{fontSize:12,color:C.inkSoft,marginTop:4}}>{a.date}</div>
+
+      {/* Progress anëtari */}
+      <div className="vv-card" style={{padding:"18px 20px",marginBottom:20}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+          <div style={{fontWeight:700,fontSize:14}}>Progresi im si anëtar</div>
+          <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:18,color:doneCount===progressItems.length?C.green:C.ink}}>{doneCount}/{progressItems.length}</div>
+        </div>
+        <div style={{height:6,borderRadius:3,background:"rgba(23,18,16,.08)",marginBottom:14,overflow:"hidden"}}>
+          <div style={{height:"100%",borderRadius:3,background:doneCount===progressItems.length?C.green:C.red,width:`${(doneCount/progressItems.length)*100}%`,transition:"width .5s ease"}}/>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6px 20px"}}>
+          {progressItems.map((p,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:8,fontSize:13}}>
+              <div style={{width:18,height:18,borderRadius:"50%",flexShrink:0,background:p.done?"#E7F4ED":"#F3F2EF",border:`1.5px solid ${p.done?"#6EE7A0":"rgba(23,18,16,.15)"}`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                {p.done?<CheckCircle2 size={10} color={C.green}/>:<div style={{width:5,height:5,borderRadius:"50%",background:"#C0BDB8"}}/>}
+              </div>
+              <span style={{color:p.done?C.ink:C.inkSoft}}>{p.label}</span>
             </div>
           ))}
-        </Card>
+        </div>
+        {doneCount===progressItems.length&&<div style={{marginTop:14,background:"linear-gradient(135deg,#E7F4ED,#C8EBD7)",borderRadius:10,padding:"10px 14px",fontSize:13,fontWeight:700,color:C.green,display:"flex",alignItems:"center",gap:8}}><Star size={14}/>Anëtar plotësisht aktiv — faleminderit për kontributin!</div>}
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:20}}>
+        <div style={{display:"grid",gap:20}}>
+          <Card>
+            <div style={{fontWeight:700,fontSize:15,marginBottom:14}}>Njoftimet e fundit</div>
+            {announcements.slice(0,3).map(a=>(
+              <div key={a.id} style={{padding:"12px 0",borderBottom:`1px solid ${C.line}`}}>
+                {a.pinned&&<span className="vv-chip" style={{background:C.red,color:"#fff",fontSize:11,marginBottom:6}}>Ngjitur</span>}
+                <div style={{fontWeight:600,fontSize:14}}>{a.title}</div>
+                <div style={{fontSize:13,color:C.inkSoft,marginTop:3}}>{a.body.slice(0,80)}…</div>
+                <div style={{fontSize:12,color:C.inkSoft,marginTop:4}}>{a.date}</div>
+              </div>
+            ))}
+          </Card>
+          {/* Referimi */}
+          <Card>
+            <div style={{fontWeight:700,fontSize:15,marginBottom:14,display:"flex",alignItems:"center",gap:8}}><UserPlus size={16} color={C.red}/>Referimi im</div>
+            <div style={{background:"#F8F7F3",borderRadius:12,padding:"14px 16px",display:"flex",alignItems:"center",gap:14,marginBottom:14}}>
+              <div style={{flex:1}}>
+                <div style={{fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:".07em",color:C.inkSoft,marginBottom:4}}>Kodi im i referimit</div>
+                <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:20,letterSpacing:".05em",color:C.ink}}>{myRef.code}</div>
+              </div>
+              <div style={{textAlign:"center"}}>
+                <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:28,color:myRef.referred>0?C.green:C.inkSoft,lineHeight:1}}>{myRef.referred}</div>
+                <div style={{fontSize:11,color:C.inkSoft}}>të referuar</div>
+              </div>
+            </div>
+            {myRef.names.length>0&&<div style={{fontSize:12,color:C.inkSoft,marginBottom:12}}>Referuat: {myRef.names.join(", ")}</div>}
+            <a href={waShare} target="_blank" rel="noreferrer" className="vv-btn" style={{display:"flex",justifyContent:"center",background:"#25D366",fontSize:13}}>
+              <Globe size={14}/>Fto me WhatsApp
+            </a>
+          </Card>
+        </div>
         <Card>
           <div style={{fontWeight:700,fontSize:15,marginBottom:14}}>Eventet e ardhshme</div>
-          {upcoming.length===0?<div style={{color:C.inkSoft,fontSize:13}}>Nuk jeni regjistruar në asnjë event.</div>:upcoming.slice(0,3).map(e=>(
+          {upcoming.length===0?<div style={{color:C.inkSoft,fontSize:13}}>Nuk jeni regjistruar në asnjë event.</div>:upcoming.slice(0,4).map(e=>(
             <div key={e.id} style={{padding:"10px 0",borderBottom:`1px solid ${C.line}`}}>
               <div style={{fontWeight:600,fontSize:13}}>{e.title}</div>
               <div style={{fontSize:12,color:C.inkSoft,marginTop:2}}>{e.date} · {e.time}</div>
@@ -3590,6 +3654,9 @@ const memberTabs=[
   {key:"news",label:"Njoftimet",icon:<Newspaper size={15}/>},
   {key:"polls",label:"Sondazhet",icon:<ClipboardList size={15}/>},
   {key:"donate",label:"Dono",icon:<Heart size={15}/>,section:"Kontributi"},
+  {key:"card",label:"Karta ime",icon:<QrCode size={15}/>},
+  {key:"messages",label:"Mesazhe",icon:<MessageSquare size={15}/>},
+  {key:"minutes",label:"Procesverbale",icon:<Scroll size={15}/>},
   {key:"meso",label:"Mëso",icon:<BookOpen size={15}/>,section:"Edukimi"},
 ];
 const adminTabs=[
@@ -3683,7 +3750,7 @@ export default function App(){
 
   function renderMemberTab(){
     switch(tab){
-      case"home": return <MemberHome me={me} events={events} announcements={announcements}/>;
+      case"home": return <MemberHome me={me} events={events} announcements={announcements} polls={polls}/>;
       case"profile": return <MemberProfile me={me}/>;
       case"invoices": return <MemberInvoices me={me}/>;
       case"events": return <MemberEvents me={me} events={events} onRsvpChange={handleRsvpChange}/>;
@@ -3691,8 +3758,10 @@ export default function App(){
       case"card": return <MemberCard me={me}/>;
       case"donate": return <MemberDonate me={me}/>;
       case"polls": return <MemberPolls me={me} polls={polls} setPolls={setPolls}/>;
+      case"messages": return <MemberMessages me={me}/>;
+      case"minutes": return <MemberMinutes members={members}/>;
       case"meso": return <MemberMeso/>;
-      default: return <MemberHome me={me} events={events} announcements={announcements}/>;
+      default: return <MemberHome me={me} events={events} announcements={announcements} polls={polls}/>;
     }
   }
 
@@ -4454,6 +4523,157 @@ function MemberMeso(){
           </div>
         )}
       </>)}
+    </div>
+  );
+}
+
+const MSG_TYPES=["Pyetje për pagesën","Pyetje për anëtarësinë","Sugjerim","Kërkesë informacioni","Tjetër"];
+const seedMemberRequests=[
+  {id:"q1",type:"Pyetje për pagesën",msg:"Si mund ta paguaj kuotën në dy këste?",date:"15.06.2026 10:22",status:"pret",reply:""},
+];
+function MemberMessages({me}){
+  const [reqs,setReqs]=useState(seedMemberRequests);
+  const [type,setType]=useState(MSG_TYPES[0]);
+  const [msg,setMsg]=useState("");
+  const [toast,showToast]=useToast();
+
+  function send(){
+    if(!msg.trim())return;
+    const now=new Date();
+    const d=`${now.toLocaleDateString("de-CH")} ${now.getHours().toString().padStart(2,"0")}:${now.getMinutes().toString().padStart(2,"0")}`;
+    setReqs(prev=>[{id:Date.now().toString(),type,msg:msg.trim(),date:d,status:"pret",reply:""},
+      ...prev]);
+    setMsg("");
+    showToast("Mesazhi u dërgua te kryesia ✓");
+  }
+
+  const STATUS={pret:{label:"Pret",bg:"#FEF3C7",color:C.amber},u_pergjigj:{label:"U përgjigj",bg:"#E7F4ED",color:C.green},mbyllur:{label:"Mbyllur",bg:"#F3F2EF",color:C.inkSoft}};
+
+  return(
+    <div style={{padding:24,maxWidth:720,margin:"0 auto"}}>
+      <SectionTitle title="Mesazhe me kryesinë" sub="Dërgo pyetje ose kërkesa direkt te ekipi i pikës"/>
+
+      {/* Form */}
+      <div className="vv-card" style={{padding:"20px 24px",marginBottom:24}}>
+        <div style={{fontWeight:700,fontSize:14,marginBottom:14,display:"flex",alignItems:"center",gap:8}}><MessageSquare size={15} color={C.red}/>Mesazh i ri</div>
+        <div style={{marginBottom:12}}>
+          <div style={{fontSize:11,fontWeight:600,textTransform:"uppercase",letterSpacing:".07em",color:C.inkSoft,marginBottom:6}}>Lloji</div>
+          <select className="vv-input" value={type} onChange={e=>setType(e.target.value)} style={{width:"100%"}}>
+            {MSG_TYPES.map(t=><option key={t}>{t}</option>)}
+          </select>
+        </div>
+        <div style={{marginBottom:16}}>
+          <div style={{fontSize:11,fontWeight:600,textTransform:"uppercase",letterSpacing:".07em",color:C.inkSoft,marginBottom:6}}>Mesazhi</div>
+          <textarea className="vv-input" rows={3} style={{width:"100%",resize:"vertical"}} placeholder="Shkruaj mesazhin tënd këtu…" value={msg} onChange={e=>setMsg(e.target.value)}/>
+        </div>
+        <button className="vv-btn" onClick={send} disabled={!msg.trim()}><Send size={14}/>Dërgo</button>
+      </div>
+
+      {/* History */}
+      <div style={{fontWeight:700,fontSize:14,marginBottom:12}}>Historiku i mesazheve</div>
+      {reqs.length===0?<div style={{color:C.inkSoft,fontSize:14,textAlign:"center",padding:32}}>Nuk ke dërguar asnjë mesazh ende.</div>:(
+        <div style={{display:"grid",gap:12}}>
+          {reqs.map(r=>{
+            const s=STATUS[r.status]||STATUS.pret;
+            return(
+              <div key={r.id} className="vv-card" style={{padding:"16px 20px"}}>
+                <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,marginBottom:10}}>
+                  <div>
+                    <div style={{fontWeight:700,fontSize:13,marginBottom:3}}>{r.type}</div>
+                    <div style={{fontSize:11,color:C.inkSoft}}>{r.date}</div>
+                  </div>
+                  <div style={{background:s.bg,color:s.color,borderRadius:999,padding:"3px 10px",fontSize:11,fontWeight:700,flexShrink:0}}>{s.label}</div>
+                </div>
+                <div style={{fontSize:13,color:C.inkSoft,lineHeight:1.65,background:"#F8F7F3",borderRadius:10,padding:"10px 12px",borderLeft:`3px solid ${C.line}`}}>{r.msg}</div>
+                {r.reply&&(
+                  <div style={{marginTop:10,fontSize:13,lineHeight:1.65,background:"#E7F4ED",borderRadius:10,padding:"10px 12px",borderLeft:`3px solid #6EE7A0`}}>
+                    <div style={{fontSize:11,fontWeight:700,color:C.green,marginBottom:4}}>Përgjigja e kryesisë</div>
+                    {r.reply}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <Toast msg={toast}/>
+    </div>
+  );
+}
+
+function MemberMinutes({members}){
+  const [sel,setSel]=useState(null);
+  const [toast,showToast]=useToast();
+  return(
+    <div style={{padding:24,maxWidth:800,margin:"0 auto"}}>
+      <SectionTitle title="Procesverbalet" sub="Vendimet dhe raportet e mbledhjeve të pikës"/>
+      <div style={{display:"grid",gap:14}}>
+        {seedMinutes.map(m=>(
+          <div key={m.id} className="vv-card" style={{padding:"18px 22px",cursor:"pointer"}}
+            onClick={()=>setSel(m)}
+            onMouseEnter={e=>e.currentTarget.style.boxShadow="0 4px 20px rgba(23,18,16,.1)"}
+            onMouseLeave={e=>e.currentTarget.style.boxShadow=""}>
+            <div style={{display:"flex",alignItems:"flex-start",gap:14}}>
+              <div style={{width:44,height:44,borderRadius:12,background:"#EDE9FE",border:"1px solid rgba(124,58,237,.2)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                <Scroll size={20} color="#7C3AED"/>
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:5,flexWrap:"wrap"}}>
+                  <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:15}}>{m.title}</div>
+                  <div style={{background:"#E7F4ED",color:C.green,borderRadius:999,padding:"2px 10px",fontSize:11,fontWeight:700}}>{m.status==="final"?"Final":"Draft"}</div>
+                </div>
+                <div style={{fontSize:12,color:C.inkSoft,display:"flex",gap:14,flexWrap:"wrap"}}>
+                  <span style={{display:"flex",alignItems:"center",gap:4}}><Calendar size={11}/>{m.date}</span>
+                  <span style={{display:"flex",alignItems:"center",gap:4}}><MapPin size={11}/>{m.place}</span>
+                  <span style={{display:"flex",alignItems:"center",gap:4}}><Users size={11}/>{m.present.length} të pranishëm</span>
+                </div>
+                <div style={{marginTop:8,fontSize:12,color:C.inkSoft}}>
+                  <span style={{fontWeight:600}}>Vendime:</span> {m.decisions.join(" · ")}
+                </div>
+              </div>
+              <ChevronRight size={15} color={C.inkSoft} style={{flexShrink:0,marginTop:4}}/>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {sel&&(
+        <Modal title={sel.title} onClose={()=>setSel(null)}>
+          <div style={{display:"grid",gap:18}}>
+            <div style={{display:"flex",gap:20,flexWrap:"wrap"}}>
+              <Field icon={<Calendar size={14}/>} label="Data" value={sel.date}/>
+              <Field icon={<MapPin size={14}/>} label="Vendi" value={sel.place}/>
+            </div>
+            <div>
+              <div className="vv-eyebrow" style={{marginBottom:10}}>Të pranishëm ({sel.present.length})</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                {sel.present.map(id=>{
+                  const mb=members.find(x=>x.id===id);
+                  return mb?(
+                    <div key={id} style={{background:"#F3F2EF",borderRadius:999,padding:"4px 12px",fontSize:12,fontWeight:600}}>{mb.name}</div>
+                  ):null;
+                })}
+              </div>
+            </div>
+            <div>
+              <div className="vv-eyebrow" style={{marginBottom:10}}>Vendimet e mbledhjes</div>
+              {sel.decisions.map((d,i)=>(
+                <div key={i} style={{display:"flex",gap:10,alignItems:"flex-start",padding:"8px 0",borderBottom:i<sel.decisions.length-1?`1px solid ${C.line}`:"none"}}>
+                  <div style={{width:22,height:22,borderRadius:"50%",background:"#E7F4ED",border:"1.5px solid #6EE7A0",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                    <CheckCircle2 size={12} color={C.green}/>
+                  </div>
+                  <span style={{fontSize:13,lineHeight:1.6,paddingTop:2}}>{d}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{paddingTop:4,borderTop:`1px solid ${C.line}`,display:"flex",gap:10}}>
+              <button className="vv-btn ghost" onClick={()=>showToast("PDF u dërgua në email tënd ✓")}><Download size={14}/>Shkarko PDF</button>
+              <button className="vv-btn ghost" onClick={()=>showToast("Procesverbali u nda me WhatsApp ✓")}><Globe size={14}/>Ndaj</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+      <Toast msg={toast}/>
     </div>
   );
 }
