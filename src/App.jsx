@@ -160,6 +160,13 @@ const css = `
 .ob-feature{background:#F8F7F3;border-radius:14px;padding:16px;border:1px solid rgba(23,18,16,.06)}
 @keyframes obPop{0%{transform:scale(.7);opacity:0}70%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
 .ob-done-icon{animation:obPop .5s cubic-bezier(.34,1.56,.64,1) both}
+.meso-opt{width:100%;text-align:left;padding:12px 16px;border-radius:10px;border:1.5px solid rgba(23,18,16,.12);background:#fff;font-size:14px;font-weight:500;cursor:pointer;transition:all .18s;margin-bottom:8px}
+.meso-opt:hover:not(:disabled){border-color:rgba(226,35,26,.4);background:#FDE8E7;color:#B5170F}
+.meso-opt.correct{border-color:#1E8A4C!important;background:#E7F4ED!important;color:#1E8A4C!important;font-weight:700}
+.meso-opt.wrong{border-color:#E2231A!important;background:#FDE8E7!important;color:#B5170F!important;font-weight:700}
+.meso-opt:disabled{cursor:default}
+@keyframes mesoFact{0%{opacity:0;transform:translateY(-8px)}100%{opacity:1;transform:translateY(0)}}
+.meso-fact{animation:mesoFact .25s ease both}
 `;
 
 const KUOTA=150;
@@ -4159,112 +4166,300 @@ const CAT_META={
   ks:{label:"Kosova",color:"#0369A1",bg:"#E0F2FE",border:"rgba(3,105,161,.2)",Icon:Flag},
   al:{label:"Shqipëria",color:"#7C3AED",bg:"#EDE9FE",border:"rgba(124,58,237,.2)",Icon:Scroll},
 };
+const KUIZ_PYETJET=[
+  {q:"Në cilin vit u themelua Lëvizja VETËVENDOSJE!?",o:["2003","2005","2007","2010"],a:"2005"},
+  {q:"Kush shpalli Pavarësinë e Shqipërisë më 28 nëntor 1912?",o:["Fan Noli","Naim Frashëri","Ismail Qemali","Sami Frashëri"],a:"Ismail Qemali"},
+  {q:"Kur u shpall Pavarësia e Kosovës?",o:["10 qershor 1999","28 nëntor 2006","17 shkurt 2008","1 janar 2010"],a:"17 shkurt 2008"},
+  {q:"Sa % votash mori VV në zgjedhjet e shkurtit 2021?",o:["42%","50%","58%","71%"],a:"58%"},
+  {q:"Cili lider historik quhej 'Gandi i Ballkanit'?",o:["Adem Jashari","Ibrahim Rugova","Albin Kurti","Ismail Qemali"],a:"Ibrahim Rugova"},
+  {q:"Kur filluan bombardimet e NATO-s kundër Jugosllavisë?",o:["15 janar 1999","10 shkurt 1999","24 mars 1999","5 prill 1999"],a:"24 mars 1999"},
+  {q:"Çfarë ndodhi më 20 shkurt 1991 në Tiranë?",o:["Zgjedhjet e para","Themelimi i PD-së","Rrëzimi i bustit të Hoxhës","Shpallja e Kushtetutës"],a:"Rrëzimi i bustit të Hoxhës"},
+  {q:"Sa vjet rezistoi Skënderbeu kundër pushtimit osman?",o:["10 vjet","15 vjet","25 vjet","35 vjet"],a:"25 vjet"},
+  {q:"Kur ra Adem Jashari bashkë me familjen në Prekaz?",o:["15 janar 1998","5 mars 1998","24 mars 1999","28 nëntor 1997"],a:"5 mars 1998"},
+  {q:"Cila është vepra kryesore e Naim Frashërit?",o:["Bagëti e Bujqësia","Himni i Flamurit","Fjala e Lirisë","Kanga e Sprasme"],a:"Bagëti e Bujqësia"},
+  {q:"Kur u fut gazi lotsjellës në Kuvend nga deputetët e VV-së?",o:["2012","2013","2014","2015"],a:"2014"},
+  {q:"Sa deputetë fitoi LVV në zgjedhjet e para parlamentare 2010?",o:["7","10","14","18"],a:"10"},
+];
 
 function MemberMeso(){
-  const [tab,setTab]=useState("all");
-  const today=new Date();
-  const td=today.getDate(),tm=today.getMonth()+1;
-  const currentYear=today.getFullYear();
-  const todayEvents=MESO_EVENTS.filter(e=>e.day===td&&e.month===tm);
   const MONTHS=["","janar","shkurt","mars","prill","maj","qershor","korrik","gusht","shtator","tetor","nëntor","dhjetor"];
-  const TABS=[{k:"all",l:"Të gjitha"},{k:"vv",l:"VV"},{k:"ks",l:"Kosova"},{k:"al",l:"Shqipëria"},{k:"figura",l:"Figura"}];
-  const visible=tab==="figura"?[]:tab==="all"?MESO_EVENTS:MESO_EVENTS.filter(e=>e.cat===tab);
-  const visibleFigs=tab==="figura"?MESO_FIGURES:tab==="all"?MESO_FIGURES:MESO_FIGURES.filter(f=>f.cat===tab);
+  const today=new Date();
+  const td=today.getDate(),tm=today.getMonth()+1,ty=today.getFullYear();
+  const todayEvents=MESO_EVENTS.filter(e=>e.day===td&&e.month===tm);
 
-  function FigGrid({figs}){
-    return(
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:14}}>
-        {figs.map(fig=>{
-          const meta=CAT_META[fig.cat];
-          return(
-            <div key={fig.id} className="vv-card" style={{padding:"18px 20px"}}>
-              <div style={{display:"flex",alignItems:"flex-start",gap:12,marginBottom:12}}>
-                <div style={{width:44,height:44,borderRadius:"50%",background:meta.bg,border:`2px solid ${meta.border}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                  <GraduationCap size={20} color={meta.color}/>
-                </div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:14,color:C.ink,lineHeight:1.2,marginBottom:3}}>{fig.name}</div>
-                  <div style={{fontSize:11,color:C.inkSoft}}>{fig.years}</div>
-                </div>
-              </div>
-              <div style={{background:meta.bg,color:meta.color,border:`1px solid ${meta.border}`,borderRadius:8,padding:"3px 10px",fontSize:11,fontWeight:700,display:"inline-block",marginBottom:10}}>{fig.role}</div>
-              <div style={{fontSize:13,color:C.inkSoft,lineHeight:1.65}}>{fig.desc}</div>
-            </div>
-          );
-        })}
-      </div>
-    );
+  // Next historical date countdown
+  const nextEv=(()=>{
+    const future=[...MESO_EVENTS].filter(e=>e.month*100+e.day>tm*100+td).sort((a,b)=>(a.month*100+a.day)-(b.month*100+b.day));
+    const ev=future[0]||[...MESO_EVENTS].sort((a,b)=>(a.month*100+a.day)-(b.month*100+b.day))[0];
+    const d=new Date(ty+(future.length?0:1),ev.month-1,ev.day);
+    return{ev,days:Math.ceil((d-today)/86400000)};
+  })();
+
+  // Main tabs
+  const [mainTab,setMainTab]=useState("ngjarjet");
+  // Events tab state
+  const [catF,setCatF]=useState("all");
+  const [expanded,setExpanded]=useState(new Set());
+  const [read,setRead]=useState(new Set());
+  const [factEv,setFactEv]=useState(null);
+  // Figure modal
+  const [figSel,setFigSel]=useState(null);
+  // Quiz state
+  const [quizQs,setQuizQs]=useState([]);
+  const [qi,setQi]=useState(0);
+  const [score,setScore]=useState(0);
+  const [picked,setPicked]=useState(null);
+  const [done,setDone]=useState(false);
+
+  function startQuiz(){
+    const shuffled=[...KUIZ_PYETJET].sort(()=>Math.random()-.5).slice(0,6);
+    setQuizQs(shuffled);setQi(0);setScore(0);setPicked(null);setDone(false);
   }
+  function pickAnswer(o){
+    if(picked)return;
+    setPicked(o);
+    const correct=o===quizQs[qi].a;
+    if(correct)setScore(s=>s+1);
+    setTimeout(()=>{
+      if(qi+1>=quizQs.length){setDone(true);}
+      else{setQi(q=>q+1);setPicked(null);}
+    },1400);
+  }
+  function showFact(){
+    const pool=catF==="all"?MESO_EVENTS:MESO_EVENTS.filter(e=>e.cat===catF);
+    setFactEv(pool[Math.floor(Math.random()*pool.length)]);
+  }
+  function toggleExpand(id){
+    setExpanded(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});
+    setRead(s=>{const n=new Set(s);n.add(id);return n;});
+  }
+
+  const evVisible=catF==="all"?MESO_EVENTS:MESO_EVENTS.filter(e=>e.cat===catF);
+  const figVisible=catF==="all"?MESO_FIGURES:MESO_FIGURES.filter(f=>f.cat===catF);
+  const CATS=[{k:"all",l:"Të gjitha"},{k:"vv",l:"VV"},{k:"ks",l:"Kosova"},{k:"al",l:"Shqipëria"}];
+  const MAIN_TABS=[{k:"ngjarjet",l:"Ngjarjet"},{k:"figura",l:"Figura"},{k:"kuiz",l:"Kuiz"}];
 
   return(
     <div style={{padding:24,maxWidth:900,margin:"0 auto"}}>
       <SectionTitle title="Mëso" sub="Historia e lëvizjes, e Kosovës dhe e kombit shqiptar"/>
 
+      {/* Sot në histori */}
       {todayEvents.length>0&&(
-        <div style={{background:"linear-gradient(135deg,#D91E16,#8C1009)",borderRadius:18,padding:"22px 26px",marginBottom:24,position:"relative",overflow:"hidden"}}>
+        <div style={{background:"linear-gradient(135deg,#D91E16,#8C1009)",borderRadius:18,padding:"22px 26px",marginBottom:20,position:"relative",overflow:"hidden"}}>
           <div style={{position:"absolute",right:-20,bottom:-60,fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:200,lineHeight:1,color:"rgba(255,255,255,.06)",pointerEvents:"none"}}>!</div>
-          <div style={{color:"rgba(255,255,255,.7)",fontSize:11,fontWeight:700,letterSpacing:".1em",textTransform:"uppercase",marginBottom:10}}>
-            Sot në histori · {td} {MONTHS[tm]}
-          </div>
+          <div style={{color:"rgba(255,255,255,.7)",fontSize:11,fontWeight:700,letterSpacing:".1em",textTransform:"uppercase",marginBottom:10}}>Sot në histori · {td} {MONTHS[tm]}</div>
           {todayEvents.map(e=>{
-            const meta=CAT_META[e.cat];
-            return(
-              <div key={e.id} style={{marginBottom:todayEvents.length>1?14:0}}>
-                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,flexWrap:"wrap"}}>
-                  <div style={{background:"rgba(255,255,255,.15)",borderRadius:6,padding:"2px 10px",fontSize:11,fontWeight:700,color:"#fff"}}>{meta.label}</div>
-                  <div style={{color:"rgba(255,255,255,.6)",fontSize:12}}>{e.year} · {currentYear-e.year} vjet më parë</div>
-                </div>
-                <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:20,color:"#fff",marginBottom:4}}>{e.title}</div>
-                <div style={{color:"rgba(255,255,255,.8)",fontSize:13,lineHeight:1.6}}>{e.desc}</div>
+            const m=CAT_META[e.cat];
+            return(<div key={e.id}>
+              <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}>
+                <span style={{background:"rgba(255,255,255,.18)",borderRadius:6,padding:"2px 10px",fontSize:11,fontWeight:700,color:"#fff"}}>{m.label}</span>
+                <span style={{color:"rgba(255,255,255,.6)",fontSize:12}}>{e.year} · {ty-e.year} vjet më parë</span>
               </div>
-            );
+              <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:20,color:"#fff",marginBottom:4}}>{e.title}</div>
+              <div style={{color:"rgba(255,255,255,.8)",fontSize:13,lineHeight:1.6}}>{e.desc}</div>
+            </div>);
           })}
         </div>
       )}
 
-      <div style={{display:"flex",gap:6,marginBottom:20,flexWrap:"wrap"}}>
-        {TABS.map(({k,l})=>(
-          <button key={k} onClick={()=>setTab(k)}
-            style={{padding:"6px 18px",borderRadius:999,fontSize:13,fontWeight:600,border:"1.5px solid",cursor:"pointer",
-              borderColor:tab===k?C.red:"rgba(23,18,16,.12)",
-              background:tab===k?C.red:"transparent",
-              color:tab===k?"#fff":C.inkSoft}}>
+      {/* Countdown to next date */}
+      <div className="vv-card" style={{padding:"14px 18px",display:"flex",alignItems:"center",gap:14,marginBottom:20}}>
+        <div style={{width:44,height:44,borderRadius:12,background:"#FEF3C7",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+          <Calendar size={20} color={C.amber}/>
+        </div>
+        <div style={{flex:1}}>
+          <div style={{fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:".07em",color:C.inkSoft,marginBottom:2}}>Data tjetër historike</div>
+          <div style={{fontWeight:700,fontSize:14}}>{nextEv.ev.title}</div>
+          <div style={{fontSize:12,color:C.inkSoft}}>{nextEv.ev.day} {MONTHS[nextEv.ev.month]} · {nextEv.ev.year}</div>
+        </div>
+        <div style={{textAlign:"center",flexShrink:0}}>
+          <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:32,color:C.amber,lineHeight:1}}>{nextEv.days}</div>
+          <div style={{fontSize:11,color:C.inkSoft}}>ditë</div>
+        </div>
+      </div>
+
+      {/* Main tab switcher */}
+      <div style={{display:"flex",gap:6,marginBottom:20}}>
+        {MAIN_TABS.map(({k,l})=>(
+          <button key={k} onClick={()=>setMainTab(k)} style={{padding:"8px 22px",borderRadius:999,fontSize:13,fontWeight:600,border:"1.5px solid",cursor:"pointer",
+            borderColor:mainTab===k?C.red:"rgba(23,18,16,.12)",background:mainTab===k?C.red:"transparent",color:mainTab===k?"#fff":C.inkSoft}}>
             {l}
           </button>
         ))}
       </div>
 
-      {visible.length>0&&(
-        <div style={{display:"grid",gap:12,marginBottom:28}}>
-          {visible.map(ev=>{
+      {/* ── NGJARJET ── */}
+      {mainTab==="ngjarjet"&&(<>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16,flexWrap:"wrap"}}>
+          {CATS.map(({k,l})=>(
+            <button key={k} onClick={()=>{setCatF(k);setFactEv(null);}} style={{padding:"5px 14px",borderRadius:999,fontSize:12,fontWeight:600,border:"1.5px solid",cursor:"pointer",
+              borderColor:catF===k?"rgba(23,18,16,.4)":"rgba(23,18,16,.1)",background:catF===k?C.ink:"transparent",color:catF===k?"#fff":C.inkSoft}}>
+              {l}
+            </button>
+          ))}
+          <button onClick={showFact} style={{marginLeft:"auto",padding:"5px 14px",borderRadius:999,fontSize:12,fontWeight:600,border:"1.5px solid",cursor:"pointer",borderColor:"rgba(23,18,16,.1)",background:"transparent",color:C.inkSoft,display:"flex",alignItems:"center",gap:6}}>
+            <Zap size={12}/> Fakt i rastit
+          </button>
+          <div style={{fontSize:12,color:C.inkSoft}}>{read.size}/{MESO_EVENTS.length} lexuar</div>
+        </div>
+
+        {/* Progress bar */}
+        <div style={{height:4,borderRadius:2,background:"rgba(23,18,16,.08)",marginBottom:18,overflow:"hidden"}}>
+          <div style={{height:"100%",borderRadius:2,background:C.red,width:`${(read.size/MESO_EVENTS.length)*100}%`,transition:"width .4s ease"}}/>
+        </div>
+
+        {/* Random fact spotlight */}
+        {factEv&&(
+          <div className="meso-fact vv-card" style={{padding:"16px 20px",marginBottom:16,border:`2px solid ${CAT_META[factEv.cat].border}`,background:CAT_META[factEv.cat].bg}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+              <Zap size={13} color={CAT_META[factEv.cat].color}/>
+              <span style={{fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:".07em",color:CAT_META[factEv.cat].color}}>Fakt i rastit</span>
+              <button onClick={()=>setFactEv(null)} style={{marginLeft:"auto",background:"none",border:"none",cursor:"pointer",color:C.inkSoft}}><X size={14}/></button>
+            </div>
+            <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:15,marginBottom:4}}>{factEv.title}</div>
+            <div style={{fontSize:12,color:C.inkSoft,marginBottom:6}}>{factEv.day} {MONTHS[factEv.month]} {factEv.year}</div>
+            <div style={{fontSize:13,color:C.ink,lineHeight:1.65}}>{factEv.desc}</div>
+          </div>
+        )}
+
+        {/* Event cards */}
+        <div style={{display:"grid",gap:10}}>
+          {evVisible.map(ev=>{
             const meta=CAT_META[ev.cat];
             const IconC=meta.Icon;
+            const isOpen=expanded.has(ev.id);
+            const isRead=read.has(ev.id);
             return(
-              <div key={ev.id} className="vv-card" style={{padding:"18px 20px",display:"flex",gap:16,alignItems:"flex-start"}}>
-                <div style={{width:40,height:40,borderRadius:12,background:meta.bg,border:`1px solid ${meta.border}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:2}}>
-                  <IconC size={18} color={meta.color}/>
-                </div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:5,flexWrap:"wrap"}}>
-                    <div style={{background:meta.bg,color:meta.color,border:`1px solid ${meta.border}`,borderRadius:999,padding:"2px 10px",fontSize:11,fontWeight:700}}>{meta.label}</div>
-                    <div style={{fontSize:12,color:C.inkSoft,fontWeight:600}}>{ev.day} {MONTHS[ev.month]} {ev.year}</div>
-                    <div style={{fontSize:11,color:C.inkSoft,marginLeft:"auto"}}>{currentYear-ev.year} vjet</div>
+              <div key={ev.id} className="vv-card" style={{padding:"16px 20px",cursor:"pointer",border:isOpen?`1.5px solid ${meta.border}`:"",transition:"border .2s"}} onClick={()=>toggleExpand(ev.id)}>
+                <div style={{display:"flex",gap:14,alignItems:"flex-start"}}>
+                  <div style={{width:38,height:38,borderRadius:10,background:meta.bg,border:`1px solid ${meta.border}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                    <IconC size={16} color={meta.color}/>
                   </div>
-                  <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:15,marginBottom:5,color:C.ink}}>{ev.title}</div>
-                  <div style={{fontSize:13,color:C.inkSoft,lineHeight:1.65}}>{ev.desc}</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
+                      <span style={{background:meta.bg,color:meta.color,border:`1px solid ${meta.border}`,borderRadius:999,padding:"1px 8px",fontSize:10,fontWeight:700}}>{meta.label}</span>
+                      <span style={{fontSize:12,color:C.inkSoft}}>{ev.day} {MONTHS[ev.month]} {ev.year}</span>
+                      {isRead&&<span style={{marginLeft:"auto",fontSize:11,color:C.green,fontWeight:600,display:"flex",alignItems:"center",gap:3}}><CheckCircle2 size={11}/>Lexuar</span>}
+                    </div>
+                    <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:14,color:C.ink}}>{ev.title}</div>
+                    {isOpen&&<div style={{fontSize:13,color:C.inkSoft,lineHeight:1.65,marginTop:8}}>{ev.desc}</div>}
+                  </div>
+                  <ChevronDown size={15} color={C.inkSoft} style={{flexShrink:0,transition:"transform .2s",transform:isOpen?"rotate(180deg)":"rotate(0deg)"}}/>
                 </div>
               </div>
             );
           })}
         </div>
-      )}
+      </>)}
 
-      {visibleFigs.length>0&&(
-        <>
-          <div className="vv-eyebrow" style={{marginBottom:14}}>Figura historike</div>
-          <FigGrid figs={visibleFigs}/>
-        </>
-      )}
+      {/* ── FIGURA ── */}
+      {mainTab==="figura"&&(<>
+        <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
+          {CATS.map(({k,l})=>(
+            <button key={k} onClick={()=>setCatF(k)} style={{padding:"5px 14px",borderRadius:999,fontSize:12,fontWeight:600,border:"1.5px solid",cursor:"pointer",
+              borderColor:catF===k?"rgba(23,18,16,.4)":"rgba(23,18,16,.1)",background:catF===k?C.ink:"transparent",color:catF===k?"#fff":C.inkSoft}}>
+              {l}
+            </button>
+          ))}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(270px,1fr))",gap:14}}>
+          {figVisible.map(fig=>{
+            const meta=CAT_META[fig.cat];
+            return(
+              <div key={fig.id} className="vv-card" style={{padding:"18px 20px",cursor:"pointer"}}
+                onClick={()=>setFigSel(fig)}
+                onMouseEnter={e=>e.currentTarget.style.boxShadow="0 4px 20px rgba(23,18,16,.12)"}
+                onMouseLeave={e=>e.currentTarget.style.boxShadow=""}>
+                <div style={{display:"flex",gap:12,alignItems:"flex-start",marginBottom:12}}>
+                  <div style={{width:44,height:44,borderRadius:"50%",background:meta.bg,border:`2px solid ${meta.border}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                    <GraduationCap size={20} color={meta.color}/>
+                  </div>
+                  <div>
+                    <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:14,lineHeight:1.2,marginBottom:2}}>{fig.name}</div>
+                    <div style={{fontSize:11,color:C.inkSoft}}>{fig.years}</div>
+                  </div>
+                </div>
+                <div style={{background:meta.bg,color:meta.color,border:`1px solid ${meta.border}`,borderRadius:8,padding:"3px 10px",fontSize:11,fontWeight:700,display:"inline-block",marginBottom:10}}>{fig.role}</div>
+                <div style={{fontSize:12,color:C.inkSoft,lineHeight:1.6}}>{fig.desc}</div>
+                <div style={{marginTop:12,fontSize:12,color:C.red,fontWeight:600,display:"flex",alignItems:"center",gap:4}}>Lexo më shumë <ChevronRight size={12}/></div>
+              </div>
+            );
+          })}
+        </div>
+        {figSel&&(()=>{const meta=CAT_META[figSel.cat];return(
+          <Modal title={figSel.name} onClose={()=>setFigSel(null)}>
+            <div style={{display:"flex",gap:14,alignItems:"center",marginBottom:20}}>
+              <div style={{width:60,height:60,borderRadius:"50%",background:meta.bg,border:`3px solid ${meta.border}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                <GraduationCap size={28} color={meta.color}/>
+              </div>
+              <div>
+                <div style={{fontSize:12,color:C.inkSoft,marginBottom:4}}>{figSel.years}</div>
+                <div style={{background:meta.bg,color:meta.color,border:`1px solid ${meta.border}`,borderRadius:8,padding:"4px 12px",fontSize:12,fontWeight:700,display:"inline-block"}}>{figSel.role}</div>
+              </div>
+            </div>
+            <div style={{fontSize:14,color:C.ink,lineHeight:1.75}}>{figSel.desc}</div>
+            <div style={{marginTop:20,paddingTop:16,borderTop:`1px solid ${C.line}`}}>
+              <div style={{fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:".07em",color:C.inkSoft,marginBottom:10}}>Ngjarje të lidhura</div>
+              {MESO_EVENTS.filter(e=>e.cat===figSel.cat).slice(0,3).map(e=>(
+                <div key={e.id} style={{fontSize:13,padding:"6px 0",borderBottom:`1px solid ${C.line}`,color:C.inkSoft}}>
+                  <span style={{fontWeight:600,color:C.ink}}>{e.title}</span> · {e.day} {MONTHS[e.month]} {e.year}
+                </div>
+              ))}
+            </div>
+          </Modal>
+        );})()}
+      </>)}
+
+      {/* ── KUIZ ── */}
+      {mainTab==="kuiz"&&(<>
+        {quizQs.length===0&&(
+          <div style={{textAlign:"center",padding:"48px 24px"}}>
+            <div style={{width:72,height:72,borderRadius:"50%",background:"#FDE8E7",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px"}}>
+              <BookOpen size={32} color={C.red}/>
+            </div>
+            <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:24,marginBottom:10}}>Kuiz historik</div>
+            <div style={{color:C.inkSoft,fontSize:14,lineHeight:1.65,maxWidth:340,margin:"0 auto 28px"}}>6 pyetje nga historia e VV-së, Kosovës dhe Shqipërisë. Sa mirë e njeh historinë?</div>
+            <button className="vv-btn" style={{justifyContent:"center",paddingLeft:32,paddingRight:32}} onClick={startQuiz}><Zap size={15}/>Fillo kuizin</button>
+          </div>
+        )}
+        {quizQs.length>0&&!done&&(()=>{
+          const q=quizQs[qi];
+          return(
+            <div style={{maxWidth:560,margin:"0 auto"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                <span style={{fontSize:13,fontWeight:600,color:C.inkSoft}}>Pyetja {qi+1} nga {quizQs.length}</span>
+                <span style={{fontSize:13,fontWeight:700,color:C.green}}>{score} ✓</span>
+              </div>
+              <div style={{height:6,borderRadius:3,background:"rgba(23,18,16,.08)",marginBottom:24,overflow:"hidden"}}>
+                <div style={{height:"100%",borderRadius:3,background:C.red,width:`${(qi/quizQs.length)*100}%`,transition:"width .4s"}}/>
+              </div>
+              <div className="vv-card" style={{padding:"24px"}}>
+                <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:18,marginBottom:24,lineHeight:1.35}}>{q.q}</div>
+                {q.o.map(o=>{
+                  let cls="meso-opt";
+                  if(picked){if(o===q.a)cls+=" correct";else if(o===picked)cls+=" wrong";}
+                  return(<button key={o} className={cls} disabled={!!picked} onClick={()=>pickAnswer(o)}>{o}</button>);
+                })}
+              </div>
+            </div>
+          );
+        })()}
+        {done&&(
+          <div style={{textAlign:"center",padding:"48px 24px"}}>
+            <div style={{width:80,height:80,borderRadius:"50%",background:score>=5?"#E7F4ED":"#FEF3C7",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px"}}>
+              <Star size={36} color={score>=5?C.green:C.amber}/>
+            </div>
+            <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:32,marginBottom:6}}>{score}/{quizQs.length}</div>
+            <div style={{fontSize:15,color:C.inkSoft,marginBottom:8}}>
+              {score===quizQs.length?"Perfekt! Historiani i pikës 🏆":score>=4?"Shumë mirë! Vazhdo kështu.":score>=2?"Mirë, por ka vend për tu përmirësuar.":"Lexo seksionin 'Ngjarjet' dhe provo sërish!"}
+            </div>
+            <div style={{display:"flex",gap:10,justifyContent:"center",marginTop:24,flexWrap:"wrap"}}>
+              <button className="vv-btn" onClick={startQuiz}><RefreshCw size={14}/>Provo sërish</button>
+              <button className="vv-btn ghost" onClick={()=>{setQuizQs([]);setDone(false);}}>Kthehu</button>
+            </div>
+          </div>
+        )}
+      </>)}
     </div>
   );
 }
