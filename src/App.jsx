@@ -3655,10 +3655,7 @@ export default function App(){
 
   function handleLogin(r){
     if(r==="apply"){setRole("apply");return;}
-    if(r==="member"){
-      const m=members.find(x=>x.id===5);
-      if(!m?.hasOnboarded) setShowOnboarding(true);
-    }
+    if(r==="member") setShowOnboarding(true);
     setRole(r);
     setTab("home");
   }
@@ -3677,10 +3674,7 @@ export default function App(){
         <style>{css}</style>
         <OnboardingFlow
           me={me}
-          onDone={()=>{
-            setShowOnboarding(false);
-            setMembers(prev=>prev.map(m=>m.id===5?{...m,hasOnboarded:true}:m));
-          }}
+          onDone={()=>setShowOnboarding(false)}
           onSavePhone={(phone)=>setMembers(prev=>prev.map(m=>m.id===5?{...m,phone}:m))}
         />
       </div>
