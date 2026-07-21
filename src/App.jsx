@@ -86,6 +86,27 @@ const css = `
   .vv-hamburger{display:flex!important}
   .vv-mob-overlay{display:block}
   .vv-content{padding:20px}
+  .vv-top{padding:10px 16px;flex-wrap:wrap;row-gap:8px}
+  .vv-top-search input{width:140px!important}
+  .vv-content div[style*="grid-template-columns"]:not(.vv-cal-grid){grid-template-columns:1fr!important}
+  .vv-card table,.vv-content table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
+  .stats{grid-template-columns:1fr 1fr}
+  .ob-card-hero{padding:28px 24px 24px}
+  .ob-card-body{padding:24px}
+}
+@media(max-width:480px){
+  .stats{grid-template-columns:1fr}
+  .ob-feature-grid{grid-template-columns:1fr}
+  .vv-chat-panel{width:calc(100vw - 32px);right:16px}
+  .vv-chat-btn{right:16px;bottom:16px}
+  .vv-notif-panel{position:fixed;top:60px;right:12px;left:12px;width:auto}
+  .vv-search-results{position:fixed;left:12px;right:12px;top:64px;min-width:0;width:auto}
+}
+@media(max-width:760px){
+  .vv-login{flex-direction:column;min-height:auto}
+  .vv-login-hero{padding:40px 24px 32px}
+  .vv-login-hero::after{font-size:260px;right:-60px;bottom:-60px}
+  .vv-login-panel{width:100%;padding:32px 24px 40px}
 }
 .vv--dark{background:#111009;color:#EDE9E3}
 .vv--dark .vv-card{background:#1C1813;border-color:rgba(255,255,255,.07);box-shadow:0 1px 3px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.2)}
@@ -596,9 +617,9 @@ function Login({onLogin,lang="sq",onLangToggle,onBack}){
               <div style={{opacity:.8,fontSize:14}}>Pika Winterthur — Zvicër</div>
             </div>
           </div>
-          <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:52,lineHeight:1.0,letterSpacing:"-2px",maxWidth:420}}>Platforma Digjitale e Pikës</div>
+          <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:"clamp(32px,7vw,52px)",lineHeight:1.0,letterSpacing:"-2px",maxWidth:420}}>Platforma Digjitale e Pikës</div>
           <p style={{opacity:.82,marginTop:22,fontSize:16,lineHeight:1.65,maxWidth:380}}>Menaxhimi i anëtarësisë, eventeve, komunikimit dhe mobilizimit politik — nga një vend.</p>
-          <div style={{display:"flex",gap:16,marginTop:28}}>
+          <div style={{display:"flex",gap:16,marginTop:28,flexWrap:"wrap"}}>
             {[["32","Anëtarë"],["19","Evente"],["4 tet","Zgjedhjet"]].map(([v,l])=>(
               <div key={l} style={{background:"rgba(255,255,255,.12)",borderRadius:12,padding:"10px 16px",backdropFilter:"blur(8px)"}}>
                 <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:22}}>{v}</div>
@@ -700,6 +721,7 @@ function PublicHome({onLogin,onApply}){
         .ph-section{padding:72px 5vw}
         .ph-grid{display:grid;gap:20px}
         @media(min-width:700px){.ph-grid-2{grid-template-columns:1fr 1fr}.ph-grid-3{grid-template-columns:1fr 1fr 1fr}}
+        @media(max-width:600px){.ph-hero div[style*="grid-template-columns"]{grid-template-columns:1fr 1fr!important}}
         .ph-card{background:#fff;border-radius:18px;padding:24px;border:1px solid rgba(23,18,16,.07);box-shadow:0 1px 4px rgba(23,18,16,.05),0 6px 20px rgba(23,18,16,.04)}
         .ph-stat{text-align:center;background:rgba(255,255,255,.15);border-radius:14px;padding:20px 16px;backdrop-filter:blur(8px)}
         .ph-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);border-radius:999px;padding:5px 14px;font-size:12px;font-weight:700;letter-spacing:.06em;color:#fff;margin-bottom:20px}
@@ -896,7 +918,7 @@ function GlobalSearch({role,setTab,members,events,announcements}){
   },[q,role,members,events,announcements]);
   function pick(tab){setTab(tab);setQ("");setOpen(false);}
   return(
-    <div style={{position:"relative"}} ref={ref}>
+    <div className="vv-top-search" style={{position:"relative"}} ref={ref}>
       <div style={{position:"relative",display:"flex",alignItems:"center"}}>
         <Search size={14} style={{position:"absolute",left:10,color:"#A39D99",pointerEvents:"none",zIndex:1}}/>
         <input className="vv-input" style={{paddingLeft:30,fontSize:13,height:36,width:200,borderRadius:10}}
@@ -1165,7 +1187,7 @@ function Shell({role,tab,setTab,onLogout,children,adminTabs,memberTabs,dark,onTo
             <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:16,color:C.ink}}>{t(tabs.find(tb=>tb.key===tab)?.label||"")}</div>
           </div>
           <GlobalSearch role={role} setTab={setTab} members={members} events={events} announcements={announcements}/>
-          <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",justifyContent:"flex-end"}}>
             <div style={{fontSize:11,color:C.inkSoft,display:"flex",alignItems:"center",gap:4,opacity:.7}}>
               <span>{syncedAt.toLocaleTimeString("sq-AL",{hour:"2-digit",minute:"2-digit"})}</span>
             </div>
@@ -3000,7 +3022,7 @@ function AdminCalendar(){
         </div>
       }/>
       <Card>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:0}}>
+        <div className="vv-cal-grid" style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:0}}>
           {["Hë","Ma","Më","En","Pr","Sh","Di"].map(d=>(
             <div key={d} style={{textAlign:"center",fontSize:12,fontWeight:700,color:C.inkSoft,padding:"8px 4px",borderBottom:`1px solid ${C.line}`}}>{d}</div>
           ))}
