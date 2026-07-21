@@ -780,7 +780,7 @@ function PublicHome({onLogin,onApply}){
             <div>
               <h2 style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:32,letterSpacing:"-1px",marginBottom:16,lineHeight:1.15}}>Kush jemi ne?</h2>
               <p style={{color:"#5A524E",lineHeight:1.75,fontSize:15,marginBottom:14}}>Pika Winterthur është dega lokale e Lëvizjes VETËVENDOSJE! në Zvicër. Veprojmë në Winterthur dhe rajonin e Zürich-ut, duke mobilizuar diasporën shqiptare për zgjedhjet dhe çështjet demokratike të Kosovës.</p>
-              <p style={{color:"#5A524E",lineHeight:1.75,fontSize:15}}>Organizojmë mbledhje të rregullta, manifesime, aktivitete kulturore dhe humanitare — gjithmonë me synim forcimin e lidhjes mes diasporës dhe atdheut.</p>
+              <p style={{color:"#5A524E",lineHeight:1.75,fontSize:15}}>Organizojmë mbledhje të rregullta, manifesime, aktivitete kulturore dhe humanitare, gjithmonë me synim forcimin e lidhjes mes diasporës dhe atdheut.</p>
             </div>
             <div style={{display:"grid",gap:14}}>
               {[["🗳️ Mobilizim zgjedhor","Ndihmojmë anëtarët të regjistrohen dhe votojnë nga Zvicra."],["🤝 Solidaritet","Organizojmë aksione humanitare dhe mbështetje për familjet."],["🎓 Kulturë & Edukim","Evente kulturore, debate dhe formim politik për brezin e ri."],["📢 Zë i Diasporës","Përfaqësojmë interesat e shqiptarëve të Winterthur-it."]].map(([t,d])=>(
