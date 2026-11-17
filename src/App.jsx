@@ -1,5 +1,7 @@
 ﻿import React, { useState, useMemo, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
+import QRCode from "qrcode";
+import jsQR from "jsqr";
 import {
   Users, CreditCard, Calendar, Megaphone, Settings, LayoutDashboard,
   User, FileText, Download, Search, Plus, LogOut, Bell, CheckCircle2,
@@ -1968,22 +1970,16 @@ function MemberCard({me}){
 }
 
 
+// Real, scannable QR code with the member code (e.g. "WTH-005") plus a 2-module quiet zone.
 function memberQRMatrix(memberId){
-  const N=21;
-  let seed=(Math.abs(memberId)*2654435761+1013904223)>>>0;
-  const rand=()=>{seed=Math.imul(seed,1664525)+1013904223>>>0;return seed/4294967296;};
-  const m=Array.from({length:N},()=>Array.from({length:N},()=>rand()>0.5?1:0));
-  const finder=(row,col)=>{
-    for(let i=0;i<7;i++)for(let j=0;j<7;j++){
-      if(row+i>=N||col+j>=N)return;
-      m[row+i][col+j]=(i===0||i===6||j===0||j===6||(i>=2&&i<=4&&j>=2&&j<=4))?1:0;
-    }
-    for(let k=0;k<=7;k++){if(row+7<N&&col+k<N)m[row+7][col+k]=0;if(row+k<N&&col+7<N)m[row+k][col+7]=0;}
-  };
-  finder(0,0);finder(0,N-7);finder(N-7,0);
-  for(let i=8;i<N-8;i++){m[6][i]=i%2===0?1:0;m[i][6]=i%2===0?1:0;}
-  return m;
+  const {modules}=QRCode.create(memberCode(memberId),{errorCorrectionLevel:"M"});
+  const n=modules.size,Q=2;
+  return Array.from({length:n+2*Q},(_,r)=>Array.from({length:n+2*Q},(_,c)=>{
+    const rr=r-Q,cc=c-Q;
+    return rr>=0&&cc>=0&&rr<n&&cc<n&&modules.get(rr,cc)?1:0;
+  }));
 }
+function memberCode(memberId){return `WTH-${String(memberId).padStart(3,"0")}`;}
 function MemberQR({id,size=128,bg="#fff",fg="#171210"}){
   const m=useMemo(()=>memberQRMatrix(id),[id]);
   const N=m.length,cell=size/N;
@@ -2756,8 +2752,9 @@ function AdminElections({members}){
   );
 }
 
-function AdminRequests(){
-  const [requests,setRequests]=useState(seedRequests);
+function AdminRequests({live=null}={}){
+  const [localRequests,setLocalRequests]=useState(seedRequests);
+  const requests=live?live.requests:localRequests, setRequests=live?live.setRequests:setLocalRequests;
   const [open,setOpen]=useState(null);
   const [replyText,setReplyText]=useState("");
   const [filter,setFilter]=useState("");
@@ -3222,9 +3219,14 @@ function AdminRecruitment(){
 }
 
 
-function AdminCheckin({members,events}){
-  const ev=events.find(e=>e.id===CHECKIN_EVENT_ID)||events[0];
-  const [checkedIn,setCheckedIn]=useState(ev?[...ev.rsvp]:[]);
+function AdminCheckin({members,events,live=false}){
+  const defaultEv=(events.find(e=>e.id===CHECKIN_EVENT_ID&&!e.past)||events.find(e=>!e.past)||events[0]);
+  const [evId,setEvId]=useState(defaultEv?defaultEv.id:null);
+  const ev=events.find(e=>e.id===evId)||defaultEv;
+  const [localCheckedIn,setLocalCheckedIn]=useState(ev?[...ev.rsvp]:[]);
+  const liveCheckins=useEventCheckins(live&&ev?ev.id:null);
+  const checkedIn=live?liveCheckins.ids:localCheckedIn;
+  const setCheckedIn=live?liveCheckins.setIds:setLocalCheckedIn;
   const [search,setSearch]=useState("");
   const [mode,setMode]=useState("list"); // "list" | "qr"
   const [qrInput,setQrInput]=useState("");
@@ -3252,6 +3254,14 @@ function AdminCheckin({members,events}){
   return(
     <div>
       <SectionTitle title="Check-in i eventit" sub={ev?.title||"Nuk ka event aktiv"}/>
+      {events.length>1&&(
+        <div style={{marginBottom:16,maxWidth:420}}>
+          <label htmlFor="ci-event" style={{fontSize:12,fontWeight:700,color:C.inkSoft,display:"block",marginBottom:5,textTransform:"uppercase",letterSpacing:".05em"}}>Eventi</label>
+          <select id="ci-event" className="vv-input" value={ev?ev.id:""} onChange={e=>{setEvId(Number(e.target.value));setLastScan(null);}}>
+            {events.map(e=><option key={e.id} value={e.id}>{e.date} · {e.title}{e.past?" (i kaluar)":""}</option>)}
+          </select>
+        </div>
+      )}
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:20}}>
         <StatCard label="Të regjistruar" value={ev?.rsvp.length||0} icon={<CalendarCheck size={24}/>}/>
         <StatCard label="Kanë ardhur" value={checkedIn.length} color={C.green} icon={<UserCheck size={24}/>}/>
@@ -3272,22 +3282,8 @@ function AdminCheckin({members,events}){
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
           <Card>
             <div style={{textAlign:"center",marginBottom:16}}>
-              <div style={{fontSize:13,fontWeight:600,marginBottom:12,color:C.inkSoft}}>Drejtoje kamerën drejt kodit QR</div>
-              <div className="vv-scanner">
-                <div className="vv-scanner-line"/>
-                {/* Corner brackets */}
-                {[["top:8px","left:8px","borderTopWidth:3px","borderLeftWidth:3px"],
-                  ["top:8px","right:8px","borderTopWidth:3px","borderRightWidth:3px"],
-                  ["bottom:8px","left:8px","borderBottomWidth:3px","borderLeftWidth:3px"],
-                  ["bottom:8px","right:8px","borderBottomWidth:3px","borderRightWidth:3px"]
-                ].map((corners,i)=>(
-                  <div key={i} className="vv-scanner-corner" style={Object.fromEntries(corners.map(s=>{const[k,v]=s.split(":");return[k,v];}))}/>
-                ))}
-                {/* Preview QR codes of members */}
-                <div style={{display:"flex",flexWrap:"wrap",gap:2,padding:16,justifyContent:"center",alignItems:"center",height:"100%",opacity:.15}}>
-                  {members.slice(0,4).map(m=><MemberQR key={m.id} id={m.id} size={48} bg="transparent" fg="#fff"/>)}
-                </div>
-              </div>
+              <div style={{fontSize:13,fontWeight:600,marginBottom:12,color:C.inkSoft}}>Drejtoje kamerën drejt kodit QR të kartës digjitale</div>
+              <QrCameraScanner onScan={scanQR}/>
             </div>
             {/* Simulated scan input */}
             <div style={{marginTop:4}}>
@@ -3447,16 +3443,25 @@ function AdminProcessverbal(){
   );
 }
 
-function AdminReminders({members}){
+function AdminReminders({members,live=null}){
   const unpaid=members.filter(m=>m.pay==="papaguar"&&!m.exempt);
-  const [sent,setSent]=useState([]);
+  const [sentLocal,setSent]=useState([]);
+  // Live mode: "sent" = members who already have an unread payment reminder in the app.
+  const sent=live?live.remindedIds:sentLocal;
   const [toast,showToast]=useToast();
-  function sendReminder(id){
-    setSent(prev=>[...prev,id]);
+  async function sendReminder(id){
     const m=members.find(x=>x.id===id);
+    if(live){if(await live.notify([id])) showToast(`Kujtesa u dërgua tek ${m?.name}!`);return;}
+    setSent(prev=>[...prev,id]);
     showToast(`Kujtesa u dërgua tek ${m?.name}!`);
   }
-  function sendAll(){
+  async function sendAll(){
+    if(live){
+      const ids=unpaid.map(m=>m.id).filter(id=>!sent.includes(id));
+      if(!ids.length){showToast("Të gjithë e kanë marrë kujtesën.");return;}
+      if(await live.notify(ids)) showToast(`Kujtesat u dërguan tek ${ids.length} anëtarë!`);
+      return;
+    }
     setSent(unpaid.map(m=>m.id));
     showToast(`Kujtesat u dërguan tek ${unpaid.length} anëtarë!`);
   }
@@ -3486,6 +3491,7 @@ function AdminReminders({members}){
                   <span className="vv-chip" style={{background:"#E7F4ED",color:C.green}}><CheckCircle2 size={11}/>Dërguar</span>:
                   <button className="vv-btn ghost" style={{fontSize:12,padding:"5px 10px"}} onClick={()=>sendReminder(m.id)}><Bell size={13}/>Kujtesë</button>
                 }
+                {m.phone&&<a className="vv-btn ghost" style={{fontSize:12,padding:"5px 10px",textDecoration:"none",color:"#1ebe5d"}} href={waReminderLink(m)} target="_blank" rel="noopener noreferrer" title="Dërgo në WhatsApp">WhatsApp</a>}
               </div>
             ))}
           </div>}
@@ -3849,6 +3855,8 @@ export default function App(){
   const [dbDonations,setDbDonations]=useDbTable("donations",live);
   const livePayments=usePayments(live);
   const liveSettings=useSettings(live);
+  const [dbRequests,setDbRequests]=useDbTable("requests",live);
+  const liveNotifs=useNotifications(live);
 
   const members=live?dbMembers:localMembers, setMembers=live?setDbMembers:setLocalMembers;
   const events=live?dbEvents:localEvents, setEvents=live?setDbEvents:setLocalEvents;
@@ -3958,7 +3966,10 @@ export default function App(){
 
   function renderMemberTab(){
     switch(tab){
-      case"home": return <MemberHome me={me} events={events} announcements={announcements} polls={polls}/>;
+      case"home": return <>
+        {live&&<PaymentReminderBanner notifs={liveNotifs.items.filter(n=>!n.read_at&&n.member_id===me.id)} paid={me.pay!=="papaguar"} onPay={()=>setTab("invoices")} onDismiss={liveNotifs.markAllRead}/>}
+        <MemberHome me={me} events={events} announcements={announcements} polls={polls}/>
+      </>;
       case"profile": return <MemberProfile me={me} onSave={saveMyProfile}/>;
       case"invoices": return <MemberInvoices me={me} live={live?{payments:livePayments.payments,report:livePayments.report,settings:liveSettings}:null}/>;
       case"events": return <MemberEvents me={me} events={events} onRsvpChange={handleRsvpChange}/>;
@@ -3966,8 +3977,8 @@ export default function App(){
       case"card": return <MemberCard me={me}/>;
       case"donate": return <MemberDonate me={me} live={live?{donations:dbDonations,setDonations:setDbDonations}:null}/>;
       case"polls": return <MemberPolls me={me} polls={polls} setPolls={setPolls}/>;
-      case"messages": return <MemberMessages me={me}/>;
-      case"minutes": return <MemberMinutes members={members}/>;
+      case"messages": return <MemberMessages me={me} live={live?{requests:dbRequests,setRequests:setDbRequests}:null}/>;
+      case"minutes": return <>{live&&<DocumentsPanel canManage={false}/>}<MemberMinutes members={members}/></>;
       case"meso": return <MemberMeso/>;
       default: return <MemberHome me={me} events={events} announcements={announcements} polls={polls}/>;
     }
@@ -3982,7 +3993,7 @@ export default function App(){
       case"finance": return <AdminFinance/>;
       case"events": return <AdminEvents events={events} setEvents={setEvents} members={members}/>;
       case"calendar": return <AdminCalendar/>;
-      case"checkin": return <AdminCheckin members={members} events={events}/>;
+      case"checkin": return <AdminCheckin key={live?"live":"demo"} members={members} events={events} live={liveAdmin}/>;
       case"tasks": return <AdminTasks members={members}/>;
       case"comms": return <AdminComms members={members} announcements={announcements} setAnnouncements={setAnnouncements}/>;
       case"elections": return <AdminElections members={members}/>;
@@ -3990,10 +4001,10 @@ export default function App(){
       case"donations": return <AdminDonations live={live?{donations:dbDonations,setDonations:setDbDonations}:null}/>;
       case"recruitment": return <AdminRecruitment/>;
       case"map": return <AdminMap/>;
-      case"processverbal": return <AdminProcessverbal/>;
-      case"reminders": return <AdminReminders members={members}/>;
+      case"processverbal": return <>{liveAdmin&&<DocumentsPanel canManage/>}<AdminProcessverbal/></>;
+      case"reminders": return <AdminReminders members={members} live={liveAdmin?{remindedIds:liveNotifs.remindedIds,notify:liveNotifs.notifyPayment}:null}/>;
       case"growth": return <AdminGrowth/>;
-      case"requests": return <AdminRequests/>;
+      case"requests": return <AdminRequests live={live?{requests:dbRequests,setRequests:setDbRequests}:null}/>;
       case"archive": return <AdminArchive/>;
       case"settings": return <AdminSettings members={members}/>;
       default: return <AdminHome members={members} events={events}/>;
@@ -4791,8 +4802,9 @@ const MSG_TYPES=["Pyetje për pagesën","Pyetje për anëtarësinë","Sugjerim",
 const seedMemberRequests=[
   {id:"q1",type:"Pyetje për pagesën",msg:"Si mund ta paguaj kuotën në dy këste?",date:"15.06.2026 10:22",status:"pret",reply:""},
 ];
-function MemberMessages({me}){
-  const [reqs,setReqs]=useState(seedMemberRequests);
+function MemberMessages({me,live=null}){
+  const [localReqs,setLocalReqs]=useState(seedMemberRequests);
+  const reqs=live?live.requests:localReqs, setReqs=live?live.setRequests:setLocalReqs;
   const [type,setType]=useState(MSG_TYPES[0]);
   const [msg,setMsg]=useState("");
   const [toast,showToast]=useToast();
@@ -4801,7 +4813,10 @@ function MemberMessages({me}){
     if(!msg.trim())return;
     const now=new Date();
     const d=`${now.toLocaleDateString("de-CH")} ${now.getHours().toString().padStart(2,"0")}:${now.getMinutes().toString().padStart(2,"0")}`;
-    setReqs(prev=>[{id:Date.now().toString(),type,msg:msg.trim(),date:d,status:"pret",reply:""},
+    if(live&&!me.id){showToast("Llogaria jote nuk është e lidhur me një anëtar.");return;}
+    setReqs(prev=>[live
+      ?{id:Date.now(),memberId:me.id,from:me.name,email:me.email,type,msg:msg.trim(),date:d,status:"pret",reply:""}
+      :{id:Date.now().toString(),type,msg:msg.trim(),date:d,status:"pret",reply:""},
       ...prev]);
     setMsg("");
     showToast("Mesazhi u dërgua te kryesia ✓");
@@ -5080,6 +5095,7 @@ const DB_TABLES={
   polls:{cols:{question:"question",status:"status",yes:"yes",no:"no",abstain:"abstain",voted:"voted"},order:["id",true]},
   applications:{cols:{name:"name",email:"email",status:"status"},order:["id",true]},
   donations:{cols:{amount:"amount",memberId:"member_id"},order:["id",false]},
+  requests:{cols:{status:"status",memberId:"member_id"},order:["id",false]},
 };
 
 function dbToRow(table,rec){
