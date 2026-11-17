@@ -5374,3 +5374,250 @@ function ProfileEditForm({me,onSave,onCancel}){
     </form>
   );
 }
+
+
+/* ── Check-in, QR camera, reminders, documents (live mode) ───────────────── */
+
+// Who came to an event. setIds works like setState and diff-syncs event_checkins.
+function useEventCheckins(eventId){
+  const [ids,setIdsState]=useState([]);
+  const idsRef=useRef([]);
+  async function reload(){
+    const {data,error}=await supabase.from("event_checkins").select("member_id").eq("event_id",eventId);
+    if(error){dbError(error,"Check-in-et nuk u ngarkuan.");return;}
+    const r=(data||[]).map(x=>Number(x.member_id));
+    idsRef.current=r;setIdsState(r);
+  }
+  useEffect(()=>{
+    if(!eventId||!supabase){idsRef.current=[];setIdsState([]);return;}
+    reload();
+  },[eventId]);
+  function setIds(updater){
+    const prev=idsRef.current;
+    const next=typeof updater==="function"?updater(prev):updater;
+    if(next===prev||!eventId) return;
+    idsRef.current=next;setIdsState(next);
+    const added=next.filter(id=>!prev.includes(id)),removed=prev.filter(id=>!next.includes(id));
+    (async()=>{
+      if(added.length){
+        const {error}=await supabase.from("event_checkins").upsert(added.map(member_id=>({event_id:eventId,member_id})),{onConflict:"event_id,member_id",ignoreDuplicates:true});
+        if(error) throw error;
+      }
+      if(removed.length){
+        const {error}=await supabase.from("event_checkins").delete().eq("event_id",eventId).in("member_id",removed);
+        if(error) throw error;
+      }
+    })().catch(err=>{dbError(err);reload();});
+  }
+  return {ids,setIds};
+}
+
+// Live camera QR reader (getUserMedia + jsQR). The same code is ignored for ~2.5 s.
+function QrCameraScanner({onScan}){
+  const videoRef=useRef(null),canvasRef=useRef(null);
+  const onScanRef=useRef(onScan);onScanRef.current=onScan;
+  const [on,setOn]=useState(false);
+  const [ready,setReady]=useState(false);
+  const [err,setErr]=useState("");
+  useEffect(()=>{
+    if(!on) return;
+    let stream=null,raf=0,stopped=false,last={code:"",t:0};
+    setErr("");setReady(false);
+    (async()=>{
+      try{
+        if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia) throw Object.assign(new Error("no media"),{name:"Insecure"});
+        stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"},audio:false});
+        if(stopped){stream.getTracks().forEach(t=>t.stop());return;}
+        const v=videoRef.current;v.srcObject=stream;
+        await v.play();setReady(true);
+        const cv=canvasRef.current,ctx=cv.getContext("2d",{willReadFrequently:true});
+        const tick=()=>{
+          if(stopped) return;
+          if(v.readyState>=2&&v.videoWidth){
+            const w=Math.min(640,v.videoWidth),h=Math.round(v.videoHeight*w/v.videoWidth);
+            if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;}
+            ctx.drawImage(v,0,0,w,h);
+            const res=jsQR(ctx.getImageData(0,0,w,h).data,w,h,{inversionAttempts:"attemptBoth"});
+            const now=Date.now();
+            if(res&&res.data&&(res.data!==last.code||now-last.t>2500)){
+              last={code:res.data,t:now};
+              onScanRef.current(res.data);
+            }
+          }
+          raf=requestAnimationFrame(tick);
+        };
+        raf=requestAnimationFrame(tick);
+      }catch(e){
+        if(stopped) return;
+        console.error("[camera]",e);
+        setErr(e&&e.name==="NotAllowedError"?"Leja për kamerën u refuzua. Lejoje te cilësimet e shfletuesit."
+          :e&&e.name==="NotFoundError"?"Nuk u gjet asnjë kamerë në këtë pajisje."
+          :!window.isSecureContext||(e&&e.name==="Insecure")?"Kamera punon vetëm përmes HTTPS ose localhost."
+          :"Kamera nuk u hap. Provo përsëri.");
+        setOn(false);
+      }
+    })();
+    return()=>{stopped=true;cancelAnimationFrame(raf);if(stream) stream.getTracks().forEach(t=>t.stop());setReady(false);};
+  },[on]);
+  return(
+    <div>
+      <div className="vv-scanner">
+        <video ref={videoRef} muted playsInline style={{width:"100%",height:"100%",objectFit:"cover",display:on?"block":"none"}}/>
+        {ready&&<div className="vv-scanner-line"/>}
+        {!on&&(
+          <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10,color:"#fff",padding:16,textAlign:"center"}}>
+            <QrCode size={40} style={{opacity:.5}}/>
+            {err&&<div role="alert" style={{fontSize:12,color:"#FCA5A5"}}>{err}</div>}
+          </div>
+        )}
+      </div>
+      <canvas ref={canvasRef} style={{display:"none"}}/>
+      <button type="button" className={on?"vv-btn ghost":"vv-btn"} style={{marginTop:12}} onClick={()=>setOn(x=>!x)}>
+        <QrCode size={14}/>{on?"Ndalo kamerën":"Hap kamerën"}
+      </button>
+    </div>
+  );
+}
+
+// In-app notifications (payment reminders). Admins see all rows, members only their own.
+function useNotifications(enabled){
+  const [items,setItems]=useState([]);
+  async function reload(){
+    const {data,error}=await supabase.from("notifications").select("*").order("created_at",{ascending:false});
+    if(error){dbError(error,"Njoftimet nuk u ngarkuan.");return;}
+    setItems((data||[]).map(n=>({...n,id:Number(n.id),member_id:Number(n.member_id)})));
+  }
+  useEffect(()=>{if(enabled&&supabase) reload(); else setItems([]);},[enabled]);
+  const remindedIds=useMemo(()=>[...new Set(items.filter(n=>n.kind==="kujtese_pagese"&&!n.read_at).map(n=>n.member_id))],[items]);
+  async function notifyPayment(ids){
+    if(!ids.length) return true;
+    const year=new Date().getFullYear();
+    const {error}=await supabase.from("notifications").insert(ids.map(member_id=>({
+      member_id,kind:"kujtese_pagese",
+      title:`Kujtesë: kuota e anëtarësisë ${year}`,
+      body:`Kuota vjetore për ${year} nuk është paguar ende. Paguaje te Faturat me TWINT, me referencën ${payRef(member_id,year)}.`,
+    })));
+    if(error){dbError(error,"Kujtesa nuk u dërgua.");return false;}
+    await reload();return true;
+  }
+  async function markAllRead(){
+    setItems(prev=>prev.map(n=>n.read_at?n:{...n,read_at:new Date().toISOString()}));
+    const {error}=await supabase.rpc("mark_my_notifications_read");
+    if(error){dbError(error);reload();}
+  }
+  return {items,remindedIds,notifyPayment,markAllRead,reload};
+}
+
+function PaymentReminderBanner({notifs,paid,onPay,onDismiss}){
+  if(!notifs.length) return null;
+  const n=notifs[0];
+  return(
+    <Card p={0} style={{overflow:"hidden",marginBottom:20,border:"1.5px solid #FCD34D"}}>
+      <div role="status" style={{padding:"16px 18px",background:"#FEF3C7",display:"flex",gap:12,alignItems:"flex-start",flexWrap:"wrap"}}>
+        <BellRing size={20} color="#92400E" style={{flexShrink:0,marginTop:2}}/>
+        <div style={{flex:"1 1 220px",minWidth:0}}>
+          <b style={{color:"#92400E",fontSize:14}}>{n.title}</b>
+          <div style={{fontSize:13,color:"#78350F",marginTop:4}}>{paid?"Faleminderit, pagesa jote është regjistruar.":n.body}</div>
+        </div>
+        <div style={{display:"flex",gap:8,flexShrink:0}}>
+          {!paid&&<button className="vv-btn" style={{fontSize:12,padding:"7px 12px"}} onClick={onPay}><CreditCard size={13}/>Paguaj tani</button>}
+          <button className="vv-btn ghost" style={{fontSize:12,padding:"7px 12px"}} onClick={onDismiss}>OK</button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// WhatsApp link with a prefilled reminder. Swiss local numbers: 07x... becomes 417x...
+function waReminderLink(m){
+  let d=String(m.phone||"").replace(/\D/g,"");
+  if(d.startsWith("00")) d=d.slice(2);
+  else if(d.startsWith("0")) d="41"+d.slice(1);
+  const year=new Date().getFullYear();
+  const first=(m.name||"").split(" ")[0];
+  const text=`Përshëndetje ${first}! Kujtesë miqësore nga VV Pika Winterthur: kuota e anëtarësisë ${year} (CHF ${KUOTA}) nuk është paguar ende. Referenca: ${payRef(m.id,year)}. Faleminderit!`;
+  return `https://wa.me/${d}?text=${encodeURIComponent(text)}`;
+}
+
+// PDF minutes and documents in the private "documents" bucket.
+function DocumentsPanel({canManage}){
+  const [docs,setDocs]=useState([]);
+  const [busy,setBusy]=useState(false);
+  const [title,setTitle]=useState("");
+  const [kind,setKind]=useState("procesverbal");
+  const [file,setFile]=useState(null);
+  const [toast,showToast]=useToast();
+  const fileRef=useRef(null);
+  async function reload(){
+    const {data,error}=await supabase.from("documents").select("*").order("created_at",{ascending:false});
+    if(error){dbError(error,"Dokumentet nuk u ngarkuan.");return;}
+    setDocs(data||[]);
+  }
+  useEffect(()=>{if(supabase) reload();},[]);
+  async function upload(e){
+    e.preventDefault();
+    if(!file){showToast("Zgjidh një skedar.");return;}
+    if(title.trim().length<2){showToast("Shkruaj titullin.");return;}
+    if(file.size>10*1024*1024){showToast("Skedari është më i madh se 10 MB.");return;}
+    setBusy(true);
+    const safe=file.name.normalize("NFKD").replace(/[^\w.-]+/g,"_").slice(-80);
+    const path=`${kind}/${Date.now()}-${safe}`;
+    const up=await supabase.storage.from("documents").upload(path,file,{contentType:file.type});
+    if(up.error){setBusy(false);dbError(up.error,"Skedari nuk u ngarkua (lejohen PDF, PNG, JPG).");return;}
+    const {error}=await supabase.from("documents").insert({title:title.trim(),kind,path,size_bytes:file.size});
+    if(error){await supabase.storage.from("documents").remove([path]);setBusy(false);dbError(error);return;}
+    setBusy(false);setTitle("");setFile(null);if(fileRef.current) fileRef.current.value="";
+    showToast("Dokumenti u ngarkua ✓");reload();
+  }
+  async function openDoc(d){
+    // Open the tab synchronously so pop-up blockers allow it, then point it at the signed URL.
+    const w=window.open("","_blank");
+    const {data,error}=await supabase.storage.from("documents").createSignedUrl(d.path,120);
+    if(error){if(w) w.close();dbError(error,"Dokumenti nuk u hap.");return;}
+    if(w){w.opener=null;w.location.href=data.signedUrl;} else window.location.href=data.signedUrl;
+  }
+  async function remove(d){
+    if(!window.confirm(`Fshi "${d.title}"?`)) return;
+    const {error}=await supabase.from("documents").delete().eq("id",d.id);
+    if(error){dbError(error);return;}
+    await supabase.storage.from("documents").remove([d.path]);
+    showToast("Dokumenti u fshi.");reload();
+  }
+  const size=b=>b>1048576?`${(b/1048576).toFixed(1)} MB`:`${Math.max(1,Math.round(b/1024))} KB`;
+  const lbl={fontSize:12,fontWeight:700,color:C.inkSoft,display:"block",marginBottom:5};
+  return(
+    <Card style={{marginBottom:20}}>
+      <div className="vv-eyebrow" style={{marginBottom:4}}>Dokumentet</div>
+      <h3 style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:18,marginBottom:14}}>Procesverbalet dhe dokumentet</h3>
+      {canManage&&(
+        <form onSubmit={upload} style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"flex-end",marginBottom:16,paddingBottom:16,borderBottom:`1px solid ${C.line}`}}>
+          <div style={{flex:"2 1 200px"}}><label htmlFor="doc-title" style={lbl}>Titulli</label>
+            <input id="doc-title" className="vv-input" value={title} onChange={e=>setTitle(e.target.value)} placeholder="p.sh. Mbledhja e kryesisë, 12.11.2026"/></div>
+          <div style={{flex:"1 1 140px"}}><label htmlFor="doc-kind" style={lbl}>Lloji</label>
+            <select id="doc-kind" className="vv-input" value={kind} onChange={e=>setKind(e.target.value)}>
+              <option value="procesverbal">Procesverbal</option><option value="dokument">Dokument</option>
+            </select></div>
+          <div style={{flex:"2 1 200px"}}><label htmlFor="doc-file" style={lbl}>Skedari (PDF, PNG, JPG · maks. 10 MB)</label>
+            <input id="doc-file" ref={fileRef} className="vv-input" type="file" accept="application/pdf,image/png,image/jpeg" onChange={e=>setFile(e.target.files[0]||null)}/></div>
+          <button type="submit" className="vv-btn" disabled={busy}><Plus size={14}/>{busy?"Duke ngarkuar…":"Ngarko"}</button>
+        </form>
+      )}
+      {!docs.length?<div style={{fontSize:13,color:C.inkSoft}}>Nuk ka ende dokumente.</div>:(
+        <div style={{display:"grid",gap:8}}>
+          {docs.map(d=>(
+            <div key={d.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",border:`1px solid ${C.line}`,borderRadius:10}}>
+              <FileText size={18} color={C.red} style={{flexShrink:0}}/>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:600,fontSize:14,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.title}</div>
+                <div style={{fontSize:12,color:C.inkSoft}}>{d.kind==="procesverbal"?"Procesverbal":"Dokument"} · {new Date(d.created_at).toLocaleDateString("de-CH")}{d.size_bytes?` · ${size(d.size_bytes)}`:""}</div>
+              </div>
+              <button className="vv-btn ghost" style={{fontSize:12,padding:"6px 10px"}} onClick={()=>openDoc(d)}><Download size={13}/>Hap</button>
+              {canManage&&<button className="vv-btn ghost" style={{fontSize:12,padding:"6px 10px",color:C.red}} onClick={()=>remove(d)} aria-label={`Fshi ${d.title}`}><X size={13}/></button>}
+            </div>
+          ))}
+        </div>
+      )}
+      <Toast msg={toast}/>
+    </Card>
+  );
+}
