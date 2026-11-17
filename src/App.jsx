@@ -4345,7 +4345,7 @@ function AdminOnboarding({live=null}={}){
 
       {/* Detail modal */}
       {sel&&(
-        <Modal title={sel.name} onClose={()=>setSelected(null)}>
+        <Modal open title={sel.name} onClose={()=>setSelected(null)}>
           <div style={{display:"grid",gap:20}}>
 
             {/* Pipeline progress */}
@@ -4724,7 +4724,7 @@ function MemberMeso(){
           })}
         </div>
         {figSel&&(()=>{const meta=CAT_META[figSel.cat];return(
-          <Modal title={figSel.name} onClose={()=>setFigSel(null)}>
+          <Modal open title={figSel.name} onClose={()=>setFigSel(null)}>
             <div style={{display:"flex",gap:14,alignItems:"center",marginBottom:20}}>
               <div style={{width:60,height:60,borderRadius:"50%",background:meta.bg,border:`3px solid ${meta.border}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                 <GraduationCap size={28} color={meta.color}/>
@@ -4916,7 +4916,7 @@ function MemberMinutes({members}){
       </div>
 
       {sel&&(
-        <Modal title={sel.title} onClose={()=>setSel(null)}>
+        <Modal open title={sel.title} onClose={()=>setSel(null)}>
           <div style={{display:"grid",gap:18}}>
             <div style={{display:"flex",gap:20,flexWrap:"wrap"}}>
               <Field icon={<Calendar size={14}/>} label="Data" value={sel.date}/>
