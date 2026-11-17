@@ -678,6 +678,7 @@ function Login({onLogin,lang="sq",onLangToggle,onBack}){
 function ApplyForm({onBack}){
   const [step,setStep]=useState(1);
   const [form,setForm]=useState({name:"",email:"",phone:"",kanton:"Zürich",prof:"",dob:"",note:""});
+  const [sending,setSending]=useState(false);
   const [toast,showToast]=useToast();
   function set(k,v){setForm(f=>({...f,[k]:v}));}
   if(step===2) return(
@@ -709,8 +710,20 @@ function ApplyForm({onBack}){
             <div><label style={{fontSize:13,fontWeight:600,display:"block",marginBottom:5}}>Shënim (opsional)</label>
             <textarea className="vv-input" rows={3} value={form.note} onChange={e=>set("note",e.target.value)} placeholder="Pse dëshironi të anëtarësoheni?"/></div>
           </div>
-          <button className="vv-btn" style={{width:"100%",justifyContent:"center",marginTop:20}} onClick={()=>{if(!form.name||!form.email){showToast("Plotëso fushat e detyrueshme");return;}setStep(2);}}>
-            <Send size={15}/>Dërgo aplikimin
+          <button className="vv-btn" style={{width:"100%",justifyContent:"center",marginTop:20}} disabled={sending} onClick={async()=>{
+            if(!form.name||!form.email){showToast("Plotëso fushat e detyrueshme");return;}
+            if(supabase){
+              if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())){showToast("Email-i nuk është i vlefshëm");return;}
+              setSending(true);
+              const {name,email,...rest}=form;
+              const {error}=await supabase.from("applications").insert({id:Date.now(),name:name.trim(),email:email.trim(),status:"aplikim",
+                extra:{...rest,applied:new Date().toLocaleDateString("de-CH"),referredBy:null}});
+              setSending(false);
+              if(error){console.error("[apply]",error);showToast("Aplikimi nuk u dërgua. Provo përsëri.");return;}
+            }
+            setStep(2);
+          }}>
+            {sending?<RefreshCw size={15} className="vv-spin"/>:<Send size={15}/>}Dërgo aplikimin
           </button>
         </Card>
       </div>
@@ -1469,9 +1482,12 @@ function PaymentModal({open,onClose,me,amount,onPaid}){
   );
 }
 
-function MemberInvoices({me}){
+function MemberInvoices({me,live=null}){
   const [payOpen,setPayOpen]=useState(false);
-  const [paid2026,setPaid2026]=useState(me.pay==="paguar");
+  const [paid2026Local,setPaid2026]=useState(me.pay==="paguar");
+  const paid2026=live?me.pay==="paguar":paid2026Local;
+  // Live mode: a payment the member reported stays "në pritje" until an admin confirms it.
+  const pendingLive=!!live&&me.pay!=="paguar"&&live.payments.some(p=>p.member_id===me.id&&p.year===new Date().getFullYear()&&p.status==="ne_pritje");
   const [toast,showToast]=useToast();
   const amount=me.reduced?75:me.exempt?0:150;
   const invoices=[
@@ -1500,9 +1516,9 @@ function MemberInvoices({me}){
               <td className="vv-td" style={{color:C.inkSoft}}>{inv.date}</td>
               <td className="vv-td">{inv.desc}</td>
               <td className="vv-td" style={{fontWeight:700}}>CHF {inv.amount}</td>
-              <td className="vv-td">{payChip(inv.status)}</td>
+              <td className="vv-td">{pendingLive&&inv.status==="papaguar"?<span className="vv-chip" style={{background:"#E0F2FE",color:"#0369A1"}}><Clock size={11}/>Në pritje</span>:payChip(inv.status)}</td>
               <td className="vv-td">
-                {inv.status==="papaguar"&&!me.exempt&&(
+                {inv.status==="papaguar"&&!me.exempt&&!pendingLive&&(
                   <button className="vv-btn" style={{fontSize:12,padding:"6px 14px"}} onClick={()=>setPayOpen(true)}>
                     Paguaj
                   </button>
@@ -1513,7 +1529,13 @@ function MemberInvoices({me}){
         </table>
       </Card>
 
-      {!paid2026&&!me.exempt&&(
+      {pendingLive&&(
+        <div style={{marginTop:16,background:"#E0F2FE",border:"1.5px solid #38BDF8",borderRadius:14,padding:"16px 20px",display:"flex",gap:12,alignItems:"center",color:"#0369A1"}}>
+          <Clock size={20}/>
+          <div style={{fontSize:14}}><b>Pagesa jote është në pritje.</b> Kryesia do ta konfirmojë sapo ta marrë.</div>
+        </div>
+      )}
+      {!paid2026&&!me.exempt&&!pendingLive&&(
         <div style={{marginTop:16,background:"linear-gradient(135deg,#FFF7ED,#FEF3C7)",border:"1.5px solid #FCD34D",borderRadius:14,padding:"18px 20px",display:"flex",gap:14,alignItems:"center"}}>
           <div style={{width:44,height:44,borderRadius:10,background:"#FEF3C7",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
             <AlertCircle size={22} color="#92400E"/>
@@ -1529,7 +1551,14 @@ function MemberInvoices({me}){
       )}
 
       <PaymentModal open={payOpen} onClose={()=>setPayOpen(false)} me={me} amount={amount}
-        onPaid={()=>{setPaid2026(true);showToast("✓ Pagesa u regjistrua! Faleminderit!");}}/>
+        onPaid={async()=>{
+          if(live){
+            if(!me.id){showToast("Llogaria jote nuk është e lidhur me një anëtar.");return;}
+            if(await live.report(me.id,amount)) showToast("✓ Pagesa u dërgua për konfirmim. Faleminderit!");
+            return;
+          }
+          setPaid2026(true);showToast("✓ Pagesa u regjistrua! Faleminderit!");
+        }}/>
       <Toast msg={toast}/>
     </div>
   );
@@ -1622,8 +1651,9 @@ function MemberNews({announcements,docs,news}){
   );
 }
 
-function MemberDonate({me}){
-  const [donations,setDonations]=useState(seedDonations);
+function MemberDonate({me,live=null}){
+  const [localDonations,setLocalDonations]=useState(seedDonations);
+  const donations=live?live.donations:localDonations, setDonations=live?live.setDonations:setLocalDonations;
   const [amount,setAmount]=useState("");
   const [msg,setMsg]=useState("");
   const [toast,showToast]=useToast();
@@ -1633,7 +1663,8 @@ function MemberDonate({me}){
     e.preventDefault();
     const amt=parseFloat(amount);
     if(!amt||amt<5){showToast("Shuma minimale është CHF 5");return;}
-    setDonations(prev=>[{id:Date.now(),from:me.name,amount:amt,date:"21.06.2026",msg},...prev]);
+    if(live&&!me.id){showToast("Llogaria jote nuk është e lidhur me një anëtar.");return;}
+    setDonations(prev=>[{id:Date.now(),from:me.name,amount:amt,date:live?todayCH():"21.06.2026",msg,...(live?{memberId:me.id}:{})},...prev]);
     setAmount("");setMsg("");
     showToast(`Faleminderit! CHF ${amt} u regjistrua.`);
   }
@@ -2126,7 +2157,8 @@ function AdminHome({members,events}){
   );
 }
 
-function AdminMembers({members,setMembers,events=[],polls=[]}){
+function AdminMembers({members,setMembers,events=[],polls=[],live=false}){
+  const [sendInviteOnAdd,setSendInviteOnAdd]=useState(true);
   const [search,setSearch]=useState("");
   const [filterPay,setFilterPay]=useState("");
   const [filterStatus,setFilterStatus]=useState("");
@@ -2149,10 +2181,17 @@ function AdminMembers({members,setMembers,events=[],polls=[]}){
   function addMember(e){
     e.preventDefault();
     if(!newM.name||!newM.email){showToast("Plotëso emrin dhe emailin");return;}
-    const nm={...newM,id:Date.now(),status:"aktiv",pay:"papaguar",joined:new Date().toLocaleDateString("de-CH")};
+    if(members.some(m=>(m.email||"").toLowerCase()===newM.email.trim().toLowerCase())){showToast("Ky email ekziston tashmë.");return;}
+    const nm={...newM,email:newM.email.trim(),id:Date.now(),status:"aktiv",pay:"papaguar",joined:new Date().toLocaleDateString("de-CH")};
     setMembers(prev=>[...prev,nm]);
     setAddOpen(false);
     setNewM({name:"",email:"",phone:"",kanton:"Zürich",prof:"",role:"Anëtar",dob:""});
+    if(live&&sendInviteOnAdd){
+      showToast(`${nm.name} u shtua! Po dërgohet ftesa…`);
+      // Give the insert a moment so the member row exists before the invite links to it.
+      setTimeout(()=>sendInvite(nm.email,nm.name).then(r=>showToast(r.text)),800);
+      return;
+    }
     showToast(`${nm.name} u shtua!`);
   }
   return(
@@ -2244,6 +2283,12 @@ function AdminMembers({members,setMembers,events=[],polls=[]}){
           <select className="vv-input" value={newM.role} onChange={e=>setNewM(f=>({...f,role:e.target.value}))}>
             {["Anëtar","Anëtare","Simpatizant","Vullnetar","Kryetar","Nënkryetar","Sekretar"].map(r=><option key={r}>{r}</option>)}
           </select></div>
+          {live&&(
+            <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,fontWeight:600,cursor:"pointer"}}>
+              <input type="checkbox" checked={sendInviteOnAdd} onChange={e=>setSendInviteOnAdd(e.target.checked)}/>
+              Dërgo ftesë me email (anëtari vendos fjalëkalimin vetë)
+            </label>
+          )}
           <button type="submit" className="vv-btn" style={{justifyContent:"center",marginTop:4}}><UserPlus size={15}/>Shto anëtarin</button>
         </form>
       </Modal>
@@ -2252,8 +2297,16 @@ function AdminMembers({members,setMembers,events=[],polls=[]}){
   );
 }
 
-function AdminPayments({members,setMembers}){
+function AdminPayments({members,setMembers,live=null}){
   const [toast,showToast]=useToast();
+  async function confirmPayment(p){
+    if(!(await live.setStatus(p.id,"konfirmuar"))) return;
+    setMembers(prev=>prev.map(m=>m.id===p.member_id?{...m,pay:"paguar"}:m));
+    showToast("Pagesa u konfirmua!");
+  }
+  async function rejectPayment(p){
+    if(await live.setStatus(p.id,"refuzuar")) showToast("Pagesa u refuzua.");
+  }
   const paid=members.filter(m=>m.pay==="paguar");
   const unpaid=members.filter(m=>m.pay==="papaguar"&&!m.exempt);
   const exempt=members.filter(m=>m.exempt);
@@ -2277,6 +2330,7 @@ function AdminPayments({members,setMembers}){
         <StatCard label="Nuk kanë paguar" value={unpaid.length} color={C.amber} icon={<Clock size={26}/>}/>
         <StatCard label="Të liruar" value={exempt.length} icon={<ShieldCheck size={26}/>}/>
       </div>
+      {live&&<PendingPayments members={members} payments={live.payments} onConfirm={confirmPayment} onReject={rejectPayment}/>}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
         {unpaid.length>0&&<Card>
           <div style={{fontWeight:700,fontSize:15,marginBottom:14,color:C.amber}}>Kanë kuotë të papaguar ({unpaid.length})</div>
@@ -2810,8 +2864,9 @@ function AdminArchive(){
 }
 
 
-function AdminDonations(){
-  const [donations,setDonations]=useState(seedDonations);
+function AdminDonations({live=null}={}){
+  const [localDonations,setLocalDonations]=useState(seedDonations);
+  const donations=live?live.donations:localDonations, setDonations=live?live.setDonations:setLocalDonations;
   const [open,setOpen]=useState(false);
   const [form,setForm]=useState({from:"",amount:"",msg:""});
   const [toast,showToast]=useToast();
@@ -2821,7 +2876,8 @@ function AdminDonations(){
     e.preventDefault();
     const amt=parseFloat(form.amount);
     if(!form.from||!amt){showToast("Plotëso fushat");return;}
-    setDonations(prev=>[{id:Date.now(),from:form.from,amount:amt,date:"21.06.2026",msg:form.msg},...prev]);
+    if(live&&amt<5){showToast("Shuma minimale është CHF 5");return;}
+    setDonations(prev=>[{id:Date.now(),from:form.from,amount:amt,date:live?todayCH():"21.06.2026",msg:form.msg},...prev]);
     setOpen(false);setForm({from:"",amount:"",msg:""});showToast("Donacioni u regjistrua!");
   }
   return(
@@ -3718,16 +3774,64 @@ const adminTabs=[
 export default function App(){
   const [role,setRole]=useState(null);
   const [tab,setTab]=useState("home");
-  const [members,setMembers]=useLocalState("vv-members",seedMembers);
-  const [events,setEvents]=useLocalState("vv-events",seedEvents);
-  const [announcements,setAnnouncements]=useLocalState("vv-announcements",seedAnnouncements);
-  const [polls,setPolls]=useLocalState("vv-polls",seedPolls);
+  // Demo data (demo role buttons): kept in this browser's localStorage.
+  const [localMembers,setLocalMembers]=useLocalState("vv-members",seedMembers);
+  const [localEvents,setLocalEvents]=useLocalState("vv-events",seedEvents);
+  const [localAnnouncements,setLocalAnnouncements]=useLocalState("vv-announcements",seedAnnouncements);
+  const [localPolls,setLocalPolls]=useLocalState("vv-polls",seedPolls);
   const [dark,setDark]=useState(false);
   const [lang,setLang]=useState("sq");
   const [showLogin,setShowLogin]=useState(false);
   const [showOnboarding,setShowOnboarding]=useState(false);
   const [authUser,setAuthUser]=useState(null);
   const [needsPassword,setNeedsPassword]=useState(()=>!!(supabase&&AUTH_LINK_TYPE));
+  const [dbToast,showDbToast]=useToast();
+
+  // Live data (real email login): read from and written to Supabase.
+  const live=!!(authUser&&supabase);
+  const liveAdmin=live&&authUser.role==="admin";
+  const [dbMembers,setDbMembers]=useDbTable("members",live,{
+    // Members may only change their own phone (onboarding); everything else is admin-only.
+    onUpdate:async(old,row)=>{
+      if(liveAdmin||old.phone===row.phone) return false;
+      const {error}=await supabase.rpc("update_my_phone",{p_phone:row.phone||""});
+      if(error) throw error;
+      return true;
+    },
+  });
+  const [dbEvents,setDbEvents]=useDbTable("events",live,{
+    onUpdate:async(old,row)=>{
+      if(liveAdmin) return false;
+      const {error}=await supabase.rpc("set_rsvp",{p_event:row.id,p_going:row.rsvp.length>old.rsvp.length});
+      if(error) throw error;
+      return true;
+    },
+  });
+  const [dbAnnouncements,setDbAnnouncements]=useDbTable("announcements",live);
+  const [dbPolls,setDbPolls]=useDbTable("polls",live,{
+    onUpdate:async(old,row)=>{
+      if(liveAdmin&&row.voted.length===old.voted.length) return false;
+      const choice=["yes","no","abstain"].find(k=>row[k]>old[k]);
+      if(!choice) return false;
+      const {error}=await supabase.rpc("cast_vote",{p_poll:row.id,p_choice:choice});
+      if(error) throw error;
+      return true;
+    },
+  });
+  const [dbApplications,setDbApplications]=useDbTable("applications",liveAdmin);
+  const [dbDonations,setDbDonations]=useDbTable("donations",live);
+  const livePayments=usePayments(live);
+
+  const members=live?dbMembers:localMembers, setMembers=live?setDbMembers:setLocalMembers;
+  const events=live?dbEvents:localEvents, setEvents=live?setDbEvents:setLocalEvents;
+  const announcements=live?dbAnnouncements:localAnnouncements, setAnnouncements=live?setDbAnnouncements:setLocalAnnouncements;
+  const polls=live?dbPolls:localPolls, setPolls=live?setDbPolls:setLocalPolls;
+
+  useEffect(()=>{
+    const h=e=>showDbToast(e.detail);
+    window.addEventListener("vv-db-error",h);
+    return()=>window.removeEventListener("vv-db-error",h);
+  },[]);
 
   // Restore a saved Supabase session on page load (skipped for reset/invite links).
   useEffect(()=>{
@@ -3764,9 +3868,10 @@ export default function App(){
     return()=>window.removeEventListener("keydown",h);
   },[]);
 
+  // Simulated live votes: demo data only, never the real database.
   useEffect(()=>{
     const id=setInterval(()=>{
-      setPolls(prev=>prev.map(p=>{
+      setLocalPolls(prev=>prev.map(p=>{
         if(p.status!=="aktiv")return p;
         const r=Math.random();
         if(r<0.45)return{...p,yes:p.yes+1};
@@ -3818,11 +3923,11 @@ export default function App(){
     switch(tab){
       case"home": return <MemberHome me={me} events={events} announcements={announcements} polls={polls}/>;
       case"profile": return <MemberProfile me={me}/>;
-      case"invoices": return <MemberInvoices me={me}/>;
+      case"invoices": return <MemberInvoices me={me} live={live?{payments:livePayments.payments,report:livePayments.report}:null}/>;
       case"events": return <MemberEvents me={me} events={events} onRsvpChange={handleRsvpChange}/>;
       case"news": return <MemberNews announcements={announcements} docs={seedDocs} news={seedNews}/>;
       case"card": return <MemberCard me={me}/>;
-      case"donate": return <MemberDonate me={me}/>;
+      case"donate": return <MemberDonate me={me} live={live?{donations:dbDonations,setDonations:setDbDonations}:null}/>;
       case"polls": return <MemberPolls me={me} polls={polls} setPolls={setPolls}/>;
       case"messages": return <MemberMessages me={me}/>;
       case"minutes": return <MemberMinutes members={members}/>;
@@ -3834,9 +3939,9 @@ export default function App(){
   function renderAdminTab(){
     switch(tab){
       case"home": return <AdminHome members={members} events={events}/>;
-      case"members": return <AdminMembers members={members} setMembers={setMembers} events={events} polls={polls}/>;
-      case"onboarding": return <AdminOnboarding/>;
-      case"payments": return <AdminPayments members={members} setMembers={setMembers}/>;
+      case"members": return <AdminMembers members={members} setMembers={setMembers} events={events} polls={polls} live={live}/>;
+      case"onboarding": return <AdminOnboarding live={liveAdmin?{apps:dbApplications,setApps:setDbApplications,members,setMembers}:null}/>;
+      case"payments": return <AdminPayments members={members} setMembers={setMembers} live={liveAdmin?livePayments:null}/>;
       case"finance": return <AdminFinance/>;
       case"events": return <AdminEvents events={events} setEvents={setEvents} members={members}/>;
       case"calendar": return <AdminCalendar/>;
@@ -3845,7 +3950,7 @@ export default function App(){
       case"comms": return <AdminComms members={members} announcements={announcements} setAnnouncements={setAnnouncements}/>;
       case"elections": return <AdminElections members={members}/>;
       case"polls": return <AdminPolls polls={polls} setPolls={setPolls}/>;
-      case"donations": return <AdminDonations/>;
+      case"donations": return <AdminDonations live={live?{donations:dbDonations,setDonations:setDbDonations}:null}/>;
       case"recruitment": return <AdminRecruitment/>;
       case"map": return <AdminMap/>;
       case"processverbal": return <AdminProcessverbal/>;
@@ -3872,6 +3977,7 @@ export default function App(){
         >
           {role==="member"?renderMemberTab():renderAdminTab()}
         </Shell>
+        <Toast msg={dbToast}/>
       </div>
     </LangCtx.Provider>
   );
@@ -4044,11 +4150,29 @@ const OB_STAGES=[
 ];
 function obStage(key){return OB_STAGES.find(s=>s.key===key)||OB_STAGES[0];}
 
-function AdminOnboarding(){
-  const [apps,setApps]=useState(seedApplications);
+function AdminOnboarding({live=null}={}){
+  const [localApps,setLocalApps]=useState(seedApplications);
+  const apps=live?live.apps:localApps, setApps=live?live.setApps:setLocalApps;
   const [selected,setSelected]=useState(null);
   const [filter,setFilter]=useState("all");
   const [toast,showToast]=useToast();
+
+  // Live mode: make sure an approved applicant has a member record (needed to log in and pay).
+  function ensureMember(a,pay){
+    const existing=live.members.find(m=>(m.email||"").toLowerCase()===a.email.toLowerCase());
+    if(existing){
+      if(pay&&existing.pay!==pay) live.setMembers(prev=>prev.map(m=>m.id===existing.id?{...m,pay}:m));
+      return;
+    }
+    live.setMembers(prev=>[...prev,{id:Date.now(),name:a.name,email:a.email,phone:a.phone||"",kanton:a.kanton||"",prof:a.prof||"",dob:a.dob||"",
+      role:"Anëtar",status:"aktiv",pay:pay||"papaguar",joined:new Date().toLocaleDateString("de-CH")}]);
+  }
+  async function inviteApplicant(a){
+    ensureMember(a);
+    showToast("Po dërgohet ftesa…");
+    const r=await sendInvite(a.email,a.name);
+    showToast(r.text);
+  }
 
   const counts=Object.fromEntries(OB_STAGES.map(s=>[s.key,apps.filter(a=>a.status===s.key).length]));
   const stageOrder=["aplikim","aprovuar","pret_pagesen","aktiv"];
@@ -4063,6 +4187,7 @@ function AdminOnboarding(){
       approvedDate:newStatus==="aprovuar"?today:s.approvedDate,
       paidDate:newStatus==="aktiv"?today:s.paidDate,
     }:s);
+    if(live&&newStatus==="aktiv"){const a=apps.find(x=>x.id===id);if(a) ensureMember(a,"paguar");}
     const labels={aprovuar:"Aplikimi u aprovua",pret_pagesen:"U shënua si pret pagesën",aktiv:"Anëtari u aktivizua",refuzuar:"Aplikimi u refuzua",aplikim:"U kthye në aplikim"};
     showToast(labels[newStatus]||"Statusi u ndryshua");
   }
@@ -4071,7 +4196,7 @@ function AdminOnboarding(){
 
   const ACTIONS={
     aplikim:[{label:"Aprovo",cls:"grn",next:"aprovuar"},{label:"Refuzo",cls:"ghost",next:"refuzuar"}],
-    aprovuar:[{label:"Email mirëseardhjeje",cls:"ghost",fn:(a)=>showToast(`Email u dërgua tek ${a.email}`)},{label:"Konfirmo dërgim kuotë",cls:"grn",next:"pret_pagesen"}],
+    aprovuar:[{label:live?"Dërgo ftesë me email":"Email mirëseardhjeje",cls:"ghost",fn:(a)=>live?inviteApplicant(a):showToast(`Email u dërgua tek ${a.email}`)},{label:"Konfirmo dërgim kuotë",cls:"grn",next:"pret_pagesen"}],
     pret_pagesen:[{label:"Konfirmo pagesën ✓",cls:"grn",next:"aktiv"}],
     aktiv:[],
     refuzuar:[{label:"Rishiko",cls:"ghost",next:"aplikim"}],
@@ -4870,5 +4995,181 @@ function SetPasswordScreen({kind,onDone}){
         </Card>
       </div>
     </div>
+  );
+}
+
+/* ── Live data (Supabase) ──────────────────────────────────────────────────
+   Used only after a real email login. Each table keeps the fields needed for
+   access rules as real columns (cols) and everything else in `extra` (jsonb),
+   so the existing screens keep working with the same object shapes.
+   useDbTable returns [rows,setRows] just like useState: setRows diffs the old
+   and new arrays and writes inserts/updates/deletes to the database. */
+const DB_TABLES={
+  members:{cols:{name:"name",email:"email",status:"status",pay:"pay"},order:["id",true]},
+  events:{cols:{title:"title",public:"public",rsvp:"rsvp"},order:["id",true]},
+  announcements:{cols:{title:"title"},order:["id",false]},
+  polls:{cols:{question:"question",status:"status",yes:"yes",no:"no",abstain:"abstain",voted:"voted"},order:["id",true]},
+  applications:{cols:{name:"name",email:"email",status:"status"},order:["id",true]},
+  donations:{cols:{amount:"amount",memberId:"member_id"},order:["id",false]},
+};
+
+function dbToRow(table,rec){
+  const {cols}=DB_TABLES[table];
+  const row={...(rec.extra||{}),id:Number(rec.id)};
+  for(const [key,col] of Object.entries(cols)){
+    let v=rec[col];
+    if(col==="amount"&&v!=null) v=Number(v);
+    if(col==="member_id"&&v!=null) v=Number(v);
+    if(Array.isArray(v)) v=v.map(Number);
+    row[key]=v;
+  }
+  return row;
+}
+function rowToDb(table,row){
+  const {cols}=DB_TABLES[table];
+  const rec={id:row.id},extra={};
+  for(const [k,v] of Object.entries(row)){
+    if(k==="id") continue;
+    if(cols[k]) rec[cols[k]]=v===undefined?null:v;
+    else if(v!==undefined) extra[k]=v;
+  }
+  rec.extra=extra;
+  return rec;
+}
+
+function dbError(err,fallback="Ndryshimi nuk u ruajt. Provo përsëri."){
+  console.error("[supabase]",err);
+  const msg=(err&&err.message)||"";
+  const text=/already voted/i.test(msg)?"Ke votuar tashmë në këtë sondazh."
+    :/no member record/i.test(msg)?"Llogaria jote nuk është e lidhur me një anëtar. Kontakto kryesinë."
+    :/row-level security|permission/i.test(msg)?"Nuk ke leje për këtë veprim."
+    :/duplicate key/i.test(msg)?"Ky rekord ekziston tashmë (p.sh. email i përsëritur)."
+    :/failed to fetch|network/i.test(msg)?"Nuk ka lidhje me serverin. Kontrollo internetin."
+    :fallback;
+  window.dispatchEvent(new CustomEvent("vv-db-error",{detail:text}));
+}
+
+async function syncTableDiff(table,prev,next,hooks={}){
+  const prevById=new Map(prev.map(r=>[r.id,r]));
+  const nextIds=new Set(next.map(r=>r.id));
+  for(const row of next){
+    const old=prevById.get(row.id);
+    if(!old){
+      const {error}=await supabase.from(table).insert(rowToDb(table,row));
+      if(error) throw error;
+    }else if(old!==row&&JSON.stringify(old)!==JSON.stringify(row)){
+      const handled=hooks.onUpdate?await hooks.onUpdate(old,row):false;
+      if(handled) continue;
+      const rec=rowToDb(table,row);delete rec.id;
+      const {error}=await supabase.from(table).update(rec).eq("id",row.id);
+      if(error) throw error;
+    }
+  }
+  for(const old of prev){
+    if(!nextIds.has(old.id)){
+      const {error}=await supabase.from(table).delete().eq("id",old.id);
+      if(error) throw error;
+    }
+  }
+}
+
+function useDbTable(table,enabled,hooks){
+  const [rows,setRowsState]=useState([]);
+  const [loaded,setLoaded]=useState(false);
+  const rowsRef=useRef([]);
+  const hooksRef=useRef(hooks);
+  hooksRef.current=hooks;
+
+  async function reload(){
+    const [col,asc]=DB_TABLES[table].order;
+    const {data,error}=await supabase.from(table).select("*").order(col,{ascending:asc});
+    if(error){dbError(error,"Të dhënat nuk u ngarkuan.");return;}
+    const r=(data||[]).map(rec=>dbToRow(table,rec));
+    rowsRef.current=r;setRowsState(r);setLoaded(true);
+  }
+
+  useEffect(()=>{
+    if(!enabled||!supabase){rowsRef.current=[];setRowsState([]);setLoaded(false);return;}
+    reload();
+  },[table,enabled]);
+
+  function setRows(updater){
+    const prev=rowsRef.current;
+    const next=typeof updater==="function"?updater(prev):updater;
+    if(next===prev) return;
+    rowsRef.current=next;setRowsState(next);
+    syncTableDiff(table,prev,next,hooksRef.current||{}).catch(err=>{dbError(err);reload();});
+  }
+  return [rows,setRows,loaded,reload];
+}
+
+// Payments are only reported by members and confirmed by admins, so they get a small dedicated hook.
+function usePayments(enabled){
+  const [payments,setPayments]=useState([]);
+  async function reload(){
+    const {data,error}=await supabase.from("payments").select("*").order("created_at",{ascending:false});
+    if(error){dbError(error,"Pagesat nuk u ngarkuan.");return;}
+    setPayments((data||[]).map(p=>({...p,amount:Number(p.amount),member_id:Number(p.member_id)})));
+  }
+  useEffect(()=>{if(enabled&&supabase) reload(); else setPayments([]);},[enabled]);
+  async function report(memberId,amount,method="online"){
+    const {error}=await supabase.from("payments").insert({member_id:memberId,year:new Date().getFullYear(),amount,method,status:"ne_pritje"});
+    if(error){dbError(error,"Pagesa nuk u regjistrua.");return false;}
+    await reload();return true;
+  }
+  async function setStatus(id,status){
+    const {error}=await supabase.from("payments").update({status}).eq("id",id);
+    if(error){dbError(error);return false;}
+    await reload();return true;
+  }
+  return {payments,report,setStatus,reload};
+}
+
+async function sendInvite(email,name){
+  const {data,error}=await supabase.functions.invoke("invite-member",{body:{email,name,redirectTo:window.location.origin}});
+  if(error){
+    let code="";
+    try{const body=await error.context.json();code=body.error;}catch{}
+    if(code==="already_registered") return {ok:false,text:`${email} ka tashmë llogari.`};
+    if(code==="not_admin") return {ok:false,text:"Vetëm administratorët mund të dërgojnë ftesa."};
+    console.error("[invite]",error);
+    return {ok:false,text:"Ftesa nuk u dërgua. Provo përsëri."};
+  }
+  return {ok:!!(data&&data.ok),text:`Ftesa u dërgua te ${email}.`};
+}
+
+function todayCH(){return new Date().toLocaleDateString("de-CH",{day:"2-digit",month:"2-digit",year:"numeric"});}
+
+function PendingPayments({members,payments,onConfirm,onReject}){
+  const pending=payments.filter(p=>p.status==="ne_pritje");
+  if(!pending.length) return null;
+  const nameOf=id=>(members.find(m=>m.id===id)||{}).name||`Anëtari #${id}`;
+  return(
+    <Card p={0} style={{overflow:"hidden",marginBottom:20,border:"1.5px solid #FCD34D"}}>
+      <div style={{padding:"14px 18px",background:"#FEF3C7",display:"flex",alignItems:"center",gap:8}}>
+        <AlertCircle size={16} color="#92400E"/>
+        <b style={{color:"#92400E",fontSize:14}}>Pagesa në pritje të konfirmimit ({pending.length})</b>
+      </div>
+      <div style={{overflowX:"auto"}}>
+        <table style={{width:"100%",borderCollapse:"collapse"}}>
+          <thead><tr><th className="vv-th">Anëtari</th><th className="vv-th">Viti</th><th className="vv-th">Shuma</th><th className="vv-th">Mënyra</th><th className="vv-th">Data</th><th className="vv-th"></th></tr></thead>
+          <tbody>{pending.map(p=>(
+            <tr className="vv-row" key={p.id}>
+              <td className="vv-td" style={{fontWeight:600}}>{nameOf(p.member_id)}</td>
+              <td className="vv-td">{p.year}</td>
+              <td className="vv-td" style={{fontWeight:700}}>CHF {p.amount}</td>
+              <td className="vv-td" style={{textTransform:"capitalize"}}>{p.method}</td>
+              <td className="vv-td" style={{color:C.inkSoft}}>{new Date(p.created_at).toLocaleDateString("de-CH")}</td>
+              <td className="vv-td">
+                <div style={{display:"flex",gap:6,justifyContent:"flex-end"}}>
+                  <button className="vv-btn grn" style={{fontSize:12,padding:"6px 12px"}} onClick={()=>onConfirm(p)}><CheckCircle2 size={13}/>Konfirmo</button>
+                  <button className="vv-btn ghost" style={{fontSize:12,padding:"6px 12px"}} onClick={()=>onReject(p)}>Refuzo</button>
+                </div>
+              </td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+    </Card>
   );
 }
