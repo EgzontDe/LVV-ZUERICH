@@ -33,6 +33,13 @@ const css = `
 .vv-login-hero::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 75% 15%,rgba(255,255,255,.13) 0%,transparent 55%)}
 .vv-login-hero::after{content:"!";position:absolute;right:-24px;bottom:-90px;font-family:'Archivo';font-weight:900;font-size:440px;line-height:1;color:rgba(255,255,255,.05)}
 .vv-login-panel{width:460px;background:#EDECE8;padding:56px 48px;display:flex;flex-direction:column;justify-content:center}
+.vv-twint-row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border-radius:10px;padding:10px 12px;border:1px solid rgba(23,18,16,.08)}
+.vv-twint-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#5A524E}
+.vv-twint-value{font-weight:700;font-size:15px;color:#171210;word-break:break-all}
+.vv-twint-value.big{font-family:'Archivo',sans-serif;font-size:20px;letter-spacing:.5px}
+.vv-twint-steps{margin:0;padding-left:20px;font-size:13px;line-height:1.7;color:#5A524E}
+.vv--dark .vv-twint-row{background:#1C1813;border-color:rgba(255,255,255,.1)}
+.vv--dark .vv-twint-value{color:#EDE9E3}
 .vv-login-form{display:grid;gap:12px}
 .vv-login-form label{font-size:13px;font-weight:600;display:block;margin-bottom:5px}
 .vv-login-err{background:#FFE4E6;color:#9F1239;border:1px solid #FDA4AF;border-radius:10px;padding:10px 12px;font-size:13px}
@@ -1387,9 +1394,15 @@ function MemberProfile({me}){
   );
 }
 
-function PaymentModal({open,onClose,me,amount,onPaid}){
+function PaymentModal({open,onClose,me,amount,onPaid,twint=null}){
   const [method,setMethod]=useState("twint");
   const [done,setDone]=useState(false);
+  // Live mode: real TWINT details only (no demo IBAN / PostFinance screens).
+  if(twint) return(
+    <Modal open={open} onClose={onClose} title={`Paguaj kuotën ${new Date().getFullYear()}`} width={480}>
+      <TwintLivePanel number={twint.number} amount={amount} reference={twint.reference} onPaid={()=>{onPaid();onClose();}}/>
+    </Modal>
+  );
   const ref=`${me.name} 2026`;
   const iban="CH56 0483 5088 1234 1000 0";
   const methods=[
@@ -1489,7 +1502,11 @@ function MemberInvoices({me,live=null}){
   // Live mode: a payment the member reported stays "në pritje" until an admin confirms it.
   const pendingLive=!!live&&me.pay!=="paguar"&&live.payments.some(p=>p.member_id===me.id&&p.year===new Date().getFullYear()&&p.status==="ne_pritje");
   const [toast,showToast]=useToast();
-  const amount=me.reduced?75:me.exempt?0:150;
+  const baseAmount=me.reduced?75:me.exempt?0:150;
+  // settings.fee_override (e.g. CHF 1 while testing) replaces the normal fee in live mode.
+  const feeOverride=live&&live.settings&&live.settings.fee_override!=null&&!me.exempt?Number(live.settings.fee_override):null;
+  const amount=feeOverride!=null?feeOverride:baseAmount;
+  const twint=live?{number:live.settings&&live.settings.twint_number,reference:payRef(me.id)}:null;
   const invoices=[
     {id:"F-2026-005",date:"01.01.2026",desc:"Kuota vjetore 2026",amount,status:paid2026?"paguar":"papaguar"},
     {id:"F-2025-005",date:"01.01.2025",desc:"Kuota vjetore 2025",amount:150,status:"paguar"},
@@ -1550,11 +1567,11 @@ function MemberInvoices({me,live=null}){
         </div>
       )}
 
-      <PaymentModal open={payOpen} onClose={()=>setPayOpen(false)} me={me} amount={amount}
+      <PaymentModal open={payOpen} onClose={()=>setPayOpen(false)} me={me} amount={amount} twint={twint}
         onPaid={async()=>{
           if(live){
             if(!me.id){showToast("Llogaria jote nuk është e lidhur me një anëtar.");return;}
-            if(await live.report(me.id,amount)) showToast("✓ Pagesa u dërgua për konfirmim. Faleminderit!");
+            if(await live.report(me.id,amount,"twint")) showToast("✓ Faleminderit! Pagesa po verifikohet nga kryesia.");
             return;
           }
           setPaid2026(true);showToast("✓ Pagesa u regjistrua! Faleminderit!");
@@ -3821,6 +3838,7 @@ export default function App(){
   const [dbApplications,setDbApplications]=useDbTable("applications",liveAdmin);
   const [dbDonations,setDbDonations]=useDbTable("donations",live);
   const livePayments=usePayments(live);
+  const liveSettings=useSettings(live);
 
   const members=live?dbMembers:localMembers, setMembers=live?setDbMembers:setLocalMembers;
   const events=live?dbEvents:localEvents, setEvents=live?setDbEvents:setLocalEvents;
@@ -3923,7 +3941,7 @@ export default function App(){
     switch(tab){
       case"home": return <MemberHome me={me} events={events} announcements={announcements} polls={polls}/>;
       case"profile": return <MemberProfile me={me}/>;
-      case"invoices": return <MemberInvoices me={me} live={live?{payments:livePayments.payments,report:livePayments.report}:null}/>;
+      case"invoices": return <MemberInvoices me={me} live={live?{payments:livePayments.payments,report:livePayments.report,settings:liveSettings}:null}/>;
       case"events": return <MemberEvents me={me} events={events} onRsvpChange={handleRsvpChange}/>;
       case"news": return <MemberNews announcements={announcements} docs={seedDocs} news={seedNews}/>;
       case"card": return <MemberCard me={me}/>;
@@ -5152,10 +5170,11 @@ function PendingPayments({members,payments,onConfirm,onReject}){
       </div>
       <div style={{overflowX:"auto"}}>
         <table style={{width:"100%",borderCollapse:"collapse"}}>
-          <thead><tr><th className="vv-th">Anëtari</th><th className="vv-th">Viti</th><th className="vv-th">Shuma</th><th className="vv-th">Mënyra</th><th className="vv-th">Data</th><th className="vv-th"></th></tr></thead>
+          <thead><tr><th className="vv-th">Anëtari</th><th className="vv-th">Referenca</th><th className="vv-th">Viti</th><th className="vv-th">Shuma</th><th className="vv-th">Mënyra</th><th className="vv-th">Data</th><th className="vv-th"></th></tr></thead>
           <tbody>{pending.map(p=>(
             <tr className="vv-row" key={p.id}>
               <td className="vv-td" style={{fontWeight:600}}>{nameOf(p.member_id)}</td>
+              <td className="vv-td" style={{fontFamily:"monospace",fontSize:13}}>{payRef(p.member_id,p.year)}</td>
               <td className="vv-td">{p.year}</td>
               <td className="vv-td" style={{fontWeight:700}}>CHF {p.amount}</td>
               <td className="vv-td" style={{textTransform:"capitalize"}}>{p.method}</td>
@@ -5171,5 +5190,72 @@ function PendingPayments({members,payments,onConfirm,onReject}){
         </table>
       </div>
     </Card>
+  );
+}
+
+/* ── TWINT to a private number (live mode) ────────────────────────────────
+   Members send money in their TWINT app to the number stored in settings,
+   with their personal reference as the message, then click "Kam paguar".
+   An admin checks the TWINT app and confirms in Pagesat. */
+function useSettings(enabled){
+  const [settings,setSettings]=useState({});
+  useEffect(()=>{
+    if(!enabled||!supabase){setSettings({});return;}
+    supabase.from("settings").select("key,value").then(({data,error})=>{
+      if(error){dbError(error,"Cilësimet nuk u ngarkuan.");return;}
+      setSettings(Object.fromEntries((data||[]).map(r=>[r.key,r.value])));
+    });
+  },[enabled]);
+  return settings;
+}
+
+function payRef(memberId,year=new Date().getFullYear()){
+  const id=Number(memberId)||0;
+  return `VV-${id<1000?String(id).padStart(3,"0"):id}-${year}`;
+}
+
+function CopyRow({label,value,big=false}){
+  const [copied,setCopied]=useState(false);
+  async function copy(){
+    try{await navigator.clipboard.writeText(value);setCopied(true);setTimeout(()=>setCopied(false),1500);}catch{}
+  }
+  return(
+    <div className="vv-twint-row">
+      <div style={{minWidth:0}}>
+        <div className="vv-twint-label">{label}</div>
+        <div className={big?"vv-twint-value big":"vv-twint-value"}>{value}</div>
+      </div>
+      <button type="button" className="vv-btn ghost" style={{fontSize:12,padding:"6px 10px",flexShrink:0}} onClick={copy}>
+        {copied?<><CheckCircle2 size={13}/>Kopjuar</>:"Kopjo"}
+      </button>
+    </div>
+  );
+}
+
+function TwintLivePanel({number,amount,reference,onPaid}){
+  if(!number) return(
+    <div className="vv-login-err">Numri TWINT nuk është vendosur ende. Kontakto kryesinë e Pikës.</div>
+  );
+  return(
+    <div style={{display:"grid",gap:14}}>
+      <div style={{background:"#FF690014",borderRadius:16,padding:"18px 16px"}}>
+        <div style={{fontWeight:800,fontSize:18,color:"#FF6900",fontFamily:"'Archivo',sans-serif",marginBottom:12,textAlign:"center"}}>TWINT</div>
+        <div style={{display:"grid",gap:8}}>
+          <CopyRow label="Dërgo te numri" value={number} big/>
+          <CopyRow label="Shuma" value={`CHF ${amount}`}/>
+          <CopyRow label="Mesazhi / referenca" value={reference}/>
+        </div>
+      </div>
+      <ol className="vv-twint-steps">
+        <li>Hap aplikacionin <b>TWINT</b> dhe zgjidh <b>Dërgo para</b>.</li>
+        <li>Shkruaj numrin <b>{number}</b> dhe shumën <b>CHF {amount}</b>.</li>
+        <li>Te mesazhi shkruaj <b>{reference}</b> dhe dërgo.</li>
+        <li>Kthehu këtu dhe kliko <b>Kam paguar</b>.</li>
+      </ol>
+      <button className="vv-btn" style={{width:"100%",justifyContent:"center",background:"#FF6900",boxShadow:"0 4px 16px rgba(255,105,0,.30)"}} onClick={onPaid}>
+        <CheckCircle2 size={15}/>Kam paguar
+      </button>
+      <div style={{fontSize:12,color:C.inkSoft,textAlign:"center"}}>Pagesa shfaqet si <b>Paguar</b> pasi kryesia ta konfirmojë.</div>
+    </div>
   );
 }
