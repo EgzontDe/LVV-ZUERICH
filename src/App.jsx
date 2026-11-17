@@ -1,4 +1,5 @@
 ﻿import React, { useState, useMemo, useEffect, useRef } from "react";
+import { createClient } from "@supabase/supabase-js";
 import {
   Users, CreditCard, Calendar, Megaphone, Settings, LayoutDashboard,
   User, FileText, Download, Search, Plus, LogOut, Bell, CheckCircle2,
@@ -32,6 +33,14 @@ const css = `
 .vv-login-hero::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 75% 15%,rgba(255,255,255,.13) 0%,transparent 55%)}
 .vv-login-hero::after{content:"!";position:absolute;right:-24px;bottom:-90px;font-family:'Archivo';font-weight:900;font-size:440px;line-height:1;color:rgba(255,255,255,.05)}
 .vv-login-panel{width:460px;background:#EDECE8;padding:56px 48px;display:flex;flex-direction:column;justify-content:center}
+.vv-login-form{display:grid;gap:12px}
+.vv-login-form label{font-size:13px;font-weight:600;display:block;margin-bottom:5px}
+.vv-login-err{background:#FFE4E6;color:#9F1239;border:1px solid #FDA4AF;border-radius:10px;padding:10px 12px;font-size:13px}
+.vv-login-ok{background:#E7F4ED;color:#1E8A4C;border:1px solid #6EE7A0;border-radius:10px;padding:10px 12px;font-size:13px}
+.vv-login-link{background:none;border:none;padding:0;color:#E2231A;font-size:13px;font-weight:600;cursor:pointer;justify-self:start}
+.vv-login-divider{display:flex;align-items:center;gap:10px;margin:22px 0 14px;color:#5A524E;font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.vv-login-divider:before,.vv-login-divider:after{content:"";flex:1;height:1px;background:rgba(23,18,16,.12)}
+.vv--dark .vv-login-divider:before,.vv--dark .vv-login-divider:after{background:rgba(255,255,255,.12)}
 .vv-rolecard{text-align:left;background:#fff;border:1.5px solid rgba(23,18,16,.08);border-radius:16px;padding:18px 20px;display:flex;align-items:center;gap:14px;width:100%;transition:all .18s;box-shadow:0 2px 8px rgba(23,18,16,.05)}
 .vv-rolecard:hover{border-color:#E2231A;transform:translateY(-2px);box-shadow:0 10px 32px rgba(226,35,26,.14)}
 .vv-shell{display:flex;min-height:100vh}
@@ -642,6 +651,8 @@ function Login({onLogin,lang="sq",onLangToggle,onBack}){
           <h2 style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:26,margin:"0 0 6px"}}>{t("Hyni në platformë")}</h2>
           <p style={{color:C.inkSoft,fontSize:14,margin:0}}>{t("Zgjidhni rolin tuaj për të vazhduar")}</p>
         </div>
+        <LoginForm onLogin={onLogin}/>
+        <div className="vv-login-divider"><span>ose provo versionin demo</span></div>
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
           <button className="vv-rolecard" onClick={()=>onLogin("member")}>
             <div className="vv-emblem"><User size={17}/></div>
@@ -3715,6 +3726,32 @@ export default function App(){
   const [lang,setLang]=useState("sq");
   const [showLogin,setShowLogin]=useState(false);
   const [showOnboarding,setShowOnboarding]=useState(false);
+  const [authUser,setAuthUser]=useState(null);
+  const [needsPassword,setNeedsPassword]=useState(()=>!!(supabase&&AUTH_LINK_TYPE));
+
+  // Restore a saved Supabase session on page load (skipped for reset/invite links).
+  useEffect(()=>{
+    if(!supabase||AUTH_LINK_TYPE) return;
+    let alive=true;
+    supabase.auth.getSession().then(async({data})=>{
+      if(!alive||!data.session) return;
+      try{
+        const profile=await loadProfile(data.session.user);
+        if(alive&&profile){setAuthUser(profile);setRole(profile.role);setTab("home");}
+      }catch{}
+    });
+    return()=>{alive=false;};
+  },[]);
+
+  async function finishPasswordSetup(){
+    setNeedsPassword(false);
+    try{
+      const {data}=await supabase.auth.getUser();
+      const profile=data.user?await loadProfile(data.user):null;
+      if(profile){handleLogin(profile.role,profile);return;}
+    }catch{}
+    setShowLogin(true);
+  }
 
   useEffect(()=>{
     const h=e=>{
@@ -3741,20 +3778,28 @@ export default function App(){
     return()=>clearInterval(id);
   },[]);
 
-  function handleLogin(r){
+  function handleLogin(r,auth=null){
     if(r==="apply"){setRole("apply");return;}
+    setAuthUser(auth);
     if(r==="member") setShowOnboarding(true);
     setRole(r);
     setTab("home");
   }
-  function handleLogout(){setRole(null);setTab("home");setShowLogin(false);}
+  function handleLogout(){
+    if(authUser&&supabase) supabase.auth.signOut().catch(()=>{});
+    setAuthUser(null);setRole(null);setTab("home");setShowLogin(false);
+  }
   function handleRsvpChange(eventId,newRsvp){setEvents(prev=>prev.map(e=>e.id===eventId?{...e,rsvp:newRsvp}:e));}
 
+  if(needsPassword) return <LangCtx.Provider value={lang}><div className={`vv${dark?" vv--dark":""}`}><style>{css}</style><SetPasswordScreen kind={AUTH_LINK_TYPE} onDone={finishPasswordSetup}/></div></LangCtx.Provider>;
   if(!role&&!showLogin) return <PublicHome onLogin={()=>setShowLogin(true)} onApply={()=>setRole("apply")}/>;
   if(!role&&showLogin) return <LangCtx.Provider value={lang}><div className={`vv${dark?" vv--dark":""}`}><style>{css}</style><Login onLogin={handleLogin} lang={lang} onLangToggle={()=>setLang(l=>l==="sq"?"de":"sq")} onBack={()=>setShowLogin(false)}/></div></LangCtx.Provider>;
   if(role==="apply") return <LangCtx.Provider value={lang}><div className={`vv${dark?" vv--dark":""}`}><style>{css}</style><ApplyForm onBack={()=>{setRole(null);setShowLogin(false);}}/></div></LangCtx.Provider>;
 
-  const me=role==="member"?members.find(m=>m.id===5)||members[4]:members.find(m=>m.id===3)||members[2];
+  const demoMe=role==="member"?members.find(m=>m.id===5)||members[4]:members.find(m=>m.id===3)||members[2];
+  // Real login: match the member record by email; if none exists yet, show a minimal profile instead of demo data.
+  const me=!authUser?demoMe:(members.find(m=>(m.email||"").toLowerCase()===authUser.email.toLowerCase())
+    ||{id:0,name:authUser.name,email:authUser.email,role:role==="admin"?"Administrator":"Anëtar",status:"aktiv",pay:"papaguar",kanton:"—",phone:"",joined:"—",prof:"",dob:""});
 
   if(role==="member"&&showOnboarding) return(
     <LangCtx.Provider value={lang}>
@@ -3763,7 +3808,7 @@ export default function App(){
         <OnboardingFlow
           me={me}
           onDone={()=>setShowOnboarding(false)}
-          onSavePhone={(phone)=>setMembers(prev=>prev.map(m=>m.id===5?{...m,phone}:m))}
+          onSavePhone={(phone)=>setMembers(prev=>prev.map(m=>m.id===me.id?{...m,phone}:m))}
         />
       </div>
     </LangCtx.Provider>
@@ -3823,7 +3868,7 @@ export default function App(){
           dark={dark} onToggleDark={()=>setDark(d=>!d)}
           lang={lang} onLangToggle={()=>setLang(l=>l==="sq"?"de":"sq")}
           members={members} events={events} announcements={announcements}
-          meId={role==="member"?5:3}
+          meId={me.id}
         >
           {role==="member"?renderMemberTab():renderAdminTab()}
         </Shell>
@@ -4695,6 +4740,135 @@ function MemberMinutes({members}){
         </Modal>
       )}
       <Toast msg={toast}/>
+    </div>
+  );
+}
+
+/* ── Supabase auth ─────────────────────────────────────────────────────────
+   Config comes from .env.local (VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY).
+   Without it, supabase stays null and only the demo role buttons work. */
+const AUTH_LINK_TYPE=(()=>{try{const m=window.location.hash.match(/type=(recovery|invite)/);return m?m[1]:null;}catch{return null;}})();
+const SUPABASE_URL=import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY=import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const supabase=SUPABASE_URL&&SUPABASE_KEY?createClient(SUPABASE_URL,SUPABASE_KEY):null;
+
+async function loadProfile(user){
+  const {data,error}=await supabase.from("profiles").select("role,full_name").eq("id",user.id).maybeSingle();
+  if(error) throw error;
+  if(!data) return null;
+  return {role:data.role==="admin"?"admin":"member",email:user.email,name:(data.full_name||"").trim()||nameFromEmail(user.email)};
+}
+
+// "egzont.demiri@x.ch" -> "Egzont Demiri" (used only when the profile has no full_name)
+function nameFromEmail(email){
+  const local=String(email||"").split("@")[0].replace(/[0-9]+/g," ");
+  const name=local.split(/[._\-+\s]+/).filter(Boolean).map(w=>w[0].toUpperCase()+w.slice(1).toLowerCase()).join(" ");
+  return name||"Anëtar";
+}
+
+function authErrorText(error){
+  const msg=(error&&error.message)||"";
+  if(/invalid login credentials/i.test(msg)) return "Email ose fjalëkalim i gabuar.";
+  if(/email not confirmed/i.test(msg)) return "Konfirmo fillimisht email-in tënd.";
+  if(/password should be at least/i.test(msg)) return "Fjalëkalimi duhet të ketë të paktën 8 karaktere.";
+  if(/rate limit|too many/i.test(msg)) return "Shumë tentativa. Provo përsëri pas pak minutash.";
+  if(/failed to fetch|network/i.test(msg)) return "Nuk ka lidhje me serverin. Kontrollo internetin.";
+  return "Diçka shkoi keq. Provo përsëri.";
+}
+
+function LoginForm({onLogin}){
+  const [mode,setMode]=useState("login");
+  const [email,setEmail]=useState("");
+  const [pw,setPw]=useState("");
+  const [busy,setBusy]=useState(false);
+  const [err,setErr]=useState("");
+  const [info,setInfo]=useState("");
+
+  async function submit(e){
+    e.preventDefault();
+    setErr("");setInfo("");
+    if(!supabase){setErr("Hyrja me email nuk është aktivizuar ende. Përdor versionin demo më poshtë.");return;}
+    if(!email.trim()){setErr("Shkruaj email-in.");return;}
+    if(mode==="reset"){
+      setBusy(true);
+      const {error}=await supabase.auth.resetPasswordForEmail(email.trim(),{redirectTo:window.location.origin});
+      setBusy(false);
+      if(error){setErr(authErrorText(error));return;}
+      setInfo("Nëse ky email është i regjistruar, të dërguam një link për të vendosur fjalëkalim të ri.");
+      return;
+    }
+    if(!pw){setErr("Shkruaj fjalëkalimin.");return;}
+    setBusy(true);
+    try{
+      const {data,error}=await supabase.auth.signInWithPassword({email:email.trim(),password:pw});
+      if(error){setErr(authErrorText(error));return;}
+      const profile=await loadProfile(data.user);
+      if(!profile){await supabase.auth.signOut();setErr("Llogaria jote nuk është aktivizuar ende. Kontakto kryesinë e Pikës.");return;}
+      onLogin(profile.role,profile);
+    }catch(ex){setErr(authErrorText(ex));}
+    finally{setBusy(false);}
+  }
+
+  return(
+    <form className="vv-login-form" onSubmit={submit} noValidate>
+      <div>
+        <label htmlFor="vv-login-email">Email</label>
+        <input id="vv-login-email" className="vv-input" type="email" autoComplete="email" placeholder="emri@shembull.ch" value={email} onChange={e=>setEmail(e.target.value)} disabled={busy}/>
+      </div>
+      {mode==="login"&&(
+        <div>
+          <label htmlFor="vv-login-pw">Fjalëkalimi</label>
+          <input id="vv-login-pw" className="vv-input" type="password" autoComplete="current-password" placeholder="••••••••" value={pw} onChange={e=>setPw(e.target.value)} disabled={busy}/>
+        </div>
+      )}
+      {err&&<div className="vv-login-err" role="alert">{err}</div>}
+      {info&&<div className="vv-login-ok" role="status">{info}</div>}
+      <button type="submit" className="vv-btn" style={{width:"100%",justifyContent:"center"}} disabled={busy}>
+        {busy?<RefreshCw size={15} className="vv-spin"/>:mode==="login"?<KeyRound size={15}/>:<Mail size={15}/>}
+        {mode==="login"?"Hyr":"Dërgo linkun"}
+      </button>
+      <button type="button" className="vv-login-link" onClick={()=>{setMode(m=>m==="login"?"reset":"login");setErr("");setInfo("");}}>
+        {mode==="login"?"Harrove fjalëkalimin?":"← Kthehu te hyrja"}
+      </button>
+    </form>
+  );
+}
+
+function SetPasswordScreen({kind,onDone}){
+  const [pw,setPw]=useState("");
+  const [pw2,setPw2]=useState("");
+  const [busy,setBusy]=useState(false);
+  const [err,setErr]=useState("");
+  async function submit(e){
+    e.preventDefault();
+    setErr("");
+    if(pw.length<8){setErr("Fjalëkalimi duhet të ketë të paktën 8 karaktere.");return;}
+    if(pw!==pw2){setErr("Fjalëkalimet nuk përputhen.");return;}
+    setBusy(true);
+    const {error}=await supabase.auth.updateUser({password:pw});
+    setBusy(false);
+    if(error){setErr(authErrorText(error));return;}
+    try{window.history.replaceState(null,"",window.location.pathname);}catch{}
+    onDone();
+  }
+  return(
+    <div style={{minHeight:"100vh",background:C.paper,padding:20,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{maxWidth:420,width:"100%"}}>
+        <Card p={32}>
+          <div className="vv-eyebrow" style={{marginBottom:6}}>{kind==="invite"?"Mirë se erdhe":"Rivendos fjalëkalimin"}</div>
+          <h2 style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:22,marginBottom:20}}>Vendos fjalëkalimin tënd</h2>
+          <form className="vv-login-form" onSubmit={submit} noValidate>
+            <div><label htmlFor="vv-new-pw">Fjalëkalimi i ri</label>
+              <input id="vv-new-pw" className="vv-input" type="password" autoComplete="new-password" value={pw} onChange={e=>setPw(e.target.value)} disabled={busy}/></div>
+            <div><label htmlFor="vv-new-pw2">Përsërite fjalëkalimin</label>
+              <input id="vv-new-pw2" className="vv-input" type="password" autoComplete="new-password" value={pw2} onChange={e=>setPw2(e.target.value)} disabled={busy}/></div>
+            {err&&<div className="vv-login-err" role="alert">{err}</div>}
+            <button type="submit" className="vv-btn" style={{width:"100%",justifyContent:"center"}} disabled={busy}>
+              <KeyRound size={15}/>Ruaj dhe hyr
+            </button>
+          </form>
+        </Card>
+      </div>
     </div>
   );
 }
