@@ -3257,7 +3257,7 @@ function AdminCheckin({members,events,live=false}){
       {events.length>1&&(
         <div style={{marginBottom:16,maxWidth:420}}>
           <label htmlFor="ci-event" style={{fontSize:12,fontWeight:700,color:C.inkSoft,display:"block",marginBottom:5,textTransform:"uppercase",letterSpacing:".05em"}}>Eventi</label>
-          <select id="ci-event" className="vv-input" value={ev?ev.id:""} onChange={e=>{setEvId(Number(e.target.value));setLastScan(null);}}>
+          <select id="ci-event" className="vv-input" value={ev?ev.id:""} onChange={e=>{const id=Number(e.target.value),next=events.find(x=>x.id===id);setEvId(id);setLocalCheckedIn(next?[...next.rsvp]:[]);setLastScan(null);}}>
             {events.map(e=><option key={e.id} value={e.id}>{e.date} · {e.title}{e.past?" (i kaluar)":""}</option>)}
           </select>
         </div>
@@ -3265,7 +3265,7 @@ function AdminCheckin({members,events,live=false}){
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:20}}>
         <StatCard label="Të regjistruar" value={ev?.rsvp.length||0} icon={<CalendarCheck size={24}/>}/>
         <StatCard label="Kanë ardhur" value={checkedIn.length} color={C.green} icon={<UserCheck size={24}/>}/>
-        <StatCard label="Mungojnë" value={(ev?.rsvp.length||0)-checkedIn.length} color={C.amber} icon={<Clock size={24}/>}/>
+        <StatCard label="Mungojnë" value={(ev?.rsvp||[]).filter(id=>!checkedIn.includes(id)).length} color={C.amber} icon={<Clock size={24}/>}/>
       </div>
 
       {/* Mode tabs */}
@@ -3954,7 +3954,10 @@ export default function App(){
     <LangCtx.Provider value={lang}>
       <div className={`vv${dark?" vv--dark":""}`}>
         <style>{css}</style>
+        {/* key: remount once the real member row has loaded, so the form starts from the saved phone/kanton
+            instead of the empty placeholder (otherwise "Vazhdo" would overwrite them with blanks). */}
         <OnboardingFlow
+          key={me.id}
           me={me}
           onDone={()=>setShowOnboarding(false)}
           onSavePhone={(phone)=>saveMyProfile({phone})}
