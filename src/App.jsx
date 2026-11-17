@@ -1365,7 +1365,9 @@ function MemberHome({me,events,announcements,polls}){
   );
 }
 
-function MemberProfile({me}){
+function MemberProfile({me,onSave}){
+  const [editOpen,setEditOpen]=useState(false);
+  const [toast,showToast]=useToast();
   return(
     <div>
       <SectionTitle title="Profili im"/>
@@ -1387,9 +1389,15 @@ function MemberProfile({me}){
             <Field icon={<Building2 size={15}/>} label="Profesioni" value={me.prof}/>
             <Field icon={<Cake size={15}/>} label="Datëlindja" value={me.dob}/>
           </div>
-          <button className="vv-btn ghost" style={{marginTop:20,fontSize:13}}><KeyRound size={14}/>Kërko ndryshim të dhënash</button>
+          {onSave
+            ?<button className="vv-btn ghost" style={{marginTop:20,fontSize:13}} onClick={()=>setEditOpen(true)}><User size={14}/>Ndrysho të dhënat</button>
+            :<button className="vv-btn ghost" style={{marginTop:20,fontSize:13}}><KeyRound size={14}/>Kërko ndryshim të dhënash</button>}
         </Card>
       </div>
+      <Modal open={editOpen} onClose={()=>setEditOpen(false)} title="Ndrysho të dhënat e mia">
+        {editOpen&&<ProfileEditForm me={me} onSave={onSave} onCancel={saved=>{setEditOpen(false);if(saved) showToast("Të dhënat u ruajtën!");}}/>}
+      </Modal>
+      <Toast msg={toast}/>
     </div>
   );
 }
@@ -3808,10 +3816,12 @@ export default function App(){
   const live=!!(authUser&&supabase);
   const liveAdmin=live&&authUser.role==="admin";
   const [dbMembers,setDbMembers]=useDbTable("members",live,{
-    // Members may only change their own phone (onboarding); everything else is admin-only.
+    // Members may only change their own basic data; payment, status and role are admin-only.
     onUpdate:async(old,row)=>{
-      if(liveAdmin||old.phone===row.phone) return false;
-      const {error}=await supabase.rpc("update_my_phone",{p_phone:row.phone||""});
+      if(liveAdmin) return false;
+      const p={};
+      for(const k of SELF_EDIT_FIELDS) if(old[k]!==row[k]) p[k]=row[k]??"";
+      const {error}=await supabase.rpc("update_my_profile",{p});
       if(error) throw error;
       return true;
     },
@@ -3924,6 +3934,14 @@ export default function App(){
   const me=!authUser?demoMe:(members.find(m=>(m.email||"").toLowerCase()===authUser.email.toLowerCase())
     ||{id:0,name:authUser.name,email:authUser.email,role:role==="admin"?"Administrator":"Anëtar",status:"aktiv",pay:"papaguar",kanton:"—",phone:"",joined:"—",prof:"",dob:""});
 
+  // A member edits their own basic data (onboarding + Profili im).
+  function saveMyProfile(fields){
+    if(!me.id){showDbToast("Llogaria jote nuk është e lidhur me një anëtar. Kontakto kryesinë.");return false;}
+    const clean=Object.fromEntries(Object.entries(fields).filter(([k])=>SELF_EDIT_FIELDS.includes(k)));
+    setMembers(prev=>prev.map(m=>m.id===me.id?{...m,...clean}:m));
+    return true;
+  }
+
   if(role==="member"&&showOnboarding) return(
     <LangCtx.Provider value={lang}>
       <div className={`vv${dark?" vv--dark":""}`}>
@@ -3931,7 +3949,8 @@ export default function App(){
         <OnboardingFlow
           me={me}
           onDone={()=>setShowOnboarding(false)}
-          onSavePhone={(phone)=>setMembers(prev=>prev.map(m=>m.id===me.id?{...m,phone}:m))}
+          onSavePhone={(phone)=>saveMyProfile({phone})}
+          onSaveProfile={saveMyProfile}
         />
       </div>
     </LangCtx.Provider>
@@ -3940,7 +3959,7 @@ export default function App(){
   function renderMemberTab(){
     switch(tab){
       case"home": return <MemberHome me={me} events={events} announcements={announcements} polls={polls}/>;
-      case"profile": return <MemberProfile me={me}/>;
+      case"profile": return <MemberProfile me={me} onSave={saveMyProfile}/>;
       case"invoices": return <MemberInvoices me={me} live={live?{payments:livePayments.payments,report:livePayments.report,settings:liveSettings}:null}/>;
       case"events": return <MemberEvents me={me} events={events} onRsvpChange={handleRsvpChange}/>;
       case"news": return <MemberNews announcements={announcements} docs={seedDocs} news={seedNews}/>;
@@ -4001,10 +4020,25 @@ export default function App(){
   );
 }
 
-function OnboardingFlow({me,onDone,onSavePhone}){
+function OnboardingFlow({me,onDone,onSavePhone,onSaveProfile}){
   const TOTAL=4;
   const [step,setStep]=useState(0);
   const [phone,setPhone]=useState(me.phone||"");
+  const [obName,setObName]=useState(me.name||"");
+  const [obKanton,setObKanton]=useState(me.kanton&&me.kanton!=="—"?me.kanton:"");
+  const [obErr,setObErr]=useState("");
+  function confirmProfile(){
+    if(obName.trim().length<2){setObErr("Shkruaj emrin dhe mbiemrin.");return;}
+    setObErr("");
+    if(onSaveProfile){
+      const changed={};
+      if(obName.trim()!==(me.name||"")) changed.name=obName.trim();
+      if(obKanton!==(me.kanton||"")) changed.kanton=obKanton;
+      if(phone.trim()!==(me.phone||"")) changed.phone=phone.trim();
+      if(Object.keys(changed).length&&onSaveProfile(changed)===false) return;
+    }else if(onSavePhone) onSavePhone(phone);
+    next();
+  }
 
   const next=()=>step<TOTAL-1?setStep(s=>s+1):onDone();
   const prev=()=>setStep(s=>Math.max(s-1,0));
@@ -4074,16 +4108,32 @@ function OnboardingFlow({me,onDone,onSavePhone}){
             <Hero stepNum={2} title="Konfirmo profilin" sub="Verifikoni të dhënat tuaja bazike."/>
             <div className="ob-card-body">
               <div style={{display:"grid",gap:12,marginBottom:24}}>
-                {[[User,"Emri i plotë",me.name],[Mail,"Email",me.email],[MapPin,"Kantoni",me.kanton]].map(([Icon,lbl,val])=>(
-                  <div key={lbl}>
-                    <div style={{fontSize:11,fontWeight:600,color:C.inkSoft,marginBottom:5,textTransform:"uppercase",letterSpacing:".07em"}}>{lbl}</div>
-                    <div style={{display:"flex",alignItems:"center",gap:10,background:"#F8F7F3",borderRadius:10,padding:"11px 14px",border:`1px solid ${C.line}`}}>
-                      <Icon size={14} color={C.inkSoft}/>
-                      <span style={{fontSize:14,color:C.inkSoft,flex:1}}>{val}</span>
-                      <BadgeCheck size={14} color={C.green}/>
-                    </div>
+                <div>
+                  <div style={{fontSize:11,fontWeight:600,color:C.inkSoft,marginBottom:5,textTransform:"uppercase",letterSpacing:".07em"}}>Emri i plotë</div>
+                  <div style={{display:"flex",alignItems:"center",gap:10,background:"#fff",borderRadius:10,border:`1.5px solid ${C.line}`,padding:"2px 14px 2px 10px"}}>
+                    <User size={14} color={C.inkSoft}/>
+                    <input className="vv-input" style={{border:"none",background:"transparent",padding:"9px 0",flex:1,fontSize:14}} placeholder="Emri dhe mbiemri" value={obName} onChange={e=>setObName(e.target.value)} autoComplete="name"/>
                   </div>
-                ))}
+                </div>
+                <div>
+                  <div style={{fontSize:11,fontWeight:600,color:C.inkSoft,marginBottom:5,textTransform:"uppercase",letterSpacing:".07em"}}>Email</div>
+                  <div style={{display:"flex",alignItems:"center",gap:10,background:"#F8F7F3",borderRadius:10,padding:"11px 14px",border:`1px solid ${C.line}`}}>
+                    <Mail size={14} color={C.inkSoft}/>
+                    <span style={{fontSize:14,color:C.inkSoft,flex:1,wordBreak:"break-all"}}>{me.email}</span>
+                    <BadgeCheck size={14} color={C.green}/>
+                  </div>
+                </div>
+                <div>
+                  <div style={{fontSize:11,fontWeight:600,color:C.inkSoft,marginBottom:5,textTransform:"uppercase",letterSpacing:".07em"}}>Kantoni</div>
+                  <div style={{display:"flex",alignItems:"center",gap:10,background:"#fff",borderRadius:10,border:`1.5px solid ${C.line}`,padding:"2px 14px 2px 10px"}}>
+                    <MapPin size={14} color={C.inkSoft}/>
+                    <select className="vv-input" style={{border:"none",background:"transparent",padding:"9px 0",flex:1,fontSize:14}} value={obKanton} onChange={e=>setObKanton(e.target.value)}>
+                      <option value="">Zgjidh kantonin…</option>
+                      {KANTON_OPTIONS.map(k=><option key={k}>{k}</option>)}
+                      {obKanton&&!KANTON_OPTIONS.includes(obKanton)&&<option>{obKanton}</option>}
+                    </select>
+                  </div>
+                </div>
                 <div>
                   <div style={{fontSize:11,fontWeight:600,color:C.inkSoft,marginBottom:5,textTransform:"uppercase",letterSpacing:".07em"}}>Numri i telefonit</div>
                   <div style={{display:"flex",alignItems:"center",gap:10,background:"#fff",borderRadius:10,border:`1.5px solid ${C.line}`,padding:"2px 14px 2px 10px"}}>
@@ -4092,9 +4142,10 @@ function OnboardingFlow({me,onDone,onSavePhone}){
                   </div>
                 </div>
               </div>
+              {obErr&&<div className="vv-login-err" role="alert" style={{marginBottom:12}}>{obErr}</div>}
               <div style={{display:"flex",gap:10}}>
                 <button className="vv-btn ghost" style={{flex:1,justifyContent:"center"}} onClick={prev}><ChevronLeft size={15}/>Kthehu</button>
-                <button className="vv-btn" style={{flex:2,justifyContent:"center"}} onClick={()=>{onSavePhone&&onSavePhone(phone);next();}}>Konfirmo<ChevronRight size={15}/></button>
+                <button className="vv-btn" style={{flex:2,justifyContent:"center"}} onClick={confirmProfile}>Konfirmo<ChevronRight size={15}/></button>
               </div>
             </div>
           </>}
@@ -5257,5 +5308,53 @@ function TwintLivePanel({number,amount,reference,onPaid}){
       </button>
       <div style={{fontSize:12,color:C.inkSoft,textAlign:"center"}}>Pagesa shfaqet si <b>Paguar</b> pasi kryesia ta konfirmojë.</div>
     </div>
+  );
+}
+
+/* ── Member self-edit (Profili im + onboarding) ─────────────────────────── */
+const SELF_EDIT_FIELDS=["name","phone","kanton","prof","dob"];
+const KANTON_OPTIONS=["Zürich","Aargau","Thurgau","St. Gallen","Schaffhausen","Bern","Basel","Luzern","Zug","Schwyz","Solothurn","Graubünden","Ticino","Vaud","Genève","Tjetër"];
+
+function ProfileEditForm({me,onSave,onCancel}){
+  const [f,setF]=useState({
+    name:me.name||"",phone:me.phone||"",kanton:me.kanton&&me.kanton!=="—"?me.kanton:"",
+    prof:me.prof||"",dob:me.dob&&me.dob!=="—"?me.dob:"",
+  });
+  const [err,setErr]=useState("");
+  const set=(k,v)=>setF(x=>({...x,[k]:v}));
+  function submit(e){
+    e.preventDefault();
+    if(f.name.trim().length<2){setErr("Shkruaj emrin dhe mbiemrin.");return;}
+    if(f.dob&&!/^\d{2}\.\d{2}\.\d{4}$/.test(f.dob.trim())){setErr("Datëlindja duhet të jetë në formatin dd.mm.vvvv");return;}
+    const changed={};
+    for(const k of SELF_EDIT_FIELDS){const v=f[k].trim();if(v!==(me[k]||"")) changed[k]=v;}
+    if(Object.keys(changed).length&&onSave(changed)===false) return;
+    onCancel&&onCancel(true);
+  }
+  return(
+    <form className="vv-login-form" onSubmit={submit} noValidate>
+      <div><label htmlFor="pe-name">Emri dhe mbiemri *</label>
+        <input id="pe-name" className="vv-input" value={f.name} onChange={e=>set("name",e.target.value)} autoComplete="name"/></div>
+      <div><label>Email</label>
+        <input className="vv-input" value={me.email||""} disabled/>
+        <div style={{fontSize:12,color:C.inkSoft,marginTop:4}}>Email-i përdoret për hyrje. Për ta ndryshuar, kontakto kryesinë.</div></div>
+      <div><label htmlFor="pe-phone">Telefon</label>
+        <input id="pe-phone" className="vv-input" type="tel" placeholder="+41 XX XXX XX XX" value={f.phone} onChange={e=>set("phone",e.target.value)} autoComplete="tel"/></div>
+      <div><label htmlFor="pe-kanton">Kantoni</label>
+        <select id="pe-kanton" className="vv-input" value={f.kanton} onChange={e=>set("kanton",e.target.value)}>
+          <option value="">Zgjidh kantonin…</option>
+          {KANTON_OPTIONS.map(k=><option key={k}>{k}</option>)}
+          {f.kanton&&!KANTON_OPTIONS.includes(f.kanton)&&<option>{f.kanton}</option>}
+        </select></div>
+      <div><label htmlFor="pe-prof">Profesioni</label>
+        <input id="pe-prof" className="vv-input" value={f.prof} onChange={e=>set("prof",e.target.value)}/></div>
+      <div><label htmlFor="pe-dob">Datëlindja</label>
+        <input id="pe-dob" className="vv-input" placeholder="dd.mm.vvvv" value={f.dob} onChange={e=>set("dob",e.target.value)}/></div>
+      {err&&<div className="vv-login-err" role="alert">{err}</div>}
+      <div style={{display:"flex",gap:10}}>
+        {onCancel&&<button type="button" className="vv-btn ghost" style={{flex:1,justifyContent:"center"}} onClick={()=>onCancel(false)}>Anulo</button>}
+        <button type="submit" className="vv-btn" style={{flex:2,justifyContent:"center"}}><CheckCircle2 size={15}/>Ruaj</button>
+      </div>
+    </form>
   );
 }
