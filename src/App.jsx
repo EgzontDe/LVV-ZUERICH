@@ -78,7 +78,7 @@ const css = `
 .vv-row{transition:background .1s}
 .vv-row:hover{background:#F8F7F3}
 .vv-row:last-child td{border-bottom:none}
-.vv-input{width:100%;border:1.5px solid rgba(23,18,16,.11);border-radius:10px;padding:10px 14px;font-size:14px;background:#fff;outline:none;transition:all .15s;box-shadow:0 1px 3px rgba(23,18,16,.04)}
+.vv-input{width:100%;box-sizing:border-box;border:1.5px solid rgba(23,18,16,.11);border-radius:10px;padding:10px 14px;font-size:14px;background:#fff;outline:none;transition:all .15s;box-shadow:0 1px 3px rgba(23,18,16,.04)}
 .vv-input:focus{border-color:#E2231A;box-shadow:0 0 0 3px rgba(226,35,26,.10)}
 .vv-overlay{position:fixed;inset:0;background:rgba(23,18,16,.52);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}
 .vv-modal{background:#fff;border-radius:22px;width:100%;max-width:520px;max-height:90vh;overflow:auto;box-shadow:0 30px 90px rgba(23,18,16,.22),0 4px 16px rgba(23,18,16,.10)}
@@ -119,6 +119,22 @@ const css = `
   .vv-chat-btn{right:16px;bottom:16px}
   .vv-notif-panel{position:fixed;top:60px;right:12px;left:12px;width:auto}
   .vv-search-results{position:fixed;left:12px;right:12px;top:64px;min-width:0;width:auto}
+  /* Phone: header in two rows (title + actions, then a full-width search) */
+  .vv-top-search{order:3;flex:1 1 100%}
+  .vv-top-search input{width:100%!important}
+  .vv-sync-time{display:none!important}
+  .vv-user-chip{padding:4px!important}
+  .vv-top>div:first-child{flex:1 1 auto;min-width:0}
+  /* Compact tables; secondary columns hidden */
+  .vv-th,.vv-td{padding:10px 10px}
+  .vv-td{font-size:13px}
+  .vv-hide-sm{display:none}
+}
+/* Grid/flex children may shrink below their content (inputs and tables no longer push cards wider) */
+@media(max-width:820px){
+  .vv-content div[style*="grid-template-columns"]>*{min-width:0}
+  .vv-content input,.vv-content select,.vv-content textarea{min-width:0;max-width:100%}
+  .vv-card:has(>table),.vv-card:has(>div>table){overflow-x:auto!important}
 }
 @media(max-width:760px){
   .vv-login{flex-direction:column;min-height:auto}
@@ -581,7 +597,9 @@ function InstallBanner(){
 }
 
 function useCountUp(target,duration=900){
-  const num=typeof target==="number"?target:parseFloat(String(target).replace(/[^0-9.]/g,""));
+  // Animate only plain amounts like 42 or "CHF 1200"; dates such as "21.11.2026" are shown as they are.
+  const single=typeof target==="number"||/^\D*\d+(?:\.\d+)?\D*$/.test(String(target));
+  const num=typeof target==="number"?target:single?parseFloat(String(target).replace(/[^0-9.]/g,"")):NaN;
   const isNum=!isNaN(num)&&num>0;
   const [val,setVal]=useState(isNum?0:target);
   useEffect(()=>{
@@ -742,7 +760,7 @@ function ApplyForm({onBack}){
 }
 
 function PublicHome({onLogin,onApply}){
-  const pubEvents=seedEvents.filter(e=>e.public&&!e.past);
+  const pubEvents=seedEvents.filter(e=>e.public&&!e.past&&!isPastDate(e.date));
   const [menuOpen,setMenuOpen]=useState(false);
   return(
     <div style={{fontFamily:"'Inter',sans-serif",color:"#171210",background:"#EDECE8",minHeight:"100vh"}}>
@@ -1228,10 +1246,10 @@ function Shell({role,tab,setTab,onLogout,children,adminTabs,memberTabs,dark,onTo
           </div>
           <GlobalSearch role={role} setTab={setTab} members={members} events={events} announcements={announcements}/>
           <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",justifyContent:"flex-end"}}>
-            <div style={{fontSize:11,color:C.inkSoft,display:"flex",alignItems:"center",gap:4,opacity:.7}}>
+            <div className="vv-sync-time" style={{fontSize:11,color:C.inkSoft,display:"flex",alignItems:"center",gap:4,opacity:.7}}>
               <span>{syncedAt.toLocaleTimeString("sq-AL",{hour:"2-digit",minute:"2-digit"})}</span>
             </div>
-            <button onClick={trigger} className="vv-btn ghost" style={{padding:"7px 10px",borderRadius:10}} title="Rifresko" disabled={refreshing}>
+            <button onClick={trigger} className="vv-btn ghost vv-hide-sm" style={{padding:"7px 10px",borderRadius:10}} title="Rifresko" disabled={refreshing}>
               <RefreshCw size={14} className={refreshing?"vv-spin":""}/>
             </button>
             <button onClick={onLangToggle} className="vv-btn ghost" style={{padding:"6px 11px",fontSize:13,borderRadius:10,fontWeight:700,letterSpacing:".02em"}} title="Ndrysho gjuhën / Sprache wechseln">
@@ -1252,9 +1270,9 @@ function Shell({role,tab,setTab,onLogout,children,adminTabs,memberTabs,dark,onTo
                 </>
               )}
             </div>
-            <div style={{display:"flex",alignItems:"center",gap:9,background:"#fff",border:"1.5px solid rgba(23,18,16,.09)",borderRadius:12,padding:"6px 12px 6px 8px",boxShadow:"0 1px 4px rgba(23,18,16,.06)"}}>
+            <div className="vv-user-chip" title={`${meName||""} · ${roleLabel||""}`} style={{display:"flex",alignItems:"center",gap:9,background:"#fff",border:"1.5px solid rgba(23,18,16,.09)",borderRadius:12,padding:"6px 12px 6px 8px",boxShadow:"0 1px 4px rgba(23,18,16,.06)"}}>
               <div style={{width:28,height:28,borderRadius:"50%",background:`linear-gradient(135deg,${C.red},#8C1009)`,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700,fontSize:12}}>{(meName||"?").trim().charAt(0).toUpperCase()}</div>
-              <div style={{lineHeight:1.2}}>
+              <div className="vv-hide-sm" style={{lineHeight:1.2}}>
                 <div style={{fontSize:13,fontWeight:600}}>{shortName(meName)}</div>
                 <div style={{fontSize:11,color:C.inkSoft}}>{roleLabel||(role==="admin"?"Admin":"Anëtar")}</div>
               </div>
@@ -1280,9 +1298,10 @@ function Shell({role,tab,setTab,onLogout,children,adminTabs,memberTabs,dark,onTo
 }
 
 
-function MemberHome({me,events,announcements,polls}){
+function MemberHome({me,events,announcements,polls,live=false}){
   const upcoming=events.filter(e=>!e.past&&e.rsvp.includes(me.id));
-  const myRef=seedReferrals.find(r=>r.name===me.name)||{code:"WTH-XX",referred:0,names:[]};
+  // Real login: a personal code from the member's initials and number (demo: sample referral data).
+  const myRef=live?{code:referralCode(me),referred:0,names:[]}:(seedReferrals.find(r=>r.name===me.name)||{code:referralCode(me),referred:0,names:[]});
   const hasVoted=polls&&polls.some(p=>p.voted.includes(me.id));
   const hasEvent=events.some(e=>e.rsvp.includes(me.id));
   const hasReferred=myRef.referred>0;
@@ -1299,7 +1318,8 @@ function MemberHome({me,events,announcements,polls}){
   return(
     <div>
       <SectionTitle title={`Mirëmëngjesi, ${me.name.split(" ")[0]}!`} sub="Lëvizja VETËVENDOSJE! — Pika Winterthur"/>
-      <ElectionCountdown compact/>
+      {/* Sample election banner: demo only until elections are managed in the database. */}
+      {!live&&<ElectionCountdown compact/>}
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:20}}>
         <StatCard label="Statusi" value="Aktiv" color={C.green} icon={<CheckCircle2 size={28}/>}/>
         <StatCard label="Pagesa 2026" value={me.pay==="paguar"?"Paguar":"Papaguar"} color={me.pay==="paguar"?C.green:C.amber} icon={<CreditCard size={28}/>}/>
@@ -1524,10 +1544,19 @@ function MemberInvoices({me,live=null}){
   const feeOverride=live&&live.settings&&live.settings.fee_override!=null&&!me.exempt?Number(live.settings.fee_override):null;
   const amount=feeOverride!=null?feeOverride:baseAmount;
   const twint=live?{number:live.settings&&live.settings.twint_number,reference:payRef(me.id)}:null;
-  const invoices=[
-    {id:"F-2026-005",date:"01.01.2026",desc:"Kuota vjetore 2026",amount,status:paid2026?"paguar":"papaguar"},
-    {id:"F-2025-005",date:"01.01.2025",desc:"Kuota vjetore 2025",amount:150,status:"paguar"},
-    {id:"F-2024-005",date:"01.01.2024",desc:"Kuota vjetore 2024",amount:150,status:"paguar"},
+  const year=new Date().getFullYear();
+  const invNo=y=>`F-${y}-${Number(me.id)<1000?String(me.id).padStart(3,"0"):me.id}`;
+  // Real login: this year's invoice plus earlier years that have a confirmed payment (no invented history).
+  const myConfirmed=live?live.payments.filter(p=>p.member_id===me.id&&p.status==="konfirmuar"):[];
+  const invoices=live?[
+    {id:invNo(year),date:`01.01.${year}`,desc:`Kuota vjetore ${year}`,
+      amount:(myConfirmed.find(p=>p.year===year)||{}).amount??amount,status:me.pay==="liruar"||me.exempt?"liruar":paid2026?"paguar":"papaguar"},
+    ...[...new Set(myConfirmed.map(p=>p.year).filter(y=>y<year))].sort((a,b)=>b-a).map(y=>(
+      {id:invNo(y),date:`01.01.${y}`,desc:`Kuota vjetore ${y}`,amount:myConfirmed.filter(p=>p.year===y).reduce((s,p)=>s+Number(p.amount),0),status:"paguar"})),
+  ]:[
+    {id:invNo(2026),date:"01.01.2026",desc:"Kuota vjetore 2026",amount,status:paid2026?"paguar":"papaguar"},
+    {id:invNo(2025),date:"01.01.2025",desc:"Kuota vjetore 2025",amount:150,status:"paguar"},
+    {id:invNo(2024),date:"01.01.2024",desc:"Kuota vjetore 2024",amount:150,status:"paguar"},
   ];
   return(
     <div>
@@ -1540,16 +1569,16 @@ function MemberInvoices({me,live=null}){
       <Card p={0} style={{overflow:"hidden"}}>
         <table style={{width:"100%",borderCollapse:"collapse"}}>
           <thead><tr>
-            <th className="vv-th">Nr. Faturës</th><th className="vv-th">Data</th>
+            <th className="vv-th">Nr. Faturës</th><th className="vv-th vv-hide-sm">Data</th>
             <th className="vv-th">Përshkrimi</th><th className="vv-th">Shuma</th>
             <th className="vv-th">Statusi</th><th className="vv-th"></th>
           </tr></thead>
           <tbody>{invoices.map(inv=>(
             <tr className="vv-row" key={inv.id}>
               <td className="vv-td" style={{fontWeight:600,fontFamily:"monospace",fontSize:13}}>{inv.id}</td>
-              <td className="vv-td" style={{color:C.inkSoft}}>{inv.date}</td>
+              <td className="vv-td vv-hide-sm" style={{color:C.inkSoft}}>{inv.date}</td>
               <td className="vv-td">{inv.desc}</td>
-              <td className="vv-td" style={{fontWeight:700}}>CHF {inv.amount}</td>
+              <td className="vv-td" style={{fontWeight:700,whiteSpace:"nowrap"}}>CHF {inv.amount}</td>
               <td className="vv-td">{pendingLive&&inv.status==="papaguar"?<span className="vv-chip" style={{background:"#E0F2FE",color:"#0369A1"}}><Clock size={11}/>Në pritje</span>:payChip(inv.status)}</td>
               <td className="vv-td">
                 {inv.status==="papaguar"&&!me.exempt&&!pendingLive&&(
@@ -1578,7 +1607,7 @@ function MemberInvoices({me,live=null}){
           </div>
           <div style={{flex:1}}>
             <div style={{fontWeight:700,fontSize:14,color:"#92400E"}}>Kuota 2026 nuk është paguar</div>
-            <div style={{fontSize:13,color:"#92400E",marginTop:3,opacity:.85}}>Paguaj online me TWINT, PostFinance ose transfertë bankare</div>
+            <div style={{fontSize:13,color:"#92400E",marginTop:3,opacity:.85}}>{live?"Paguaj me TWINT, me referencën tënde personale":"Paguaj online me TWINT, PostFinance ose transfertë bankare"}</div>
           </div>
           <button className="vv-btn" style={{background:"#92400E",boxShadow:"0 4px 14px rgba(146,64,14,.30)",whiteSpace:"nowrap"}} onClick={()=>setPayOpen(true)}>
             <CreditCard size={14}/>Paguaj tani
@@ -1696,16 +1725,27 @@ function MemberDonate({me,live=null}){
   const [amount,setAmount]=useState("");
   const [msg,setMsg]=useState("");
   const [toast,showToast]=useToast();
-  const total=donations.reduce((s,d)=>s+d.amount,0);
+  const [twintFor,setTwintFor]=useState(null);
+  // Only confirmed donations count; a member's own TWINT donation waits for Financat.
+  const confirmed=donations.filter(isConfirmedDonation);
+  const myPending=live?donations.filter(d=>d.memberId===me.id&&d.status==="ne_pritje"):[];
+  const total=confirmed.reduce((s,d)=>s+d.amount,0);
   const pct=Math.min(100,Math.round(total/DONATION_TARGET*100));
   function donate(e){
     e.preventDefault();
     const amt=parseFloat(amount);
     if(!amt||amt<5){showToast("Shuma minimale është CHF 5");return;}
     if(live&&!me.id){showToast("Llogaria jote nuk është e lidhur me një anëtar.");return;}
-    setDonations(prev=>[{id:Date.now(),from:me.name,amount:amt,date:live?todayCH():"21.06.2026",msg,...(live?{memberId:me.id}:{})},...prev]);
+    if(live){setTwintFor(amt);return;}
+    setDonations(prev=>[{id:Date.now(),from:me.name,amount:amt,date:"21.06.2026",msg},...prev]);
     setAmount("");setMsg("");
     showToast(`Faleminderit! CHF ${amt} u regjistrua.`);
+  }
+  function reportTwint(){
+    const amt=twintFor;
+    setDonations(prev=>[{id:Date.now(),from:me.name,amount:amt,date:todayCH(),msg,memberId:me.id,status:"ne_pritje"},...prev]);
+    setTwintFor(null);setAmount("");setMsg("");
+    showToast(`Faleminderit! Donacioni CHF ${amt} pret konfirmimin e Financave.`);
   }
   return(
     <div>
@@ -1723,7 +1763,7 @@ function MemberDonate({me,live=null}){
           <div style={{fontSize:12,color:C.inkSoft,marginTop:6}}>{pct}% e arritur</div>
         </Card>
         <Card>
-          <form onSubmit={donate} style={{display:"grid",gap:12}}>
+          <form onSubmit={donate} style={{display:"grid",gridTemplateColumns:"minmax(0,1fr)",gap:12}}>
             <div className="vv-eyebrow" style={{marginBottom:4}}>Bëj një dhuratë</div>
             <div style={{display:"flex",gap:8}}>{[10,20,50,100].map(v=>(
               <button key={v} type="button" onClick={()=>setAmount(String(v))} className={`vv-btn${amount==v?"":" ghost"}`} style={{flex:1,justifyContent:"center",fontSize:13,padding:"7px 0"}}>{v}</button>
@@ -1736,18 +1776,24 @@ function MemberDonate({me,live=null}){
       </div>
       <Card p={0} style={{overflow:"hidden"}}>
         <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.line}`,fontWeight:700,fontSize:14}}>Donatorët e fundit</div>
+        {myPending.length>0&&<div style={{padding:"10px 16px",background:"#E0F2FE",color:"#0369A1",fontSize:13,display:"flex",gap:8,alignItems:"center"}}>
+          <Clock size={14}/>Donacioni yt {myPending.map(d=>`CHF ${d.amount}`).join(", ")} pret konfirmimin e Financave.
+        </div>}
         <table style={{width:"100%",borderCollapse:"collapse"}}>
-          <thead><tr><th className="vv-th">Donatori</th><th className="vv-th">Shuma</th><th className="vv-th">Data</th><th className="vv-th">Mesazhi</th></tr></thead>
-          <tbody>{donations.map(d=>(
+          <thead><tr><th className="vv-th">Donatori</th><th className="vv-th">Shuma</th><th className="vv-th vv-hide-sm">Data</th><th className="vv-th vv-hide-sm">Mesazhi</th></tr></thead>
+          <tbody>{confirmed.map(d=>(
             <tr className="vv-row" key={d.id}>
               <td className="vv-td" style={{fontWeight:600}}>{d.from}</td>
-              <td className="vv-td"><b>CHF {d.amount}</b></td>
-              <td className="vv-td" style={{color:C.inkSoft}}>{d.date}</td>
-              <td className="vv-td" style={{color:C.inkSoft,fontSize:13}}>{d.msg||"—"}</td>
+              <td className="vv-td" style={{whiteSpace:"nowrap"}}><b>CHF {d.amount}</b></td>
+              <td className="vv-td vv-hide-sm" style={{color:C.inkSoft}}>{d.date}</td>
+              <td className="vv-td vv-hide-sm" style={{color:C.inkSoft,fontSize:13}}>{d.msg||"—"}</td>
             </tr>
           ))}</tbody>
         </table>
       </Card>
+      {live&&<Modal open={twintFor!=null} onClose={()=>setTwintFor(null)} title={`Dono CHF ${twintFor||""}`} width={480}>
+        <TwintLivePanel number={live.settings&&live.settings.twint_number} amount={twintFor} reference={`VV-D-${me.id}`} onPaid={reportTwint}/>
+      </Modal>}
       <Toast msg={toast}/>
     </div>
   );
@@ -2142,31 +2188,31 @@ tr:last-child td{border-bottom:none}
   w.document.close();
 }
 
-function AdminHome({members,events,live=false}){
+function AdminHome({members,events,live=false,quota=null,fullAdmin=true}){
   const paid=members.filter(m=>m.pay==="paguar").length;
   const unpaid=members.filter(m=>m.pay==="papaguar").length;
   const active=members.filter(m=>m.status==="aktiv").length;
   const upcoming=events.filter(e=>!e.past);
   return(
     <div>
-      <SectionTitle title="Paneli kryesor" sub={`Pika Winterthur · ${new Date().toLocaleDateString("sq-AL")}`} action={
+      <SectionTitle title="Paneli kryesor" sub={`Pika Winterthur · ${todayCH()}`} action={
         <button className="vv-btn ghost" onClick={()=>generateReport(members,events)}>
           <FileDown size={15}/>Gjenero Raport PDF
         </button>
       }/>
-      <ElectionCountdown/>
+      {!live&&<ElectionCountdown/>}
       <BirthdaysWidget members={members}/>
-      {live&&<LiveDbStats/>}
+      {live&&<LiveDbStats fullAdmin={fullAdmin}/>}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:24}}>
         <StatCard label="Anëtarë total" value={members.length} color={C.red} icon={<Users size={28}/>} delay={0}/>
         <StatCard label="Anëtarë aktivë" value={active} color={C.green} icon={<CheckCircle2 size={28}/>} delay={80}/>
         <StatCard label="Kuota paguar" value={paid} color={C.green} icon={<CreditCard size={28}/>} sub={`${unpaid} papaguar`} delay={160}/>
         <StatCard label="Eventet e ardhshme" value={upcoming.length} icon={<Calendar size={28}/>} delay={240}/>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:20}}>
+      <div style={{display:"grid",gridTemplateColumns:live&&!fullAdmin?"1fr":"2fr 1fr",gap:20}}>
         <Card>
-          <div style={{fontWeight:700,fontSize:15,marginBottom:4}}>Progresi i kuotave 2026</div>
-          <div style={{fontSize:13,color:C.inkSoft,marginBottom:14}}>CHF {paid*KUOTA} nga CHF {members.filter(m=>!m.exempt).length*KUOTA} target</div>
+          <div style={{fontWeight:700,fontSize:15,marginBottom:4}}>Progresi i kuotave {new Date().getFullYear()}</div>
+          <div style={{fontSize:13,color:C.inkSoft,marginBottom:14}}>CHF {quota?quota.collected:paid*KUOTA} nga CHF {quota?quota.target:members.filter(m=>!m.exempt).length*KUOTA} target</div>
           <div style={{background:C.paper,borderRadius:999,height:14,overflow:"hidden",marginBottom:8}}>
             <div style={{width:`${paid/members.filter(m=>!m.exempt).length*100}%`,height:"100%",background:C.green,borderRadius:999}}/>
           </div>
@@ -2176,7 +2222,7 @@ function AdminHome({members,events,live=false}){
             <span style={{color:C.inkSoft}}>{members.filter(m=>m.exempt).length} liruar</span>
           </div>
         </Card>
-        <Card>
+        {(!live||fullAdmin)&&<Card>
           <div style={{fontWeight:700,fontSize:15,marginBottom:14}}>Log aktiviteti</div>
           {live?<AuditFeed limit={6} compact/>:seedLog.map(l=>(
             <div key={l.id} style={{padding:"9px 0",borderBottom:`1px solid ${C.line}`,fontSize:13}}>
@@ -2185,7 +2231,7 @@ function AdminHome({members,events,live=false}){
               <div style={{fontSize:11,color:C.inkSoft,marginTop:2}}>{l.date}</div>
             </div>
           ))}
-        </Card>
+        </Card>}
       </div>
     </div>
   );
@@ -2331,8 +2377,9 @@ function AdminMembers({members,setMembers,events=[],polls=[],live=false}){
   );
 }
 
-function AdminPayments({members,setMembers,live=null}){
+function AdminPayments({members,setMembers,live=null,fee=KUOTA}){
   const [toast,showToast]=useToast();
+  const year=new Date().getFullYear();
   async function confirmPayment(p){
     if(!(await live.setStatus(p.id,"konfirmuar"))) return;
     setMembers(prev=>prev.map(m=>m.id===p.member_id?{...m,pay:"paguar"}:m));
@@ -2344,15 +2391,31 @@ function AdminPayments({members,setMembers,live=null}){
   const paid=members.filter(m=>m.pay==="paguar");
   const unpaid=members.filter(m=>m.pay==="papaguar"&&!m.exempt);
   const exempt=members.filter(m=>m.exempt);
-  const total=paid.length*KUOTA;
-  function togglePay(id){setMembers(prev=>prev.map(m=>m.id===id?{...m,pay:m.pay==="paguar"?"papaguar":"paguar"}:m));showToast("Pagesa u ndryshua!");}
+  // Real login: "collected" is the sum of confirmed payments this year, not paid members × fee.
+  const confirmedThisYear=live?live.payments.filter(p=>p.status==="konfirmuar"&&p.year===year):[];
+  const paidAmount=id=>live?confirmedThisYear.filter(p=>p.member_id===id).reduce((s,p)=>s+p.amount,0):KUOTA;
+  const total=live?confirmedThisYear.reduce((s,p)=>s+p.amount,0):paid.length*KUOTA;
+  async function togglePay(id){
+    const m=members.find(x=>x.id===id);
+    const toPaid=m.pay!=="paguar";
+    if(live){
+      // Server-side: records a cash payment (or cancels this year's), then updates the member.
+      if(!toPaid&&!window.confirm(`Anulo pagesën e ${m.name} për ${year}?`)) return;
+      const {error}=await supabase.rpc("admin_set_paid",{p_member:id,p_paid:toPaid,p_amount:fee,p_method:"kesh"});
+      if(error){dbError(error,"Pagesa nuk u ndryshua.");return;}
+      await live.reload();
+      showToast(toPaid?`${m.name}: pagesa me kesh CHF ${fee} u regjistrua.`:`Pagesa e ${m.name} u anulua.`);
+      return;
+    }
+    setMembers(prev=>prev.map(x=>x.id===id?{...x,pay:toPaid?"paguar":"papaguar"}:x));showToast("Pagesa u ndryshua!");
+  }
   return(
     <div>
-      <SectionTitle title="Pagesat" sub="Menaxhimi i kuotave të anëtarësisë 2026" action={
+      <SectionTitle title="Pagesat" sub={`Menaxhimi i kuotave të anëtarësisë ${year}`} action={
         <button className="vv-btn ghost" onClick={()=>exportCSV(members.map(m=>({
           "Emri":m.name,"Email":m.email,"Kantoni":m.kanton,
           "Statusi pagesës":m.exempt?"Liruar":m.pay==="paguar"?"Paguar":"Papaguar",
-          "Shuma CHF":m.exempt?0:m.pay==="paguar"?KUOTA:0,
+          "Shuma CHF":m.exempt?0:m.pay==="paguar"?paidAmount(m.id):0,
           "Anëtar që nga":m.joined,
         })),"pagesat-2026-vv-winterthur.csv")}>
           <Download size={14}/>Eksporto CSV
@@ -2379,7 +2442,7 @@ function AdminPayments({members,setMembers,live=null}){
           <div style={{fontWeight:700,fontSize:15,marginBottom:14,color:C.green}}>Kanë paguar ({paid.length})</div>
           {paid.map(m=>(
             <div key={m.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.line}`}}>
-              <div><div style={{fontWeight:600,fontSize:14}}>{m.name}</div><div style={{fontSize:12,color:C.inkSoft}}>CHF {KUOTA}</div></div>
+              <div><div style={{fontWeight:600,fontSize:14}}>{m.name}</div><div style={{fontSize:12,color:C.inkSoft}}>CHF {paidAmount(m.id)}</div></div>
               <button className="vv-link" onClick={()=>togglePay(m.id)}>Anullo</button>
             </div>
           ))}
@@ -2809,14 +2872,18 @@ function AdminRequests({live=null}={}){
       </div>
       <Card p={0} style={{overflow:"hidden"}}>
         <table style={{width:"100%",borderCollapse:"collapse"}}>
-          <thead><tr><th className="vv-th">Nga</th><th className="vv-th">Lloji</th><th className="vv-th">Data</th><th className="vv-th">Statusi</th><th className="vv-th"></th></tr></thead>
+          <thead><tr><th className="vv-th">Nga</th><th className="vv-th">Mesazhi</th><th className="vv-th vv-hide-sm">Data</th><th className="vv-th">Statusi</th><th className="vv-th vv-hide-sm"></th></tr></thead>
           <tbody>{filtered.map(r=>(
             <tr className="vv-row" key={r.id} style={{cursor:"pointer"}} onClick={()=>{setOpen(r.id);setReplyText(r.reply);}}>
               <td className="vv-td"><div style={{fontWeight:600}}>{r.from}</div><div style={{fontSize:12,color:C.inkSoft}}>{r.email}</div></td>
-              <td className="vv-td" style={{color:C.inkSoft}}>{r.type}</td>
-              <td className="vv-td" style={{color:C.inkSoft,fontSize:13}}>{r.date}</td>
+              <td className="vv-td" style={{maxWidth:360}}>
+                <div style={{fontSize:12,fontWeight:700,color:C.inkSoft}}>{r.type}</div>
+                {/* Preview so whoever answers can triage without opening each request */}
+                <div style={{fontSize:13,color:C.ink,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.msg}</div>
+              </td>
+              <td className="vv-td vv-hide-sm" style={{color:C.inkSoft,fontSize:13}}>{r.date}</td>
               <td className="vv-td">{reqChip(r.status)}</td>
-              <td className="vv-td"><button className="vv-link">Shiko →</button></td>
+              <td className="vv-td vv-hide-sm"><button className="vv-link">Shiko →</button></td>
             </tr>
           ))}
           {filtered.length===0&&<tr><td colSpan={5} className="vv-td" style={{textAlign:"center",color:C.inkSoft,padding:32}}>Nuk ka kërkesa.</td></tr>}
@@ -2920,21 +2987,28 @@ function AdminDonations({live=null}={}){
   const [open,setOpen]=useState(false);
   const [form,setForm]=useState({from:"",amount:"",msg:""});
   const [toast,showToast]=useToast();
-  const total=donations.reduce((s,d)=>s+d.amount,0);
+  const confirmed=donations.filter(isConfirmedDonation);
+  const pending=donations.filter(d=>d.status==="ne_pritje");
+  const total=confirmed.reduce((s,d)=>s+d.amount,0);
   const pct=Math.min(100,Math.round(total/DONATION_TARGET*100));
+  function setDonationStatus(d,status){
+    setDonations(prev=>prev.map(x=>x.id===d.id?{...x,status}:x));
+    showToast(status==="konfirmuar"?`Donacioni CHF ${d.amount} u konfirmua.`:"Donacioni u refuzua.");
+  }
   function add(e){
     e.preventDefault();
     const amt=parseFloat(form.amount);
     if(!form.from||!amt){showToast("Plotëso fushat");return;}
     if(live&&amt<5){showToast("Shuma minimale është CHF 5");return;}
-    setDonations(prev=>[{id:Date.now(),from:form.from,amount:amt,date:live?todayCH():"21.06.2026",msg:form.msg},...prev]);
+    // Recorded by Financat (e.g. cash): confirmed straight away.
+    setDonations(prev=>[{id:Date.now(),from:form.from,amount:amt,date:live?todayCH():"21.06.2026",msg:form.msg,...(live?{status:"konfirmuar"}:{})},...prev]);
     setOpen(false);setForm({from:"",amount:"",msg:""});showToast("Donacioni u regjistrua!");
   }
   return(
     <div>
       <SectionTitle title="Donacionet" action={
         <div style={{display:"flex",gap:8}}>
-          <button className="vv-btn ghost" onClick={()=>exportCSV(donations.map(d=>({
+          <button className="vv-btn ghost" onClick={()=>exportCSV(confirmed.map(d=>({
             "Donatori":d.from,"Shuma CHF":d.amount,"Data":d.date,"Mesazhi":d.msg||"",
           })),"donacionet-vv-winterthur.csv")}><Download size={14}/>CSV</button>
           <button className="vv-btn" onClick={()=>setOpen(true)}><Plus size={15}/>Regjistro donacion</button>
@@ -2948,17 +3022,38 @@ function AdminDonations({live=null}={}){
           <div style={{background:C.paper,borderRadius:999,height:12,overflow:"hidden"}}>
             <div style={{width:`${pct}%`,height:"100%",background:C.red,borderRadius:999}}/>
           </div>
-          <div style={{fontSize:12,color:C.inkSoft,marginTop:6}}>{pct}% e arritur · {donations.length} donatorë</div>
+          <div style={{fontSize:12,color:C.inkSoft,marginTop:6}}>{pct}% e arritur · {confirmed.length} donatorë</div>
         </Card>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-          <StatCard label="Donacioni mesatar" value={`CHF ${Math.round(total/donations.length)}`} icon={<Heart size={24}/>}/>
-          <StatCard label="Donacioni më i madh" value={`CHF ${Math.max(...donations.map(d=>d.amount))}`} color={C.red} icon={<Star size={24}/>}/>
+          <StatCard label="Donacioni mesatar" value={`CHF ${confirmed.length?Math.round(total/confirmed.length):0}`} icon={<Heart size={24}/>}/>
+          <StatCard label="Donacioni më i madh" value={`CHF ${confirmed.length?Math.max(...confirmed.map(d=>d.amount)):0}`} color={C.red} icon={<Star size={24}/>}/>
         </div>
       </div>
+      {pending.length>0&&<Card p={0} style={{overflow:"hidden",marginBottom:20,border:"1.5px solid #FCD34D"}}>
+        <div style={{padding:"14px 18px",background:"#FEF3C7",display:"flex",alignItems:"center",gap:8}}>
+          <AlertCircle size={16} color="#92400E"/>
+          <b style={{color:"#92400E",fontSize:14}}>Donacione me TWINT në pritje të konfirmimit ({pending.length})</b>
+        </div>
+        <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse"}}>
+          <thead><tr><th className="vv-th">Donatori</th><th className="vv-th">Referenca</th><th className="vv-th">Shuma</th><th className="vv-th">Data</th><th className="vv-th"></th></tr></thead>
+          <tbody>{pending.map(d=>(
+            <tr className="vv-row" key={d.id}>
+              <td className="vv-td" style={{fontWeight:600}}>{d.from}</td>
+              <td className="vv-td" style={{fontFamily:"monospace",fontSize:13}}>VV-D-{d.memberId}</td>
+              <td className="vv-td" style={{fontWeight:700}}>CHF {d.amount}</td>
+              <td className="vv-td" style={{color:C.inkSoft}}>{d.date}</td>
+              <td className="vv-td"><div style={{display:"flex",gap:6,justifyContent:"flex-end"}}>
+                <button className="vv-btn grn" style={{fontSize:12,padding:"6px 12px"}} onClick={()=>setDonationStatus(d,"konfirmuar")}><CheckCircle2 size={13}/>Konfirmo</button>
+                <button className="vv-btn ghost" style={{fontSize:12,padding:"6px 12px"}} onClick={()=>setDonationStatus(d,"refuzuar")}>Refuzo</button>
+              </div></td>
+            </tr>
+          ))}</tbody>
+        </table></div>
+      </Card>}
       <Card p={0} style={{overflow:"hidden"}}>
         <table style={{width:"100%",borderCollapse:"collapse"}}>
           <thead><tr><th className="vv-th">Donatori</th><th className="vv-th">Shuma</th><th className="vv-th">Data</th><th className="vv-th">Mesazhi</th></tr></thead>
-          <tbody>{donations.map(d=>(
+          <tbody>{confirmed.map(d=>(
             <tr className="vv-row" key={d.id}>
               <td className="vv-td" style={{fontWeight:600}}>{d.from}</td>
               <td className="vv-td"><b style={{color:C.red}}>CHF {d.amount}</b></td>
@@ -3058,7 +3153,7 @@ function AdminPolls({polls,setPolls}){
   );
 }
 
-function AdminFinance({live=false}={}){return live?<LiveFinance/>:<AdminFinanceDemo/>;}
+function AdminFinance({live=false,quotaTarget}={}){return live?<LiveFinance quotaTarget={quotaTarget}/>:<AdminFinanceDemo/>;}
 function AdminFinanceDemo(){
   const total=FINANCE_MONTHS.reduce((s,m)=>s+m.collected,0);
   const maxVal=Math.max(...FINANCE_MONTHS.map(m=>m.collected),1);
@@ -3115,9 +3210,12 @@ function AdminFinanceDemo(){
   );
 }
 
-function AdminCalendar(){
-  const [month,setMonth]=useState(5);
-  const year=2026;
+function AdminCalendar({events=seedEvents}){
+  // Opens on the current month; the arrows also cross into the previous/next year.
+  const now=new Date();
+  const [cursor,setCursor]=useState({month:now.getMonth(),year:now.getFullYear()});
+  const {month,year}=cursor;
+  const shift=d=>setCursor(c=>{const m=c.month+d;return {month:(m+12)%12,year:c.year+Math.floor(m/12)};});
   const months=["Janar","Shkurt","Mars","Prill","Maj","Qershor","Korrik","Gusht","Shtator","Tetor","Nëntor","Dhjetor"];
   const daysInMonth=(m,y)=>new Date(y,m+1,0).getDate();
   const firstDay=(m,y)=>(new Date(y,m,1).getDay()+6)%7;
@@ -3126,17 +3224,15 @@ function AdminCalendar(){
   const cells=[];
   for(let i=0;i<startDay;i++)cells.push(null);
   for(let d=1;d<=days;d++)cells.push(d);
-  const eventsThisMonth=seedEvents.filter(ev=>{
-    const [d,m,y]=ev.date.split(".").map(Number);
-    return m-1===month&&y===year;
-  });
-  function eventsOnDay(d){return eventsThisMonth.filter(ev=>+ev.date.split(".")[0]===d);}
+  const eventsThisMonth=events.map(ev=>({ev,d:parseEventDate(ev.date)})).filter(x=>x.d&&x.d.getMonth()===month&&x.d.getFullYear()===year);
+  function eventsOnDay(d){return eventsThisMonth.filter(x=>x.d.getDate()===d).map(x=>x.ev);}
   return(
     <div>
       <SectionTitle title="Kalendari" sub={`${months[month]} ${year}`} action={
         <div style={{display:"flex",gap:8}}>
-          <button className="vv-btn ghost" style={{padding:"7px 12px"}} onClick={()=>setMonth(m=>Math.max(0,m-1))}>←</button>
-          <button className="vv-btn ghost" style={{padding:"7px 12px"}} onClick={()=>setMonth(m=>Math.min(11,m+1))}>→</button>
+          <button className="vv-btn ghost" style={{padding:"7px 12px"}} onClick={()=>shift(-1)} aria-label="Muaji i kaluar">←</button>
+          <button className="vv-btn ghost" style={{padding:"7px 12px"}} onClick={()=>setCursor({month:now.getMonth(),year:now.getFullYear()})}>Sot</button>
+          <button className="vv-btn ghost" style={{padding:"7px 12px"}} onClick={()=>shift(1)} aria-label="Muaji tjetër">→</button>
         </div>
       }/>
       <Card>
@@ -3146,12 +3242,12 @@ function AdminCalendar(){
           ))}
           {cells.map((d,i)=>{
             const evs=d?eventsOnDay(d):[];
-            const isToday=d===21&&month===5&&year===2026;
+            const isToday=d===now.getDate()&&month===now.getMonth()&&year===now.getFullYear();
             return(
               <div key={i} style={{minHeight:80,padding:"6px 8px",borderRight:`1px solid ${C.line}`,borderBottom:`1px solid ${C.line}`,background:isToday?"#FFF5F5":"#fff"}}>
                 {d&&<div style={{fontWeight:isToday?700:400,fontSize:13,color:isToday?C.red:C.ink,marginBottom:4}}>{d}</div>}
                 {evs.map(ev=>(
-                  <div key={ev.id} style={{background:C.red,color:"#fff",fontSize:10,borderRadius:4,padding:"2px 5px",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ev.title}</div>
+                  <div key={ev.id} title={`${ev.title} · ${ev.time||""}`} style={{background:ev.past?C.inkSoft:C.red,color:"#fff",fontSize:10,borderRadius:4,padding:"2px 5px",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ev.title}</div>
                 ))}
               </div>
             );
@@ -3472,7 +3568,7 @@ function AdminProcessverbal(){
   );
 }
 
-function AdminReminders({members,live=null}){
+function AdminReminders({members,live=null,events=seedEvents}){
   const unpaid=members.filter(m=>m.pay==="papaguar"&&!m.exempt);
   const [sentLocal,setSent]=useState([]);
   // Live mode: "sent" = members who already have an unread payment reminder in the app.
@@ -3494,7 +3590,7 @@ function AdminReminders({members,live=null}){
     setSent(unpaid.map(m=>m.id));
     showToast(`Kujtesat u dërguan tek ${unpaid.length} anëtarë!`);
   }
-  const upcoming=seedEvents.filter(e=>!e.past);
+  const upcoming=events.filter(e=>!e.past);
   const unregistered=members.filter(m=>upcoming[0]&&!upcoming[0].rsvp.includes(m.id));
   return(
     <div>
@@ -3531,7 +3627,11 @@ function AdminReminders({members,live=null}){
             <div key={ev.id} style={{padding:"12px 0",borderBottom:`1px solid ${C.line}`}}>
               <div style={{fontWeight:600,fontSize:14}}>{ev.title}</div>
               <div style={{fontSize:12,color:C.inkSoft,marginTop:3}}>{ev.date} · {ev.rsvp.length} të regjistruar</div>
-              <button className="vv-btn ghost" style={{fontSize:12,padding:"5px 10px",marginTop:8}} onClick={()=>showToast(`Kujtesë u dërgua për "${ev.title}"!`)}><Bell size={13}/>Kujto të gjithë</button>
+              {live
+                // Real login: there is no automatic event message yet, so share it in the WhatsApp group.
+                ?<a className="vv-btn ghost" style={{fontSize:12,padding:"5px 10px",marginTop:8,textDecoration:"none",color:"#1ebe5d",display:"inline-flex"}} target="_blank" rel="noopener noreferrer"
+                    href={waLink(`📅 Kujtesë: ${ev.title}\n🕐 ${ev.date} · ${ev.time||""}\n📍 ${ev.place||""}\n\nRegjistrohu në platformë te "Eventet".`)}>WhatsApp: kujto grupin</a>
+                :<button className="vv-btn ghost" style={{fontSize:12,padding:"5px 10px",marginTop:8}} onClick={()=>showToast(`Kujtesë u dërgua për "${ev.title}"!`)}><Bell size={13}/>Kujto të gjithë</button>}
             </div>
           ))}
           {upcoming.length===0&&<div style={{color:C.inkSoft,fontSize:13}}>Nuk ka evente të ardhshme.</div>}
@@ -3540,11 +3640,15 @@ function AdminReminders({members,live=null}){
       <Card>
         <div style={{fontWeight:700,fontSize:15,marginBottom:14}}>Kujtesat e planifikuara</div>
         <div style={{display:"grid",gap:10}}>
-          {[
+          {(live?[
+            // The two pg_cron jobs that really run (see migration 20261120000000).
+            {type:"Pagesa",desc:"Kujtesë në aplikacion për kuotën e papaguar — automatikisht çdo 1 të muajit, ora 08:00",next:nextMonthStart(),icon:<CreditCard size={16}/>},
+            {type:"Viti i ri",desc:"Kuotat e vitit të ri fillojnë si të papaguara",next:`01.01.${new Date().getFullYear()+1}`,icon:<Calendar size={16}/>},
+          ]:[
             {type:"Pagesa",desc:"Kujtesë kuota papaguar — dërguar automatikisht çdo 1 të muajit",next:"01.07.2026",icon:<CreditCard size={16}/>},
             {type:"Mbledhja",desc:`Kujtesë 24h para eventit: "${upcoming[0]?.title||"-"}"`,next:upcoming[0]?.date||"-",icon:<Calendar size={16}/>},
             {type:"Ditëlindja",desc:"Urime ditëlindja automatike për anëtarët",next:"Gjatë gjithë vitit",icon:<Cake size={16}/>},
-          ].map((r,i)=>(
+          ]).map((r,i)=>(
             <div key={i} style={{display:"flex",gap:12,alignItems:"center",padding:"12px 0",borderBottom:`1px solid ${C.line}`}}>
               <div style={{width:36,height:36,borderRadius:8,background:C.paper,display:"flex",alignItems:"center",justifyContent:"center",color:C.red}}>{r.icon}</div>
               <div style={{flex:1}}>
@@ -3854,7 +3958,7 @@ export default function App(){
   // liveAdmin: logged in with a staff role AND currently in the management view.
   const liveAdmin=live&&staffRole!=="member"&&role==="admin";
   const myAdminTabs=tabsForRole(staffRole,adminTabs);
-  const [dbMembers,setDbMembers]=useDbTable("members",live,{
+  const [dbMembers,setDbMembers,dbMembersLoaded]=useDbTable("members",live,{
     // Members may only change their own basic data; payment, status and role need the 'members' permission.
     onUpdate:async(old,row)=>{
       if(liveAdmin&&hasPerm(staffRole,"members")) return false;
@@ -3892,9 +3996,17 @@ export default function App(){
   const liveNotifs=useNotifications(live);
 
   const members=live?dbMembers:localMembers, setMembers=live?setDbMembers:setLocalMembers;
-  const events=live?dbEvents:localEvents, setEvents=live?setDbEvents:setLocalEvents;
+  // "past" follows the date: an event is past once its day is over, even if nobody ticked it.
+  const events=(live?dbEvents:localEvents).map(e=>e.past||!isPastDate(e.date)?e:{...e,past:true});
+  const setEvents=live?setDbEvents:setLocalEvents;
   const announcements=live?dbAnnouncements:localAnnouncements, setAnnouncements=live?setDbAnnouncements:setLocalAnnouncements;
   const polls=live?dbPolls:localPolls, setPolls=live?setDbPolls:setLocalPolls;
+  // One source for the membership-fee numbers (Paneli, Pagesat, Financat show the same figures).
+  const quotaFee=live&&liveSettings.fee_override!=null?Number(liveSettings.fee_override):KUOTA;
+  const quotaTarget=members.filter(m=>!m.exempt&&m.pay!=="liruar").length*quotaFee;
+  const quotaCollected=live
+    ?livePayments.payments.filter(p=>p.status==="konfirmuar"&&p.year===new Date().getFullYear()).reduce((s,p)=>s+p.amount,0)
+    :members.filter(m=>m.pay==="paguar").length*KUOTA;
 
   useEffect(()=>{
     const h=e=>showDbToast(e.detail);
@@ -3983,6 +4095,17 @@ export default function App(){
     return true;
   }
 
+  // Real login: wait for the member row before showing the wizard, otherwise it restarts at step 1 when the data arrives.
+  if(role==="member"&&showOnboarding&&live&&!dbMembersLoaded) return(
+    <LangCtx.Provider value={lang}>
+      <div className={`vv${dark?" vv--dark":""}`}>
+        <style>{css}</style>
+        <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",gap:10,color:C.inkSoft,fontSize:14}}>
+          <RefreshCw size={16} className="vv-spin"/>Duke ngarkuar profilin…
+        </div>
+      </div>
+    </LangCtx.Provider>
+  );
   if(role==="member"&&showOnboarding) return(
     <LangCtx.Provider value={lang}>
       <div className={`vv${dark?" vv--dark":""}`}>
@@ -4004,20 +4127,20 @@ export default function App(){
     switch(tab){
       case"home": return <>
         {live&&<PaymentReminderBanner notifs={liveNotifs.items.filter(n=>!n.read_at&&n.member_id===me.id)} paid={me.pay!=="papaguar"} onPay={()=>setTab("invoices")} onDismiss={liveNotifs.markAllRead}/>}
-        <MemberHome me={me} events={events} announcements={announcements} polls={polls}/>
+        <MemberHome me={me} events={events} announcements={announcements} polls={polls} live={live}/>
       </>;
       case"profile": return <MemberProfile me={me} onSave={saveMyProfile}/>;
       case"invoices": return <MemberInvoices me={me} live={live?{payments:livePayments.payments,report:livePayments.report,settings:liveSettings}:null}/>;
       case"events": return <MemberEvents me={me} events={events} onRsvpChange={handleRsvpChange}/>;
       case"news": return <MemberNews announcements={announcements} docs={seedDocs} news={seedNews} live={live}/>;
       case"card": return <MemberCard me={me}/>;
-      case"donate": return <MemberDonate me={me} live={live?{donations:dbDonations,setDonations:setDbDonations}:null}/>;
+      case"donate": return <MemberDonate me={me} live={live?{donations:dbDonations,setDonations:setDbDonations,settings:liveSettings}:null}/>;
       case"polls": return <MemberPolls me={me} polls={polls} setPolls={setPolls}/>;
       case"messages": return <MemberMessages me={me} live={live?{requests:dbRequests,setRequests:setDbRequests}:null}/>;
       // Real login: only the uploaded minutes/documents; the sample minutes are demo data.
       case"minutes": return live?<DocumentsPanel canManage={false}/>:<MemberMinutes members={members}/>;
       case"meso": return <MemberMeso/>;
-      default: return <MemberHome me={me} events={events} announcements={announcements} polls={polls}/>;
+      default: return <MemberHome me={me} events={events} announcements={announcements} polls={polls} live={live}/>;
     }
   }
 
@@ -4025,13 +4148,13 @@ export default function App(){
     // A tab this role may not open (e.g. via search) falls back to the dashboard.
     const allowed=myAdminTabs.some(t=>t.key===tab);
     switch(allowed?tab:"home"){
-      case"home": return <AdminHome members={members} events={events} live={liveAdmin}/>;
+      case"home": return <AdminHome members={members} events={events} live={liveAdmin} quota={{collected:quotaCollected,target:quotaTarget}} fullAdmin={isFullAdmin(staffRole)}/>;
       case"members": return <AdminMembers members={members} setMembers={setMembers} events={events} polls={polls} live={live}/>;
       case"onboarding": return <AdminOnboarding live={liveAdmin?{apps:dbApplications,setApps:setDbApplications,members,setMembers}:null}/>;
-      case"payments": return <AdminPayments members={members} setMembers={setMembers} live={liveAdmin?livePayments:null}/>;
-      case"finance": return <AdminFinance live={liveAdmin}/>;
+      case"payments": return <AdminPayments members={members} setMembers={setMembers} live={liveAdmin?livePayments:null} fee={quotaFee}/>;
+      case"finance": return <AdminFinance live={liveAdmin} quotaTarget={quotaTarget}/>;
       case"events": return <AdminEvents events={events} setEvents={setEvents} members={members}/>;
-      case"calendar": return <AdminCalendar/>;
+      case"calendar": return <AdminCalendar events={events}/>;
       case"checkin": return <AdminCheckin key={live?"live":"demo"} members={members} events={events} live={liveAdmin}/>;
       case"tasks": return <AdminTasks members={members}/>;
       case"comms": return <AdminComms members={members} announcements={announcements} setAnnouncements={setAnnouncements}/>;
@@ -4041,7 +4164,7 @@ export default function App(){
       case"recruitment": return <AdminRecruitment/>;
       case"map": return <AdminMap/>;
       case"processverbal": return <>{liveAdmin&&<DocumentsPanel canManage/>}<AdminProcessverbal/></>;
-      case"reminders": return <AdminReminders members={members} live={liveAdmin?{remindedIds:liveNotifs.remindedIds,notify:liveNotifs.notifyPayment}:null}/>;
+      case"reminders": return <AdminReminders members={members} events={events} live={liveAdmin?{remindedIds:liveNotifs.remindedIds,notify:liveNotifs.notifyPayment}:null}/>;
       case"growth": return <AdminGrowth/>;
       case"requests": return <AdminRequests live={live?{requests:dbRequests,setRequests:setDbRequests}:null}/>;
       case"archive": return <AdminArchive live={liveAdmin}/>;
@@ -5141,7 +5264,7 @@ const DB_TABLES={
   announcements:{cols:{title:"title"},order:["id",false]},
   polls:{cols:{question:"question",status:"status",yes:"yes",no:"no",abstain:"abstain",voted:"voted"},order:["id",true]},
   applications:{cols:{name:"name",email:"email",status:"status"},order:["id",true]},
-  donations:{cols:{amount:"amount",memberId:"member_id"},order:["id",false]},
+  donations:{cols:{amount:"amount",memberId:"member_id",status:"status"},order:["id",false]},
   requests:{cols:{status:"status",memberId:"member_id"},order:["id",false]},
 };
 
@@ -5745,8 +5868,8 @@ function LiveBadge(){
 }
 
 // Admin home: numbers computed in Postgres by public.admin_dashboard_stats().
-function LiveDbStats(){
-  const [s]=useRpc("admin_dashboard_stats",null,["payments","members","requests"]);
+function LiveDbStats({fullAdmin=true}){
+  const [s]=useRpc("admin_dashboard_stats",null,["payments","members","requests","donations"]);
   if(!s) return null;
   const items=[
     ["Arkëtuar "+s.year,`CHF ${Number(s.collected_year).toFixed(0)}`,C.green,<Banknote size={22}/>],
@@ -5754,7 +5877,7 @@ function LiveDbStats(){
     ["Kërkesa të hapura",s.open_requests,C.red,<MessageSquare size={22}/>],
     ["Aplikime të reja",s.new_applications,C.ink,<UserPlus size={22}/>],
     ["Check-in gjithsej",s.checkins_total,C.ink,<UserCheck size={22}/>],
-    ["Ndryshime (7 ditë)",s.changes_last_7_days,C.inkSoft,<Activity size={22}/>],
+    fullAdmin?["Ndryshime (7 ditë)",s.changes_last_7_days,C.inkSoft,<Activity size={22}/>]:["Donacione në pritje",s.pending_donations??0,C.amber,<Heart size={22}/>],
   ];
   return(
     <div style={{marginBottom:20}}>
@@ -5818,7 +5941,7 @@ function AuditFeed({limit=50,compact=false}){
 const MUAJT=["Jan","Shk","Mar","Pri","Maj","Qer","Kor","Gus","Sht","Tet","Nën","Dhj"];
 
 // Finance tab in live mode: monthly totals from public.finance_monthly().
-function LiveFinance(){
+function LiveFinance({quotaTarget=FINANCE_TARGET_YEAR}){
   const [year,setYear]=useState(new Date().getFullYear());
   const [rows]=useRpc("finance_monthly",{p_year:year},["payments","donations"]);
   const data=(rows||[]).map(r=>({m:Number(r.month),pay:Number(r.payments),don:Number(r.donations)}));
@@ -5838,7 +5961,7 @@ function LiveFinance(){
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:24}}>
         <StatCard label="Kuota të konfirmuara" value={`CHF ${totPay.toFixed(0)}`} color={C.green} icon={<Banknote size={26}/>}/>
         <StatCard label="Donacione" value={`CHF ${totDon.toFixed(0)}`} color={C.red} icon={<Heart size={26}/>}/>
-        <StatCard label="Target vjetor" value={`${Math.round((totPay+totDon)/FINANCE_TARGET_YEAR*100)}%`} sub={`CHF ${FINANCE_TARGET_YEAR}`} icon={<Target size={26}/>}/>
+        <StatCard label="Kuotat nga targeti" value={`${quotaTarget?Math.round(totPay/quotaTarget*100):0}%`} sub={`Target i kuotave: CHF ${quotaTarget}`} icon={<Target size={26}/>}/>
       </div>
       <Card>
         <div style={{display:"flex",justifyContent:"space-between",marginBottom:14}}>
@@ -6036,4 +6159,36 @@ function timeAgo(iso){
   if(s<3600) return `${Math.floor(s/60)} min`;
   if(s<86400) return `${Math.floor(s/3600)} orë`;
   return `${Math.floor(s/86400)} ditë`;
+}
+
+// Demo rows have no status; with a real login only confirmed donations count.
+function isConfirmedDonation(d){return !d.status||d.status==="konfirmuar";}
+
+// "Test Anëtari", 9001 -> "WTH-TA9001"; "Blerim Gashi", 5 -> "WTH-BG005"
+function referralCode(me){
+  const ini=String(me.name||"").trim().split(/\s+/).map(w=>w.charAt(0)).join("").slice(0,2).toUpperCase()||"VV";
+  const id=Number(me.id)||0;
+  return `WTH-${ini}${id<1000?String(id).padStart(3,"0"):id}`;
+}
+
+// "27.06.2026", "7.6.2026" or "2026-06-27" -> Date (local midnight); null if it can't be read.
+function parseEventDate(str){
+  const t=String(str||"").trim();
+  let m=t.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if(m) return new Date(+m[3],+m[2]-1,+m[1]);
+  m=t.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return new Date(+m[1],+m[2]-1,+m[3]);
+  return null;
+}
+function isPastDate(str){
+  const d=parseEventDate(str);
+  if(!d) return false;
+  const today=new Date();today.setHours(0,0,0,0);
+  return d<today;
+}
+
+// First day of next month, e.g. "01.12.2026" (when the monthly reminder job runs next).
+function nextMonthStart(){
+  const d=new Date();d.setDate(1);d.setMonth(d.getMonth()+1);
+  return d.toLocaleDateString("de-CH",{day:"2-digit",month:"2-digit",year:"numeric"});
 }
