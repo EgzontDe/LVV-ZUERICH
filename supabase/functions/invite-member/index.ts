@@ -21,12 +21,12 @@ Deno.serve(async (req) => {
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
 
-  // Who is calling? Must be a logged-in admin.
+  // Who is calling? Must be logged in as admin, kryetar or sekretar.
   const jwt = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
   const { data: caller, error: callerErr } = await admin.auth.getUser(jwt);
   if (callerErr || !caller?.user) return json({ error: "not_authenticated" }, 401);
   const { data: profile } = await admin.from("profiles").select("role").eq("id", caller.user.id).maybeSingle();
-  if (profile?.role !== "admin") return json({ error: "not_admin" }, 403);
+  if (!["admin", "kryetar", "sekretar"].includes(profile?.role ?? "")) return json({ error: "not_admin" }, 403);
 
   let body: { email?: string; name?: string; redirectTo?: string };
   try { body = await req.json(); } catch { return json({ error: "invalid_body" }, 400); }

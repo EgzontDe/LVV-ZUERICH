@@ -1170,7 +1170,7 @@ function NotifPanel({notifs,onMarkAll,onRead}){
   );
 }
 
-function Shell({role,tab,setTab,onLogout,children,adminTabs,memberTabs,dark,onToggleDark,lang,onLangToggle,members,events,announcements,meId}){
+function Shell({role,tab,setTab,onLogout,children,adminTabs,memberTabs,dark,onToggleDark,lang,onLangToggle,members,events,announcements,meId,meName,roleLabel,onSwitchView}){
   const t=useT();
   const [sideOpen,setSideOpen]=useState(false);
   const [notifOpen,setNotifOpen]=useState(false);
@@ -1207,6 +1207,9 @@ function Shell({role,tab,setTab,onLogout,children,adminTabs,memberTabs,dark,onTo
           </React.Fragment>
         ))}
         <div style={{marginTop:"auto",paddingTop:16}}>
+          {onSwitchView&&<button className="vv-nav" onClick={()=>{onSwitchView();setSideOpen(false);}}>
+            {role==="admin"?<><User size={16}/>Pamja ime si anëtar</>:<><ShieldCheck size={16}/>Pamja e menaxhimit</>}
+          </button>}
           <button className="vv-nav" onClick={onLogout}><LogOut size={16}/>Dil</button>
         </div>
       </aside>
@@ -1246,10 +1249,10 @@ function Shell({role,tab,setTab,onLogout,children,adminTabs,memberTabs,dark,onTo
               )}
             </div>
             <div style={{display:"flex",alignItems:"center",gap:9,background:"#fff",border:"1.5px solid rgba(23,18,16,.09)",borderRadius:12,padding:"6px 12px 6px 8px",boxShadow:"0 1px 4px rgba(23,18,16,.06)"}}>
-              <div style={{width:28,height:28,borderRadius:"50%",background:`linear-gradient(135deg,${C.red},#8C1009)`,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700,fontSize:12}}>{role==="admin"?"E":"B"}</div>
+              <div style={{width:28,height:28,borderRadius:"50%",background:`linear-gradient(135deg,${C.red},#8C1009)`,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700,fontSize:12}}>{(meName||"?").trim().charAt(0).toUpperCase()}</div>
               <div style={{lineHeight:1.2}}>
-                <div style={{fontSize:13,fontWeight:600}}>{role==="admin"?"Egzont D.":"Blerim G."}</div>
-                <div style={{fontSize:11,color:C.inkSoft}}>{role==="admin"?"Admin":"Anëtar"}</div>
+                <div style={{fontSize:13,fontWeight:600}}>{shortName(meName)}</div>
+                <div style={{fontSize:11,color:C.inkSoft}}>{roleLabel||(role==="admin"?"Admin":"Anëtar")}</div>
               </div>
             </div>
           </div>
@@ -3839,11 +3842,15 @@ export default function App(){
 
   // Live data (real email login): read from and written to Supabase.
   const live=!!(authUser&&supabase);
-  const liveAdmin=live&&authUser.role==="admin";
+  // Demo buttons have no real role: the demo admin gets full access.
+  const staffRole=authUser?(authUser.staffRole||"member"):(role==="admin"?"admin":"member");
+  // liveAdmin: logged in with a staff role AND currently in the management view.
+  const liveAdmin=live&&staffRole!=="member"&&role==="admin";
+  const myAdminTabs=tabsForRole(staffRole,adminTabs);
   const [dbMembers,setDbMembers]=useDbTable("members",live,{
-    // Members may only change their own basic data; payment, status and role are admin-only.
+    // Members may only change their own basic data; payment, status and role need the 'members' permission.
     onUpdate:async(old,row)=>{
-      if(liveAdmin) return false;
+      if(liveAdmin&&hasPerm(staffRole,"members")) return false;
       const p={};
       for(const k of SELF_EDIT_FIELDS) if(old[k]!==row[k]) p[k]=row[k]??"";
       const {error}=await supabase.rpc("update_my_profile",{p});
@@ -3853,7 +3860,7 @@ export default function App(){
   });
   const [dbEvents,setDbEvents]=useDbTable("events",live,{
     onUpdate:async(old,row)=>{
-      if(liveAdmin) return false;
+      if(liveAdmin&&hasPerm(staffRole,"events")) return false;
       const {error}=await supabase.rpc("set_rsvp",{p_event:row.id,p_going:row.rsvp.length>old.rsvp.length});
       if(error) throw error;
       return true;
@@ -3862,7 +3869,7 @@ export default function App(){
   const [dbAnnouncements,setDbAnnouncements]=useDbTable("announcements",live);
   const [dbPolls,setDbPolls]=useDbTable("polls",live,{
     onUpdate:async(old,row)=>{
-      if(liveAdmin&&row.voted.length===old.voted.length) return false;
+      if(liveAdmin&&hasPerm(staffRole,"comms")&&row.voted.length===old.voted.length) return false;
       const choice=["yes","no","abstain"].find(k=>row[k]>old[k]);
       if(!choice) return false;
       const {error}=await supabase.rpc("cast_vote",{p_poll:row.id,p_choice:choice});
@@ -3870,7 +3877,7 @@ export default function App(){
       return true;
     },
   });
-  const [dbApplications,setDbApplications]=useDbTable("applications",liveAdmin);
+  const [dbApplications,setDbApplications]=useDbTable("applications",liveAdmin&&hasPerm(staffRole,"members"));
   const [dbDonations,setDbDonations]=useDbTable("donations",live);
   const livePayments=usePayments(live);
   const liveSettings=useSettings(live);
@@ -4007,7 +4014,9 @@ export default function App(){
   }
 
   function renderAdminTab(){
-    switch(tab){
+    // A tab this role may not open (e.g. via search) falls back to the dashboard.
+    const allowed=myAdminTabs.some(t=>t.key===tab);
+    switch(allowed?tab:"home"){
       case"home": return <AdminHome members={members} events={events} live={liveAdmin}/>;
       case"members": return <AdminMembers members={members} setMembers={setMembers} events={events} polls={polls} live={live}/>;
       case"onboarding": return <AdminOnboarding live={liveAdmin?{apps:dbApplications,setApps:setDbApplications,members,setMembers}:null}/>;
@@ -4028,7 +4037,7 @@ export default function App(){
       case"growth": return <AdminGrowth/>;
       case"requests": return <AdminRequests live={live?{requests:dbRequests,setRequests:setDbRequests}:null}/>;
       case"archive": return <AdminArchive live={liveAdmin}/>;
-      case"settings": return <AdminSettings members={members} live={liveAdmin}/>;
+      case"settings": return <>{liveAdmin&&isFullAdmin(staffRole)&&<RoleManager/>}<AdminSettings members={members} live={liveAdmin}/></>;
       default: return <AdminHome members={members} events={events} live={liveAdmin}/>;
     }
   }
@@ -4039,7 +4048,9 @@ export default function App(){
         <style>{css}</style>
         <Shell
           role={role} tab={tab} setTab={setTab} onLogout={handleLogout}
-          adminTabs={adminTabs} memberTabs={memberTabs}
+          adminTabs={myAdminTabs} memberTabs={memberTabs}
+          meName={me.name} roleLabel={role==="admin"?STAFF_ROLES[staffRole]||"Administrator":"Anëtar"}
+          onSwitchView={live&&staffRole!=="member"?()=>{setRole(r=>r==="admin"?"member":"admin");setTab("home");}:null}
           dark={dark} onToggleDark={()=>setDark(d=>!d)}
           lang={lang} onLangToggle={()=>setLang(l=>l==="sq"?"de":"sq")}
           members={members} events={events} announcements={announcements}
@@ -4987,7 +4998,9 @@ async function loadProfile(user){
   const {data,error}=await supabase.from("profiles").select("role,full_name").eq("id",user.id).maybeSingle();
   if(error) throw error;
   if(!data) return null;
-  return {role:data.role==="admin"?"admin":"member",email:user.email,name:(data.full_name||"").trim()||nameFromEmail(user.email)};
+  // role: which shell to show ("admin" for every staff role); staffRole: the real role from the database.
+  const staffRole=STAFF_ROLES[data.role]?data.role:"member";
+  return {role:staffRole==="member"?"member":"admin",staffRole,email:user.email,name:(data.full_name||"").trim()||nameFromEmail(user.email)};
 }
 
 // "egzont.demiri@x.ch" -> "Egzont Demiri" (used only when the profile has no full_name)
@@ -5909,5 +5922,97 @@ function ReceiptsCard({payments,onToast}){
         </div>
       ))}
     </Card>
+  );
+}
+
+/* ── Rolet dhe lejet (2026-11-21) ───────────────────────────────────────────
+   Must match private.has_perm() in supabase/migrations/20261121000000_roles.sql.
+   The database enforces the permissions; this only decides what the menu shows. */
+const STAFF_ROLES={member:"Anëtar",admin:"Administrator",kryetar:"Kryetar",sekretar:"Sekretar",financa:"Financat",komunikimi:"Komunikimi",eventet:"Eventet"};
+const ROLE_PERMS={admin:"*",kryetar:"*",sekretar:["members","requests","documents"],financa:["payments","donations"],komunikimi:["comms","requests"],eventet:["events"],member:[]};
+const ROLE_DESC={
+  member:"Vetëm të dhënat e veta",
+  admin:"Qasje e plotë, cilësimet dhe rolet",
+  kryetar:"Qasje e plotë, cilësimet dhe rolet",
+  sekretar:"Anëtarët, aplikimet, kërkesat, procesverbalet",
+  financa:"Pagesat, kujtesat, donacionet, financat",
+  komunikimi:"Njoftimet, sondazhet, kërkesat",
+  eventet:"Eventet, kalendari, check-in",
+};
+function hasPerm(role,area){const p=ROLE_PERMS[role]||[];return p==="*"||p.includes(area);}
+function isFullAdmin(role){return ROLE_PERMS[role]==="*";}
+// Which permission each admin tab needs. Tabs not listed here are for admin/kryetar only.
+const TAB_PERM={members:"members",onboarding:"members",payments:"payments",finance:"payments",reminders:"payments",donations:"donations",
+  events:"events",calendar:"events",checkin:"events",comms:"comms",polls:"comms",requests:"requests",processverbal:"documents"};
+function tabsForRole(role,tabs){
+  if(isFullAdmin(role)) return tabs;
+  const out=tabs.filter(t=>t.key==="home"||(TAB_PERM[t.key]&&hasPerm(role,TAB_PERM[t.key])));
+  // Keep section headings readable: the first tab after "home" starts a "Përgjegjësitë" section.
+  return out.map((t,i)=>i===1?{...t,section:"Përgjegjësitë"}:i>1?{...t,section:undefined}:t);
+}
+// "Test Anëtari" -> "Test A."
+function shortName(name){
+  const parts=String(name||"").trim().split(/\s+/).filter(Boolean);
+  if(!parts.length) return "—";
+  return parts.length===1?parts[0]:`${parts[0]} ${parts[parts.length-1].charAt(0)}.`;
+}
+
+// Cilësimet → Rolet: admin/kryetar give each account its role.
+function RoleManager(){
+  const [rows,setRows]=useState(null);
+  const [err,setErr]=useState("");
+  const [busy,setBusy]=useState("");
+  const [q,setQ]=useState("");
+  const [toast,showToast]=useToast();
+  async function load(){
+    const {data,error}=await supabase.rpc("list_user_roles");
+    if(error){setErr("Rolet nuk u ngarkuan.");return;}
+    setErr("");setRows(data||[]);
+  }
+  useEffect(()=>{load();},[]);
+  async function change(email,role){
+    setBusy(email);
+    const {error}=await supabase.rpc("set_user_role",{p_email:email,p_role:role});
+    setBusy("");
+    if(error){showToast(/own/.test(error.message)?"Nuk mund ta heqësh rolin tënd të administratorit.":"Roli nuk u ndryshua.");return;}
+    showToast(`Roli u ndryshua: ${STAFF_ROLES[role]} ✓`);
+    load();
+  }
+  const list=(rows||[]).filter(r=>!q||`${r.email} ${r.full_name||""}`.toLowerCase().includes(q.toLowerCase()));
+  return(
+    <div style={{marginBottom:24}}>
+      <SectionTitle title="Rolet dhe përgjegjësitë" sub="Kush menaxhon çfarë. Ndryshimi vlen herën tjetër që personi hyn."/>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(210px,1fr))",gap:10,marginBottom:14}}>
+        {Object.keys(STAFF_ROLES).map(k=>(
+          <div key={k} className="vv-card" style={{padding:"10px 14px"}}>
+            <div style={{fontWeight:700,fontSize:13}}>{STAFF_ROLES[k]}</div>
+            <div style={{fontSize:12,color:C.inkSoft,marginTop:2}}>{ROLE_DESC[k]}</div>
+          </div>
+        ))}
+      </div>
+      <Card p={0} style={{overflow:"hidden"}}>
+        <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.line}`}}>
+          <input className="vv-input" placeholder="Kërko me emër ose email…" value={q} onChange={e=>setQ(e.target.value)} style={{width:"100%",maxWidth:320}}/>
+        </div>
+        {err?<div style={{padding:16,color:C.red,fontSize:14}}>{err}</div>
+        :!rows?<div style={{padding:16,color:C.inkSoft,fontSize:14}}>Duke ngarkuar…</div>
+        :<div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse"}}>
+          <thead><tr><th className="vv-th">Llogaria</th><th className="vv-th">Anëtari</th><th className="vv-th">Roli</th></tr></thead>
+          <tbody>{list.map(r=>(
+            <tr className="vv-row" key={r.email}>
+              <td className="vv-td"><div style={{fontWeight:600}}>{r.full_name||r.email}</div><div style={{fontSize:12,color:C.inkSoft}}>{r.email}</div></td>
+              <td className="vv-td" style={{color:C.inkSoft,fontSize:13}}>{r.member_id?`#${r.member_id}`:"pa lidhje"}</td>
+              <td className="vv-td">
+                <select className="vv-input" aria-label={`Roli i ${r.email}`} value={r.role} disabled={busy===r.email} onChange={e=>change(r.email,e.target.value)} style={{minWidth:150}}>
+                  {Object.entries(STAFF_ROLES).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+                </select>
+              </td>
+            </tr>
+          ))}</tbody>
+        </table></div>}
+      </Card>
+      <div style={{fontSize:12,color:C.inkSoft,marginTop:8}}>Titulli te kartela e anëtarit (p.sh. "Sekretare e Financave") është vetëm etiketë. Lejet vijnë nga roli këtu.</div>
+      <Toast msg={toast}/>
+    </div>
   );
 }

@@ -28,11 +28,11 @@ function toCsv(rows: Row[], cols: [string, string][]) {
     return /[",;\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   const lines = [cols.map(([, h]) => h).join(";"), ...rows.map((r) => cols.map(([k]) => esc(r[k])).join(";"))];
-  return "﻿" + lines.join("\n");
+  return "\uFEFF" + lines.join("\n");
 }
 
 // pdf-lib's standard fonts are WinAnsi; Albanian ë/ç are in that set, other characters are replaced.
-const safe = (s: unknown) => String(s ?? "").replace(/[^\x20-\x7E -ÿ]/g, "?");
+const safe = (s: unknown) => String(s ?? "").replace(/[^\x20-\x7E\u00A0-\u00FF]/g, "?");
 
 async function paymentsPdf(members: Row[], payments: Row[], year: number) {
   const doc = await PDFDocument.create();
@@ -86,10 +86,17 @@ Deno.serve(async (req) => {
   const { data: caller, error: callerErr } = await admin.auth.getUser(jwt);
   if (callerErr || !caller?.user) return json({ error: "not_authenticated" }, 401);
   const { data: profile } = await admin.from("profiles").select("role").eq("id", caller.user.id).maybeSingle();
-  if (profile?.role !== "admin") return json({ error: "not_admin" }, 403);
-
   let body: { type?: string };
   try { body = await req.json(); } catch { return json({ error: "invalid_body" }, 400); }
+
+  // Who may export what: admin/kryetar everything, sekretar the member list, financa the payments report.
+  const role = profile?.role ?? "member";
+  const allowed: Record<string, string[]> = {
+    "members-csv": ["admin", "kryetar", "sekretar"],
+    "payments-pdf": ["admin", "kryetar", "financa"],
+    "backup-json": ["admin", "kryetar"],
+  };
+  if (!(allowed[body.type ?? ""] ?? ["admin", "kryetar"]).includes(role)) return json({ error: "not_allowed" }, 403);
   const day = new Date().toISOString().slice(0, 10);
   const year = new Date().getFullYear();
 
