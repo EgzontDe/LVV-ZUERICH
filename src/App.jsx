@@ -1556,6 +1556,8 @@ function MemberInvoices({me,live=null}){
         </table>
       </Card>
 
+      {live&&<ReceiptsCard payments={live.payments.filter(p=>p.member_id===me.id&&p.status==="konfirmuar")} onToast={showToast}/>}
+
       {pendingLive&&(
         <div style={{marginTop:16,background:"#E0F2FE",border:"1.5px solid #38BDF8",borderRadius:14,padding:"16px 20px",display:"flex",gap:12,alignItems:"center",color:"#0369A1"}}>
           <Clock size={20}/>
@@ -2130,7 +2132,7 @@ tr:last-child td{border-bottom:none}
   w.document.close();
 }
 
-function AdminHome({members,events}){
+function AdminHome({members,events,live=false}){
   const paid=members.filter(m=>m.pay==="paguar").length;
   const unpaid=members.filter(m=>m.pay==="papaguar").length;
   const active=members.filter(m=>m.status==="aktiv").length;
@@ -2144,6 +2146,7 @@ function AdminHome({members,events}){
       }/>
       <ElectionCountdown/>
       <BirthdaysWidget members={members}/>
+      {live&&<LiveDbStats/>}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:24}}>
         <StatCard label="Anëtarë total" value={members.length} color={C.red} icon={<Users size={28}/>} delay={0}/>
         <StatCard label="Anëtarë aktivë" value={active} color={C.green} icon={<CheckCircle2 size={28}/>} delay={80}/>
@@ -2165,7 +2168,7 @@ function AdminHome({members,events}){
         </Card>
         <Card>
           <div style={{fontWeight:700,fontSize:15,marginBottom:14}}>Log aktiviteti</div>
-          {seedLog.map(l=>(
+          {live?<AuditFeed limit={6} compact/>:seedLog.map(l=>(
             <div key={l.id} style={{padding:"9px 0",borderBottom:`1px solid ${C.line}`,fontSize:13}}>
               <div style={{fontWeight:600,color:C.ink}}>{l.who}</div>
               <div style={{color:C.inkSoft,marginTop:2}}>{l.action}</div>
@@ -2594,10 +2597,22 @@ function AdminComms({members,announcements,setAnnouncements}){
   );
 }
 
-function AdminSettings({members}){
+function AdminSettings({members,live=false}){
   const [org,setOrg]=useState({name:"Lëvizja VETËVENDOSJE!",pike:"Pika Winterthur",city:"Winterthur",canton:"Zürich",email:"winterthur@vetevendosje.org",phone:"+41 79 111 22 33",kuota:KUOTA});
   const [toast,showToast]=useToast();
   function save(e){e.preventDefault();showToast("Cilësimet u ruajtën!");}
+  const [exporting,setExporting]=useState(null);
+  async function runExport(type){
+    if(!live){
+      if(type==="members-csv") exportCSV(members.map(m=>({Emri:m.name,Email:m.email,Kantoni:m.kanton,Statusi:m.status,Pagesa:m.pay})),"anetaret-vv-winterthur.csv");
+      else showToast("Ky eksport kërkon hyrje me email.");
+      return;
+    }
+    setExporting(type);
+    const ok=await downloadFromFunction("admin-export",{type});
+    setExporting(null);
+    showToast(ok?"✓ Skedari u shkarkua.":"Eksporti dështoi. Provo përsëri.");
+  }
   return(
     <div>
       <SectionTitle title="Cilësimet"/>
@@ -2627,11 +2642,13 @@ function AdminSettings({members}){
           <Card>
             <div style={{fontWeight:700,fontSize:15,marginBottom:14}}>Eksporto të dhënat</div>
             <div style={{display:"grid",gap:8}}>
-              <button className="vv-btn ghost" style={{justifyContent:"center"}}><Download size={14}/>Lista e anëtarëve (CSV)</button>
-              <button className="vv-btn ghost" style={{justifyContent:"center"}}><FileDown size={14}/>Raporti i pagesave (PDF)</button>
-              <button className="vv-btn ghost" style={{justifyContent:"center"}}><HardDriveDownload size={14}/>Backup i plotë (JSON)</button>
+              <button className="vv-btn ghost" style={{justifyContent:"center"}} disabled={!!exporting} onClick={()=>runExport("members-csv")}><Download size={14}/>{exporting==="members-csv"?"Duke përgatitur…":"Lista e anëtarëve (CSV)"}</button>
+              <button className="vv-btn ghost" style={{justifyContent:"center"}} disabled={!!exporting} onClick={()=>runExport("payments-pdf")}><FileDown size={14}/>{exporting==="payments-pdf"?"Duke përgatitur…":"Raporti i pagesave (PDF)"}</button>
+              <button className="vv-btn ghost" style={{justifyContent:"center"}} disabled={!!exporting} onClick={()=>runExport("backup-json")}><HardDriveDownload size={14}/>{exporting==="backup-json"?"Duke përgatitur…":"Backup i plotë (JSON)"}</button>
             </div>
+            {!live&&<div style={{fontSize:12,color:C.inkSoft,marginTop:10}}>Eksportet funksionojnë pas hyrjes me email (të dhëna live).</div>}
           </Card>
+          {live&&<CronJobsCard onToast={showToast}/>}
         </div>
       </div>
       <Toast msg={toast}/>
@@ -2823,16 +2840,17 @@ function AdminRequests({live=null}={}){
   );
 }
 
-function AdminArchive(){
+function AdminArchive({live=false}={}){
   const [tab,setTab]=useState("fotot");
   return(
     <div>
       <SectionTitle title="Arkiva" sub="Historia dhe materialet e Pikës"/>
       <div style={{display:"flex",gap:8,marginBottom:20}}>
-        {[["fotot","Fotot"],["dokumentet","Procesverbalet"],["aniversaret","Përvjetorët"]].map(([k,l])=>(
+        {[["fotot","Fotot"],["dokumentet","Procesverbalet"],["aniversaret","Përvjetorët"],...(live?[["auditimi","Auditimi"]]:[])].map(([k,l])=>(
           <button key={k} onClick={()=>setTab(k)} style={{padding:"8px 16px",borderRadius:8,border:`1px solid ${C.line}`,background:tab===k?C.ink:"#fff",color:tab===k?"#fff":C.ink,fontWeight:600,fontSize:13}}>{l}</button>
         ))}
       </div>
+      {tab==="auditimi"&&live&&<Card p={0} style={{overflow:"hidden"}}><AuditFeed limit={200}/></Card>}
       {tab==="fotot"&&<div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
         {ARCHIVE_PHOTOS.map(p=>(
           <Card key={p.id} style={{cursor:"pointer",overflow:"hidden"}}>
@@ -3030,7 +3048,8 @@ function AdminPolls({polls,setPolls}){
   );
 }
 
-function AdminFinance(){
+function AdminFinance({live=false}={}){return live?<LiveFinance/>:<AdminFinanceDemo/>;}
+function AdminFinanceDemo(){
   const total=FINANCE_MONTHS.reduce((s,m)=>s+m.collected,0);
   const maxVal=Math.max(...FINANCE_MONTHS.map(m=>m.collected),1);
   const W=480,H=200,pad=40;
@@ -3989,11 +4008,11 @@ export default function App(){
 
   function renderAdminTab(){
     switch(tab){
-      case"home": return <AdminHome members={members} events={events}/>;
+      case"home": return <AdminHome members={members} events={events} live={liveAdmin}/>;
       case"members": return <AdminMembers members={members} setMembers={setMembers} events={events} polls={polls} live={live}/>;
       case"onboarding": return <AdminOnboarding live={liveAdmin?{apps:dbApplications,setApps:setDbApplications,members,setMembers}:null}/>;
       case"payments": return <AdminPayments members={members} setMembers={setMembers} live={liveAdmin?livePayments:null}/>;
-      case"finance": return <AdminFinance/>;
+      case"finance": return <AdminFinance live={liveAdmin}/>;
       case"events": return <AdminEvents events={events} setEvents={setEvents} members={members}/>;
       case"calendar": return <AdminCalendar/>;
       case"checkin": return <AdminCheckin key={live?"live":"demo"} members={members} events={events} live={liveAdmin}/>;
@@ -4008,9 +4027,9 @@ export default function App(){
       case"reminders": return <AdminReminders members={members} live={liveAdmin?{remindedIds:liveNotifs.remindedIds,notify:liveNotifs.notifyPayment}:null}/>;
       case"growth": return <AdminGrowth/>;
       case"requests": return <AdminRequests live={live?{requests:dbRequests,setRequests:setDbRequests}:null}/>;
-      case"archive": return <AdminArchive/>;
-      case"settings": return <AdminSettings members={members}/>;
-      default: return <AdminHome members={members} events={events}/>;
+      case"archive": return <AdminArchive live={liveAdmin}/>;
+      case"settings": return <AdminSettings members={members} live={liveAdmin}/>;
+      default: return <AdminHome members={members} events={events} live={liveAdmin}/>;
     }
   }
 
@@ -5181,12 +5200,26 @@ function useDbTable(table,enabled,hooks){
     reload();
   },[table,enabled]);
 
+  // Realtime: reload when anyone changes this table. While our own writes are
+  // still being sent, wait and reload once they are done.
+  const pendingRef=useRef(0),staleRef=useRef(false);
+  useRealtime(table,enabled,()=>{
+    if(pendingRef.current){staleRef.current=true;return;}
+    reload();
+  });
+
   function setRows(updater){
     const prev=rowsRef.current;
     const next=typeof updater==="function"?updater(prev):updater;
     if(next===prev) return;
     rowsRef.current=next;setRowsState(next);
-    syncTableDiff(table,prev,next,hooksRef.current||{}).catch(err=>{dbError(err);reload();});
+    pendingRef.current++;
+    syncTableDiff(table,prev,next,hooksRef.current||{})
+      .catch(err=>{dbError(err);staleRef.current=true;})
+      .finally(()=>{
+        pendingRef.current--;
+        if(!pendingRef.current&&staleRef.current){staleRef.current=false;reload();}
+      });
   }
   return [rows,setRows,loaded,reload];
 }
@@ -5200,6 +5233,7 @@ function usePayments(enabled){
     setPayments((data||[]).map(p=>({...p,amount:Number(p.amount),member_id:Number(p.member_id)})));
   }
   useEffect(()=>{if(enabled&&supabase) reload(); else setPayments([]);},[enabled]);
+  useRealtime("payments",enabled,reload);
   async function report(memberId,amount,method="online"){
     const {error}=await supabase.from("payments").insert({member_id:memberId,year:new Date().getFullYear(),amount,method,status:"ne_pritje"});
     if(error){dbError(error,"Pagesa nuk u regjistrua.");return false;}
@@ -5395,6 +5429,7 @@ function useEventCheckins(eventId){
     if(!eventId||!supabase){idsRef.current=[];setIdsState([]);return;}
     reload();
   },[eventId]);
+  useRealtime("event_checkins",!!eventId,reload);
   function setIds(updater){
     const prev=idsRef.current;
     const next=typeof updater==="function"?updater(prev):updater;
@@ -5491,6 +5526,7 @@ function useNotifications(enabled){
     setItems((data||[]).map(n=>({...n,id:Number(n.id),member_id:Number(n.member_id)})));
   }
   useEffect(()=>{if(enabled&&supabase) reload(); else setItems([]);},[enabled]);
+  useRealtime("notifications",enabled,reload);
   const remindedIds=useMemo(()=>[...new Set(items.filter(n=>n.kind==="kujtese_pagese"&&!n.read_at).map(n=>n.member_id))],[items]);
   async function notifyPayment(ids){
     if(!ids.length) return true;
@@ -5557,6 +5593,7 @@ function DocumentsPanel({canManage}){
     setDocs(data||[]);
   }
   useEffect(()=>{if(supabase) reload();},[]);
+  useRealtime("documents",true,reload);
   async function upload(e){
     e.preventDefault();
     if(!file){showToast("Zgjidh një skedar.");return;}
@@ -5621,6 +5658,256 @@ function DocumentsPanel({canManage}){
         </div>
       )}
       <Toast msg={toast}/>
+    </Card>
+  );
+}
+
+/* ── Realtime + server functions (Supabase) ───────────────────────────────── */
+// Calls onChange (debounced) whenever a row of `table` changes in the database.
+function useRealtime(table,enabled,onChange){
+  const cbRef=useRef(onChange);
+  cbRef.current=onChange;
+  useEffect(()=>{
+    if(!enabled||!supabase) return;
+    let timer;
+    const ch=supabase.channel(`rt-${table}-${Math.random().toString(36).slice(2,8)}`)
+      .on("postgres_changes",{event:"*",schema:"public",table},()=>{
+        clearTimeout(timer);timer=setTimeout(()=>cbRef.current(),400);
+      })
+      .subscribe();
+    return()=>{clearTimeout(timer);supabase.removeChannel(ch);};
+  },[table,enabled]);
+}
+
+// Calls an Edge Function that returns a file and saves it in the browser.
+async function downloadFromFunction(name,body){
+  try{
+    const {data}=await supabase.auth.getSession();
+    const res=await fetch(`${SUPABASE_URL}/functions/v1/${name}`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json",apikey:SUPABASE_KEY,Authorization:`Bearer ${data.session?.access_token||SUPABASE_KEY}`},
+      body:JSON.stringify(body),
+    });
+    if(!res.ok){console.error(`[${name}]`,res.status,await res.text());return false;}
+    const disp=res.headers.get("content-disposition")||"";
+    const file=(disp.match(/filename="([^"]+)"/)||[])[1]||`${name}.bin`;
+    const url=URL.createObjectURL(await res.blob());
+    const a=document.createElement("a");a.href=url;a.download=file;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+    return true;
+  }catch(err){console.error(`[${name}]`,err);return false;}
+}
+
+// Calls a Postgres function (RPC) and re-runs it when one of `tables` changes.
+function useRpc(fn,args,tables=[]){
+  const [data,setData]=useState(null);
+  const [error,setError]=useState(null);
+  const argsKey=JSON.stringify(args||{});
+  async function load(){
+    const {data:d,error:e}=await supabase.rpc(fn,args||{});
+    if(e){console.error(`[rpc ${fn}]`,e);setError(e);return;}
+    setError(null);setData(d);
+  }
+  useEffect(()=>{if(supabase) load();},[fn,argsKey]);
+  useRealtime(tables[0]||"__none",!!tables[0],load);
+  useRealtime(tables[1]||"__none",!!tables[1],load);
+  useRealtime(tables[2]||"__none",!!tables[2],load);
+  return [data,load,error];
+}
+
+function LiveBadge(){
+  return <span className="vv-chip" style={{background:"#E7F6EC",color:C.green,gap:6}}><span style={{width:7,height:7,borderRadius:99,background:C.green,display:"inline-block"}}/>Live · Supabase</span>;
+}
+
+// Admin home: numbers computed in Postgres by public.admin_dashboard_stats().
+function LiveDbStats(){
+  const [s]=useRpc("admin_dashboard_stats",null,["payments","members","requests"]);
+  if(!s) return null;
+  const items=[
+    ["Arkëtuar "+s.year,`CHF ${Number(s.collected_year).toFixed(0)}`,C.green,<Banknote size={22}/>],
+    ["Pagesa në pritje",s.pending_payments,C.amber,<Clock size={22}/>],
+    ["Kërkesa të hapura",s.open_requests,C.red,<MessageSquare size={22}/>],
+    ["Aplikime të reja",s.new_applications,C.ink,<UserPlus size={22}/>],
+    ["Check-in gjithsej",s.checkins_total,C.ink,<UserCheck size={22}/>],
+    ["Ndryshime (7 ditë)",s.changes_last_7_days,C.inkSoft,<Activity size={22}/>],
+  ];
+  return(
+    <div style={{marginBottom:20}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+        <div className="vv-eyebrow">Statistikat nga databaza</div><LiveBadge/>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
+        {items.map(([l,v,c,ic])=><StatCard key={l} label={l} value={v} color={c} icon={ic}/>)}
+      </div>
+    </div>
+  );
+}
+
+const AUDIT_TABLES={members:"Anëtarët",payments:"Pagesat",events:"Eventet",announcements:"Njoftimet",requests:"Kërkesat",documents:"Dokumentet",applications:"Aplikimet",donations:"Donacionet",event_checkins:"Check-in"};
+const AUDIT_ACTIONS={INSERT:["shtoi",C.green],UPDATE:["ndryshoi",C.amber],DELETE:["fshiu",C.red]};
+
+// Change history written automatically by the private.log_change() trigger.
+function AuditFeed({limit=50,compact=false}){
+  const [rows,setRows]=useState(null);
+  async function load(){
+    const {data,error}=await supabase.from("audit_log").select("*").order("at",{ascending:false}).limit(limit);
+    if(error){console.error("[audit]",error);setRows([]);return;}
+    setRows(data||[]);
+  }
+  useEffect(()=>{if(supabase) load();},[limit]);
+  useRealtime("audit_log",true,load);
+  if(rows===null) return <div style={{padding:compact?0:18,fontSize:13,color:C.inkSoft}}>Duke ngarkuar…</div>;
+  if(!rows.length) return <div style={{padding:compact?0:18,fontSize:13,color:C.inkSoft}}>Ende nuk ka ndryshime të regjistruara.</div>;
+  const who=r=>r.actor_email||"Sistemi (automatik)";
+  const when=r=>new Date(r.at).toLocaleString("de-CH",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+  if(compact) return rows.map(r=>{
+    const [verb,col]=AUDIT_ACTIONS[r.action]||[r.action,C.ink];
+    return(
+      <div key={r.id} style={{padding:"9px 0",borderBottom:`1px solid ${C.line}`,fontSize:13}}>
+        <div style={{fontWeight:600,color:C.ink}}>{who(r)}</div>
+        <div style={{color:C.inkSoft,marginTop:2}}><b style={{color:col}}>{verb}</b> · {AUDIT_TABLES[r.table_name]||r.table_name}{r.summary?` · ${r.summary}`:""}</div>
+        <div style={{fontSize:11,color:C.inkSoft,marginTop:2}}>{when(r)}</div>
+      </div>
+    );
+  });
+  return(
+    <table style={{width:"100%",borderCollapse:"collapse"}}>
+      <thead><tr><th className="vv-th">Koha</th><th className="vv-th">Kush</th><th className="vv-th">Veprimi</th><th className="vv-th">Tabela</th><th className="vv-th">Rekordi</th><th className="vv-th">Fushat</th></tr></thead>
+      <tbody>{rows.map(r=>{
+        const [verb,col]=AUDIT_ACTIONS[r.action]||[r.action,C.ink];
+        return(
+          <tr className="vv-row" key={r.id}>
+            <td className="vv-td" style={{color:C.inkSoft,whiteSpace:"nowrap"}}>{when(r)}</td>
+            <td className="vv-td">{who(r)}</td>
+            <td className="vv-td"><span className="vv-chip" style={{background:col+"18",color:col}}>{verb}</span></td>
+            <td className="vv-td">{AUDIT_TABLES[r.table_name]||r.table_name}</td>
+            <td className="vv-td" style={{fontWeight:600}}>{r.summary||`#${r.record_id}`}</td>
+            <td className="vv-td" style={{color:C.inkSoft,fontSize:12}}>{(r.changed||[]).join(", ")||"—"}</td>
+          </tr>
+        );
+      })}</tbody>
+    </table>
+  );
+}
+
+const MUAJT=["Jan","Shk","Mar","Pri","Maj","Qer","Kor","Gus","Sht","Tet","Nën","Dhj"];
+
+// Finance tab in live mode: monthly totals from public.finance_monthly().
+function LiveFinance(){
+  const [year,setYear]=useState(new Date().getFullYear());
+  const [rows]=useRpc("finance_monthly",{p_year:year},["payments","donations"]);
+  const data=(rows||[]).map(r=>({m:Number(r.month),pay:Number(r.payments),don:Number(r.donations)}));
+  const totPay=data.reduce((s,r)=>s+r.pay,0),totDon=data.reduce((s,r)=>s+r.don,0);
+  const max=Math.max(1,...data.map(r=>r.pay+r.don));
+  const W=560,H=200,pad=30,bw=(W-pad*2)/12;
+  return(
+    <div>
+      <SectionTitle title="Financat" sub={`Kuotat dhe donacionet ${year} — llogaritur në databazë`} action={
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <LiveBadge/>
+          <select className="vv-input" style={{width:100}} value={year} onChange={e=>setYear(+e.target.value)}>
+            {[0,1,2].map(d=>{const y=new Date().getFullYear()-d;return <option key={y} value={y}>{y}</option>;})}
+          </select>
+        </div>
+      }/>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:24}}>
+        <StatCard label="Kuota të konfirmuara" value={`CHF ${totPay.toFixed(0)}`} color={C.green} icon={<Banknote size={26}/>}/>
+        <StatCard label="Donacione" value={`CHF ${totDon.toFixed(0)}`} color={C.red} icon={<Heart size={26}/>}/>
+        <StatCard label="Target vjetor" value={`${Math.round((totPay+totDon)/FINANCE_TARGET_YEAR*100)}%`} sub={`CHF ${FINANCE_TARGET_YEAR}`} icon={<Target size={26}/>}/>
+      </div>
+      <Card>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:14}}>
+          <div style={{fontWeight:700,fontSize:15}}>Arkëtimet mujore (CHF)</div>
+          <div style={{display:"flex",gap:14,fontSize:12,color:C.inkSoft}}>
+            <span><span style={{display:"inline-block",width:10,height:10,borderRadius:2,background:C.green,marginRight:5}}/>Kuota</span>
+            <span><span style={{display:"inline-block",width:10,height:10,borderRadius:2,background:C.red,marginRight:5}}/>Donacione</span>
+          </div>
+        </div>
+        {!rows?<div style={{fontSize:13,color:C.inkSoft}}>Duke ngarkuar…</div>:
+        <svg width="100%" viewBox={`0 0 ${W} ${H+30}`} role="img" aria-label="Arkëtimet mujore">
+          {data.map((r,i)=>{
+            const hp=r.pay/max*(H-20),hd=r.don/max*(H-20);
+            const x=pad+i*bw+bw*0.18,w=bw*0.64;
+            return(
+              <g key={r.m}>
+                <title>{`${MUAJT[i]}: kuota CHF ${r.pay}, donacione CHF ${r.don}`}</title>
+                <rect x={x} y={H-hp} width={w} height={hp} fill={C.green} rx={2}/>
+                <rect x={x} y={H-hp-hd} width={w} height={hd} fill={C.red} rx={2}/>
+                {r.pay+r.don>0&&<text x={x+w/2} y={H-hp-hd-5} textAnchor="middle" fontSize={10} fill={C.inkSoft}>{r.pay+r.don}</text>}
+                <text x={x+w/2} y={H+18} textAnchor="middle" fontSize={11} fill={C.inkSoft}>{MUAJT[i]}</text>
+              </g>
+            );
+          })}
+          <line x1={pad} y1={H} x2={W-pad} y2={H} stroke={C.line}/>
+        </svg>}
+      </Card>
+    </div>
+  );
+}
+
+// Settings: scheduled pg_cron jobs, with a "run now" button for reminders.
+function CronJobsCard({onToast}){
+  const [jobs,reload]=useRpc("admin_cron_jobs");
+  const [busy,setBusy]=useState(false);
+  const LABELS={"kujtesa-pagese-mujore":["Kujtesa mujore e pagesës","Çdo muaj, më 1, ora 09:00"],"viti-i-ri-anetaresise":["Fillimi i vitit të anëtarësisë","Çdo 1 janar — të gjithë kalojnë në 'papaguar'"]};
+  async function runNow(){
+    setBusy(true);
+    const {data,error}=await supabase.rpc("admin_run_payment_reminders");
+    setBusy(false);
+    if(error){dbError(error);return;}
+    onToast(data?`✓ U dërguan ${data} kujtesa.`:"Të gjithë kanë marrë kujtesë së fundmi (ose kanë paguar).");
+    reload();
+  }
+  return(
+    <Card>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+        <div style={{fontWeight:700,fontSize:15}}>Punët e planifikuara</div>
+        <span className="vv-chip" style={{background:C.paper,color:C.inkSoft}}>pg_cron</span>
+      </div>
+      {!jobs?<div style={{fontSize:13,color:C.inkSoft}}>Duke ngarkuar…</div>:jobs.map(j=>{
+        const [t,d]=LABELS[j.jobname]||[j.jobname,j.schedule];
+        return(
+          <div key={j.jobname} style={{padding:"10px 0",borderBottom:`1px solid ${C.line}`}}>
+            <div style={{display:"flex",justifyContent:"space-between",gap:8}}>
+              <b style={{fontSize:13}}>{t}</b>
+              <span className="vv-chip" style={{background:j.active?"#E7F6EC":C.paper,color:j.active?C.green:C.inkSoft}}>{j.active?"aktive":"joaktive"}</span>
+            </div>
+            <div style={{fontSize:12,color:C.inkSoft,marginTop:3}}>{d} · <code>{j.schedule}</code></div>
+            <div style={{fontSize:12,color:C.inkSoft,marginTop:2}}>Ekzekutimi i fundit: {j.last_run?`${new Date(j.last_run).toLocaleString("de-CH")} (${j.last_status})`:"ende jo"}</div>
+          </div>
+        );
+      })}
+      <button className="vv-btn ghost" style={{justifyContent:"center",marginTop:12,width:"100%"}} disabled={busy} onClick={runNow}>
+        <BellRing size={14}/>{busy?"Duke dërguar…":"Dërgo kujtesat tani"}
+      </button>
+    </Card>
+  );
+}
+
+// Member invoices: PDF receipts generated by the payment-receipt Edge Function.
+function ReceiptsCard({payments,onToast}){
+  const [busy,setBusy]=useState(null);
+  if(!payments.length) return null;
+  async function get(p){
+    setBusy(p.id);
+    const ok=await downloadFromFunction("payment-receipt",{paymentId:p.id});
+    setBusy(null);
+    onToast(ok?"✓ Vërtetimi u shkarkua.":"Vërtetimi nuk u krijua. Provo përsëri.");
+  }
+  return(
+    <Card style={{marginTop:16}}>
+      <div style={{fontWeight:700,fontSize:15,marginBottom:10}}>Vërtetimet e pagesave</div>
+      {payments.map(p=>(
+        <div key={p.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.line}`,gap:10,flexWrap:"wrap"}}>
+          <div>
+            <div style={{fontWeight:600,fontSize:14}}>Kuota {p.year} · CHF {p.amount}</div>
+            <div style={{fontSize:12,color:C.inkSoft}}>{payRef(p.member_id,p.year)} · {String(p.method).toUpperCase()}</div>
+          </div>
+          <button className="vv-btn ghost" style={{fontSize:12,padding:"6px 12px"}} disabled={busy===p.id} onClick={()=>get(p)}>
+            <FileDown size={13}/>{busy===p.id?"Duke krijuar…":"Shkarko PDF"}
+          </button>
+        </div>
+      ))}
     </Card>
   );
 }
