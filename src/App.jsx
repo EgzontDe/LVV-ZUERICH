@@ -1170,11 +1170,14 @@ function NotifPanel({notifs,onMarkAll,onRead}){
   );
 }
 
-function Shell({role,tab,setTab,onLogout,children,adminTabs,memberTabs,dark,onToggleDark,lang,onLangToggle,members,events,announcements,meId,meName,roleLabel,onSwitchView}){
+function Shell({role,tab,setTab,onLogout,children,adminTabs,memberTabs,dark,onToggleDark,lang,onLangToggle,members,events,announcements,meId,meName,roleLabel,onSwitchView,liveNotifs}){
   const t=useT();
   const [sideOpen,setSideOpen]=useState(false);
   const [notifOpen,setNotifOpen]=useState(false);
-  const [notifs,setNotifs]=useState(role==="member"?seedMemberNotifs:seedNotifs);
+  const [demoNotifs,setDemoNotifs]=useState(role==="member"?seedMemberNotifs:seedNotifs);
+  // Real login: the bell shows this member's notifications from the database; demo: seed data.
+  const notifs=liveNotifs?liveNotifs.items:demoNotifs;
+  const setNotifs=liveNotifs?(()=>liveNotifs.markAll()):setDemoNotifs;
   const [syncedAt,setSyncedAt]=useState(new Date());
   const unreadCt=notifs.filter(n=>!n.read).length;
   const {refreshing,pull,trigger}=useRefresh(()=>setSyncedAt(new Date()));
@@ -1213,7 +1216,8 @@ function Shell({role,tab,setTab,onLogout,children,adminTabs,memberTabs,dark,onTo
           <button className="vv-nav" onClick={onLogout}><LogOut size={16}/>Dil</button>
         </div>
       </aside>
-      <ChatWidget role={role} meId={meId} members={members}/>
+      {/* The chat widget is demo-only; with a real login members write via "Mesazhe". */}
+      {!liveNotifs&&<ChatWidget role={role} meId={meId} members={members}/>}
       <div className="vv-main">
         {!online&&<div className="vv-offline"><AlertCircle size={14}/>Jeni offline — të dhënat mund të mos jenë aktuale</div>}
         <InstallBanner/>
@@ -1640,13 +1644,15 @@ function MemberEvents({me,events,onRsvpChange}){
   );
 }
 
-function MemberNews({announcements,docs,news}){
+function MemberNews({announcements,docs,news,live=false}){
   const [tab,setTab]=useState("njoftimet");
+  // Real login: documents come from Storage, and the sample "Lajmet nga QQ" feed is hidden.
+  const tabs=[["njoftimet","Njoftimet"],["dokumentet","Dokumentet"],...(live?[]:[["lajmet","Lajmet nga QQ"]])];
   return(
     <div>
       <SectionTitle title="Informacioni"/>
       <div style={{display:"flex",gap:8,marginBottom:20}}>
-        {[["njoftimet","Njoftimet"],["dokumentet","Dokumentet"],["lajmet","Lajmet nga QQ"]].map(([k,l])=>(
+        {tabs.map(([k,l])=>(
           <button key={k} onClick={()=>setTab(k)} style={{padding:"8px 16px",borderRadius:8,border:`1px solid ${C.line}`,background:tab===k?C.ink:"#fff",color:tab===k?"#fff":C.ink,fontWeight:600,fontSize:13}}>{l}</button>
         ))}
       </div>
@@ -1658,7 +1664,8 @@ function MemberNews({announcements,docs,news}){
           <div style={{fontSize:12,color:C.inkSoft,marginTop:8}}>{a.date}</div>
         </Card>
       ))}</div>}
-      {tab==="dokumentet"&&<Card p={0} style={{overflow:"hidden"}}>
+      {tab==="dokumentet"&&live&&<DocumentsPanel canManage={false}/>}
+      {tab==="dokumentet"&&!live&&<Card p={0} style={{overflow:"hidden"}}>
         <table style={{width:"100%",borderCollapse:"collapse"}}>
           <thead><tr><th className="vv-th">Dokumenti</th><th className="vv-th">Tipi</th><th className="vv-th">Madhësia</th><th className="vv-th">Data</th><th className="vv-th"></th></tr></thead>
           <tbody>{docs.map(d=>(
@@ -4002,12 +4009,13 @@ export default function App(){
       case"profile": return <MemberProfile me={me} onSave={saveMyProfile}/>;
       case"invoices": return <MemberInvoices me={me} live={live?{payments:livePayments.payments,report:livePayments.report,settings:liveSettings}:null}/>;
       case"events": return <MemberEvents me={me} events={events} onRsvpChange={handleRsvpChange}/>;
-      case"news": return <MemberNews announcements={announcements} docs={seedDocs} news={seedNews}/>;
+      case"news": return <MemberNews announcements={announcements} docs={seedDocs} news={seedNews} live={live}/>;
       case"card": return <MemberCard me={me}/>;
       case"donate": return <MemberDonate me={me} live={live?{donations:dbDonations,setDonations:setDbDonations}:null}/>;
       case"polls": return <MemberPolls me={me} polls={polls} setPolls={setPolls}/>;
       case"messages": return <MemberMessages me={me} live={live?{requests:dbRequests,setRequests:setDbRequests}:null}/>;
-      case"minutes": return <>{live&&<DocumentsPanel canManage={false}/>}<MemberMinutes members={members}/></>;
+      // Real login: only the uploaded minutes/documents; the sample minutes are demo data.
+      case"minutes": return live?<DocumentsPanel canManage={false}/>:<MemberMinutes members={members}/>;
       case"meso": return <MemberMeso/>;
       default: return <MemberHome me={me} events={events} announcements={announcements} polls={polls}/>;
     }
@@ -4049,6 +4057,10 @@ export default function App(){
         <Shell
           role={role} tab={tab} setTab={setTab} onLogout={handleLogout}
           adminTabs={myAdminTabs} memberTabs={memberTabs}
+          liveNotifs={live?{
+            items:liveNotifs.items.filter(n=>n.member_id===me.id).map(n=>({id:n.id,type:"payment",title:n.title,body:n.body,time:timeAgo(n.created_at),read:!!n.read_at})),
+            markAll:liveNotifs.markAllRead,
+          }:null}
           meName={me.name} roleLabel={role==="admin"?STAFF_ROLES[staffRole]||"Administrator":"Anëtar"}
           onSwitchView={live&&staffRole!=="member"?()=>{setRole(r=>r==="admin"?"member":"admin");setTab("home");}:null}
           dark={dark} onToggleDark={()=>setDark(d=>!d)}
@@ -6015,4 +6027,13 @@ function RoleManager(){
       <Toast msg={toast}/>
     </div>
   );
+}
+
+// "2026-11-20T22:33:00Z" -> "5 min" / "3 orë" / "2 ditë" (used by the notification bell)
+function timeAgo(iso){
+  const s=Math.max(0,(Date.now()-new Date(iso).getTime())/1000);
+  if(s<60) return "pak çaste";
+  if(s<3600) return `${Math.floor(s/60)} min`;
+  if(s<86400) return `${Math.floor(s/3600)} orë`;
+  return `${Math.floor(s/86400)} ditë`;
 }

@@ -28,6 +28,23 @@ No `Co-Authored-By`. No `--no-verify`. Commit messages may be in Albanian or Eng
 | Administrator | Egzont Demiri | id=3 |
 | Apliko (public apply) | — | ApplyForm component |
 
+## Roles (real Supabase login, since 2026-11-21)
+`profiles.role` is one of `member, admin, kryetar, sekretar, financa, komunikimi, eventet`.
+The database enforces permissions (`private.has_perm(area)` in `supabase/migrations/20261121000000_roles.sql`);
+the app only filters the menu (`ROLE_PERMS` / `TAB_PERM` / `tabsForRole` at the end of `App.jsx`). Keep the two in sync.
+
+| Role | Areas |
+|------|-------|
+| admin, kryetar | everything + settings, audit log, assigning roles (Cilësimet → Rolet) |
+| sekretar | members, applications, requests, documents |
+| financa | payments, reminders, donations, finance reports |
+| komunikimi | announcements, polls, requests |
+| eventet | events, calendar, check-in |
+| member | own data only |
+
+Staff can switch to their own member view ("Pamja ime si anëtar"). Demo buttons are unaffected (demo admin = full access).
+Live tests: `tests/10-rolet.spec.js`, `tests/11-anetari-real.spec.js` need `QA_PASSWORD` (QA accounts `qa-*@vv-test.ch`); without it they are skipped.
+
 ## Component status
 
 ### Member nav tabs
