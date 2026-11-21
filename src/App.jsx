@@ -3959,7 +3959,8 @@ const adminTabs=[
 
 export default function App(){
   // A shared link "?anetaresohu" (optionally "&ref=<member id>") opens the membership form directly.
-  const [role,setRole]=useState(()=>{try{return new URLSearchParams(window.location.search).has("anetaresohu")?"apply":null;}catch{return null;}});
+  const [role,setRole]=useState(()=>{try{const sp=new URLSearchParams(window.location.search);
+    return sp.has("anetaresohu")?"apply":["studentet","rinia"].includes(sp.get("informohu"))?"interest":null;}catch{return null;}});
   const [tab,setTab]=useState("home");
   // Demo data (demo role buttons): kept in this browser's localStorage.
   const [localMembers,setLocalMembers]=useLocalState("vv-members",seedMembers);
@@ -4125,6 +4126,7 @@ export default function App(){
   if(needsPassword) return <LangCtx.Provider value={lang}><div className={`vv${dark?" vv--dark":""}`}><style>{css}</style><SetPasswordScreen kind={AUTH_LINK_TYPE} onDone={finishPasswordSetup}/></div></LangCtx.Provider>;
   if(!role&&!showLogin) return <PublicHome onLogin={()=>setShowLogin(true)} onApply={()=>setRole("apply")}/>;
   if(!role&&showLogin) return <LangCtx.Provider value={lang}><div className={`vv${dark?" vv--dark":""}`}><style>{css}</style><Login onLogin={handleLogin} lang={lang} onLangToggle={()=>setLang(l=>l==="sq"?"de":"sq")} onBack={()=>setShowLogin(false)}/></div></LangCtx.Provider>;
+  if(role==="interest") return <LangCtx.Provider value={lang}><div className={`vv${dark?" vv--dark":""}`}><style>{css}</style><OutreachInterestForm group={new URLSearchParams(window.location.search).get("informohu")} onBack={()=>{setRole(null);setShowLogin(false);}}/></div></LangCtx.Provider>;
   if(role==="apply") return <LangCtx.Provider value={lang}><div className={`vv${dark?" vv--dark":""}`}><style>{css}</style><MembershipApplyForm onBack={()=>{setRole(null);setShowLogin(false);}}/></div></LangCtx.Provider>;
 
   const demoMe=role==="member"?members.find(m=>m.id===5)||members[4]:members.find(m=>m.id===3)||members[2];
@@ -4199,7 +4201,7 @@ export default function App(){
     const allowed=myAdminTabs.some(t=>t.key===tab);
     switch(allowed?tab:"home"){
       case"home": if(OUTREACH_GROUPS[staffRole]) return <OutreachHome key={staffRole} group={staffRole} me={me} live={liveAdmin} onOpen={()=>setTab(staffRole)}/>;
-        return <AdminHome members={members} events={events} live={liveAdmin} quota={{collected:quotaCollected,target:quotaTarget}} fullAdmin={isFullAdmin(staffRole)}/>;
+        return <>{liveAdmin&&isFullAdmin(staffRole)&&<OutreachOverviewCard/>}<AdminHome members={members} events={events} live={liveAdmin} quota={{collected:quotaCollected,target:quotaTarget}} fullAdmin={isFullAdmin(staffRole)}/></>;
       case"members": return <AdminMembers members={members} setMembers={setMembers} events={events} polls={polls} live={live}/>;
       case"onboarding": return <AdminOnboarding live={liveAdmin?{apps:dbApplications,setApps:setDbApplications,members,setMembers}:null}/>;
       case"payments": return <AdminPayments members={members} setMembers={setMembers} live={liveAdmin?livePayments:null} fee={quotaFee}/>;
@@ -6849,6 +6851,7 @@ function OutreachHome({group,me,live,onOpen}){
             <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:30,color:col,marginTop:4}}>{v}</div></Card>
         ))}
       </div>
+      <div style={{marginTop:18}}><OutreachTargets group={group} contacts={contacts}/></div>
       <div style={{fontSize:13,color:C.inkSoft,marginTop:12}}>Këtë muaj ke shtuar {thisMonth.length} kontakte. Shkalla e suksesit = sa nga të kontaktuarit u bënë anëtarë.</div>
     </div>
   );
@@ -6859,13 +6862,21 @@ function AdminOutreach({group,me,live,events=[],announcements=[],polls=[]}){
   const o=useOutreach(group,live);
   const [view,setView]=useState("contacts");
   const [edit,setEdit]=useState(null);
+  const [msg,setMsg]=useState(null);
   const [toast,showToast]=useToast();
   const link=`${window.location.origin}/?anetaresohu&ref=${me&&me.id||""}`;
+  // A message sent to a contact goes into its history; a first message marks it "I kontaktuar".
+  async function messageSent(kanali,text){
+    if(!msg||!msg.grupi) return;
+    await addOutreachLog(msg,group,kanali,text.slice(0,200),me);
+    if(msg.status==="identifikuar") await supabase.from("outreach_contacts").update({status:"kontaktuar"}).eq("id",msg.id);
+    o.loadContacts();
+  }
 
   async function save(c){
     const {id,name,phone,email,status,...rest}=c;
     const extra={};
-    for(const k of ["universiteti","fakulteti","ku","shenime","kontakti_radhes","pelqimi","lloji","personi","application_id"]) if(rest[k]!==undefined&&rest[k]!=="") extra[k]=rest[k];
+    for(const k of ["universiteti","fakulteti","ku","shenime","kontakti_radhes","pelqimi","lloji","personi","application_id","tags","burimi","referredById"]) if(rest[k]!==undefined&&rest[k]!=="") extra[k]=rest[k];
     const row={grupi:group,name:name.trim(),phone:(phone||"").trim(),email:(email||"").trim(),status:status||"identifikuar",extra};
     const {error}=id?await supabase.from("outreach_contacts").update(row).eq("id",id):await supabase.from("outreach_contacts").insert(row);
     if(error){dbError(error,"Nuk u ruajt.");return false;}
@@ -6917,6 +6928,8 @@ function AdminOutreach({group,me,live,events=[],announcements=[],polls=[]}){
           <a className="vv-btn grn" href={`https://wa.me/?text=${encodeURIComponent(invite)}`} target="_blank" rel="noreferrer" style={{textDecoration:"none"}}>WhatsApp</a>
         </div>
       </Card>
+      <InterestLinkCard group={group} me={me} showToast={showToast}/>
+      <OutreachTargets group={group} contacts={o.contacts}/>
 
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:10,marginBottom:18}}>
         {OUTREACH_STATUS.map(([k,l,bg,col])=>(
@@ -6933,43 +6946,62 @@ function AdminOutreach({group,me,live,events=[],announcements=[],polls=[]}){
         ))}
       </div>
 
-      {view==="contacts"&&<OutreachContactsTable group={group} contacts={o.contacts&&people} onStatus={setStatus} onOpen={c=>setEdit({...c,...(c.extra||{})})}/>}
+      {view==="contacts"&&<OutreachContactsTable group={group} contacts={o.contacts&&people} onStatus={setStatus} onOpen={c=>setEdit({...c,...(c.extra||{})})} onMessage={setMsg}/>}
       {view==="orgs"&&<OutreachOrgsTable orgs={o.contacts&&orgs} onOpen={c=>setEdit({...c,...(c.extra||{})})}/>}
-      {view==="members"&&<OutreachMembersTable group={group} g={g} members={o.members} reload={o.loadMembers} showToast={showToast}/>}
+      {view==="members"&&<OutreachMembersTable group={group} g={g} members={o.members} reload={o.loadMembers} showToast={showToast} onMessage={setMsg}/>}
       {view==="referrals"&&<OutreachReferrals referrals={o.referrals}/>}
       {view==="events"&&<OutreachEvents group={group} events={myEvents} showToast={showToast}/>}
       {view==="news"&&<OutreachNews group={group} g={g} announcements={announcements.filter(a=>a.grupi===group)} polls={polls.filter(p=>p.grupi===group)} showToast={showToast}/>}
 
       <Modal open={!!edit} onClose={()=>setEdit(null)} title={edit&&edit.lloji==="shoqate"?"Shoqata studentore":edit&&edit.id?"Kontakti":"Shto kontakt"}>
-        {edit&&<OutreachContactForm group={group} initial={edit} onSave={async c=>{if(await save(c)) setEdit(null);}} onDelete={edit.id?()=>remove(edit):null}/>}
+        {edit&&<OutreachContactForm group={group} initial={edit} all={o.contacts||[]} me={me} onSave={async c=>{if(await save(c)) setEdit(null);}} onDelete={edit.id?()=>remove(edit):null}/>}
       </Modal>
+      <OutreachMessageModal target={msg} group={group} me={me} onClose={()=>setMsg(null)} onSent={msg&&msg.grupi?messageSent:null}/>
       <Toast msg={toast}/>
     </div>
   );
 }
 
-function OutreachContactsTable({group,contacts,onStatus,onOpen}){
-  if(!contacts) return <Card><div style={{color:C.inkSoft}}>Duke ngarkuar…</div></Card>;
-  if(!contacts.length) return <Card><div style={{color:C.inkSoft,fontSize:14,textAlign:"center"}}>Ende nuk ke shtuar kontakte. Kliko "Shto kontakt".</div></Card>;
-  return(
+function OutreachContactsTable({group,contacts:all,onStatus,onOpen,onMessage}){
+  const [q,setQ]=useState("");
+  const [tag,setTag]=useState("");
+  const [st,setSt]=useState("");
+  if(!all) return <Card><div style={{color:C.inkSoft}}>Duke ngarkuar…</div></Card>;
+  if(!all.length) return <Card><div style={{color:C.inkSoft,fontSize:14,textAlign:"center"}}>Ende nuk ke shtuar kontakte. Kliko "Shto kontakt" ose ndaj formularin "Dua të informohem".</div></Card>;
+  const usedTags=[...new Set(all.flatMap(c=>(c.extra||{}).tags||[]))];
+  const ql=q.trim().toLowerCase();
+  const contacts=all.filter(c=>{const x=c.extra||{};
+    if(st&&c.status!==st) return false;
+    if(tag&&!(x.tags||[]).includes(tag)) return false;
+    return !ql||[c.name,c.phone,c.email,x.universiteti,x.fakulteti,x.ku,x.shenime].some(v=>String(v||"").toLowerCase().includes(ql));});
+  return(<>
+    <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
+      <input className="vv-input" aria-label="Kërko kontakte" placeholder="Kërko emër, telefon, universitet…" value={q} onChange={e=>setQ(e.target.value)} style={{flex:"1 1 220px"}}/>
+      <select className="vv-input" aria-label="Filtro statusin" value={st} onChange={e=>setSt(e.target.value)}><option value="">Të gjitha statuset</option>{OUTREACH_STATUS.map(([k,l])=><option key={k} value={k}>{l}</option>)}</select>
+      {usedTags.length>0&&<select className="vv-input" aria-label="Filtro etiketën" value={tag} onChange={e=>setTag(e.target.value)}><option value="">Të gjitha etiketat</option>{usedTags.map(t=><option key={t}>{t}</option>)}</select>}
+    </div>
     <Card p={0} style={{overflow:"hidden"}}><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse"}}>
       <thead><tr><th className="vv-th">Emri</th><th className="vv-th">{group==="studentet"?"Universiteti":"Ku u takuam"}</th><th className="vv-th">Statusi</th><th className="vv-th">Kontakti i radhës</th><th className="vv-th"></th></tr></thead>
       <tbody>{contacts.map(c=>{const x=c.extra||{};return(
         <tr className="vv-row" key={c.id}>
           <td className="vv-td"><div style={{fontWeight:600}}>{c.name}</div>
             <div style={{fontSize:12,color:C.inkSoft}}>{[c.phone,c.email].filter(Boolean).join(" · ")}</div>
-            {!x.pelqimi&&<div style={{fontSize:11,color:C.amber,marginTop:2}}>Pa pëlqim për kontakt</div>}</td>
+            {!x.pelqimi&&<div style={{fontSize:11,color:C.amber,marginTop:2}}>Pa pëlqim për kontakt</div>}
+            {x.burimi==="formulari"&&<span className="vv-chip" style={{fontSize:10,background:"#EDE9FF",color:"#6B21A8",marginRight:4}}>nga formulari</span>}
+            {(x.tags||[]).map(t=><span key={t} className="vv-chip" style={{fontSize:10,marginRight:4}}>{t}</span>)}</td>
           <td className="vv-td" style={{fontSize:13}}>{group==="studentet"?[x.universiteti,x.fakulteti].filter(Boolean).join(" · ")||"—":x.ku||"—"}</td>
           <td className="vv-td"><select className="vv-input" aria-label={`Statusi i ${c.name}`} value={c.status} onChange={e=>onStatus(c,e.target.value)} style={{minWidth:170,background:outreachStatus(c.status)[2]}}>
             {OUTREACH_STATUS.map(([k,l])=><option key={k} value={k}>{l}</option>)}</select></td>
           <td className="vv-td" style={{fontSize:13,color:isDue(c)?C.red:undefined,fontWeight:isDue(c)?700:400}}>{x.kontakti_radhes?isoToCH(x.kontakti_radhes):"—"}</td>
           <td className="vv-td"><div style={{display:"flex",gap:6}}>
-            {c.phone&&<a className="vv-btn grn" style={{padding:"6px 10px",fontSize:12,textDecoration:"none"}} href={waToPhone(c.phone,`Përshëndetje ${c.name.split(" ")[0]}! `)} target="_blank" rel="noreferrer">WhatsApp</a>}
+            {(c.phone||c.email)&&<button className="vv-btn grn" style={{padding:"6px 10px",fontSize:12}} onClick={()=>onMessage(c)}>Mesazh</button>}
             <button className="vv-btn ghost" style={{padding:"6px 10px",fontSize:12}} onClick={()=>onOpen(c)}>Hap</button>
           </div></td>
         </tr>);})}</tbody>
-    </table></div></Card>
-  );
+    </table></div>
+    {!contacts.length&&<div style={{padding:16,color:C.inkSoft,fontSize:14,textAlign:"center"}}>Asnjë kontakt nuk përputhet me kërkimin.</div>}
+    </Card>
+  </>);
 }
 
 function OutreachOrgsTable({orgs,onOpen}){
@@ -6989,7 +7021,7 @@ function OutreachOrgsTable({orgs,onOpen}){
   );
 }
 
-function OutreachMembersTable({group,g,members,reload,showToast}){
+function OutreachMembersTable({group,g,members,reload,showToast,onMessage}){
   const [mailOpen,setMailOpen]=useState(false);
   async function setMentor(m,mentorId){
     const {error}=mentorId
@@ -7017,10 +7049,7 @@ function OutreachMembersTable({group,g,members,reload,showToast}){
           <td className="vv-td"><select className="vv-input" aria-label={`Mentori i ${m.name}`} value={m.mentor_id||""} onChange={e=>setMentor(m,e.target.value)} style={{minWidth:150}}>
             <option value="">— Pa mentor —</option>
             {members.filter(x=>x.id!==m.id).map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></td>
-          <td className="vv-td"><div style={{display:"flex",gap:6}}>
-            {m.phone&&<a className="vv-btn grn" style={{padding:"6px 10px",fontSize:12,textDecoration:"none"}} href={waToPhone(m.phone,`Përshëndetje ${m.name.split(" ")[0]}! `)} target="_blank" rel="noreferrer">WhatsApp</a>}
-            {m.email&&<a className="vv-btn ghost" style={{padding:"6px 10px",fontSize:12,textDecoration:"none"}} href={`mailto:${m.email}`}>Email</a>}
-          </div></td>
+          <td className="vv-td">{(m.phone||m.email)&&<button className="vv-btn grn" style={{padding:"6px 10px",fontSize:12}} onClick={()=>onMessage(m)}>Mesazh</button>}</td>
         </tr>))}</tbody>
     </table></div></Card>}
     <GroupEmailModal open={mailOpen} onClose={()=>setMailOpen(false)} group={group} count={members.filter(m=>m.email).length} showToast={showToast}/>
@@ -7182,8 +7211,14 @@ function OutreachNews({group,g,announcements,polls,showToast}){
   );
 }
 
-function OutreachContactForm({group,initial,onSave,onDelete}){
+function OutreachContactForm({group,initial,onSave,onDelete,all=[],me}){
   const [c,setC]=useState(initial);
+  // Same person already in the list? (email, phone or exact name)
+  const dup=(c.name||c.phone||c.email)?all.find(x=>x.id!==c.id&&(
+    (c.email&&x.email&&x.email.toLowerCase()===c.email.trim().toLowerCase())||
+    (c.phone&&x.phone&&x.phone.replace(/\D/g,"").slice(-9)===c.phone.replace(/\D/g,"").slice(-9)&&c.phone.replace(/\D/g,"").length>=9)||
+    (c.name&&x.name.trim().toLowerCase()===c.name.trim().toLowerCase()))):null;
+  const toggleTag=t=>setC(p=>{const tags=p.tags||[];return {...p,tags:tags.includes(t)?tags.filter(x=>x!==t):[...tags,t]};});
   const [busy,setBusy]=useState(false);
   const [ask,setAsk]=useState(false);
   const set=(k,v)=>setC(p=>({...p,[k]:v}));
@@ -7194,12 +7229,16 @@ function OutreachContactForm({group,initial,onSave,onDelete}){
     :[["name","Emri dhe mbiemri *","text"],["phone","Telefoni","tel"],["email","Email","email"],
       ...(group==="studentet"?[["universiteti","Universiteti","text"],["fakulteti","Fakulteti / drejtimi","text"]]:[]),
       ["ku","Ku u takuat / si u identifikua","text"],["kontakti_radhes","Kontakti i radhës","date"]];
-  return(
+  return(<>
     <form onSubmit={async e=>{e.preventDefault();if(!c.name||!c.name.trim()) return;setBusy(true);await onSave(c);setBusy(false);}}>
       <div style={{display:"grid",gap:12}}>
         {fields.map(([k,l,t])=>(
           <div key={k}><label style={lbl}>{l}</label>
             <input className="vv-input" aria-label={l.replace(" *","")} type={t} style={{width:"100%"}} value={c[k]||""} onChange={e=>set(k,e.target.value)} required={k==="name"}/></div>))}
+        {dup&&<div role="alert" style={{fontSize:13,background:"#FEF3C7",color:"#92400E",padding:"8px 12px",borderRadius:8}}>Kujdes: <b>{dup.name}</b> është tashmë në listë ({outreachStatus(dup.status)[1]}).</div>}
+        {!org&&<div><label style={lbl}>Etiketat</label>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{OUTREACH_TAGS.map(t=>{const on=(c.tags||[]).includes(t);return(
+            <button type="button" key={t} aria-pressed={on} onClick={()=>toggleTag(t)} style={{padding:"4px 10px",borderRadius:999,fontSize:12,fontWeight:600,cursor:"pointer",border:`1.5px solid ${on?C.red:"rgba(23,18,16,.15)"}`,background:on?C.red:"#fff",color:on?"#fff":C.ink}}>{t}</button>);})}</div></div>}
         {!org&&<div><label style={lbl}>Statusi</label>
           <select className="vv-input" aria-label="Statusi" style={{width:"100%"}} value={c.status} onChange={e=>set("status",e.target.value)}>
             {OUTREACH_STATUS.map(([k,l])=><option key={k} value={k}>{l}</option>)}</select></div>}
@@ -7216,7 +7255,8 @@ function OutreachContactForm({group,initial,onSave,onDelete}){
           :<button type="button" className="vv-btn ghost" style={{color:C.red}} onClick={()=>setAsk(true)}><Trash2 size={13}/>Fshi</button>)}
       </div>
     </form>
-  );
+    {c.id&&!org&&<OutreachLog contact={c} group={group} me={me}/>}
+  </>);
 }
 
 // Eventet (admin / events role): group events waiting for approval.
@@ -7273,4 +7313,226 @@ function useMyGroups(live){
 function visibleToMember(item,groups){
   if(item.miratuar===false) return false;
   return !item.grupi||groups.includes(item.grupi);
+}
+
+/* ── Outreach v3: "Dua të informohem" form, message templates, contact history, targets ── */
+const OUTREACH_TAGS=["ETH","UZH","ZHAW","PHZH","ZHdK","politikë","sport","kulturë","vullnetar","takim"];
+const OUTREACH_CHANNELS=["WhatsApp","Telefon","Email","Takim","Instagram","Tjetër"];
+const OUTREACH_TEMPLATES=[
+  {k:"takim",l:"Ftesë për takim",t:"Përshëndetje {emri}! Jam {une} nga Lëvizja VETËVENDOSJE! — Pika Zürich. Po organizojmë një takim me {grupi} dhe do të na gëzonte shumë të vish. A ke kohë?"},
+  {k:"aplikim",l:"Kujtesë për anëtarësim",t:"Përshëndetje {emri}! Siç folëm, këtu është formulari i anëtarësimit të Pikës Zürich: {lidhja}\nNëse ke pyetje, më shkruaj këtu."},
+  {k:"miresevjen",l:"Mirë se erdhe",t:"Mirë se erdhe në Pikën Zürich, {emri}! 🎉 Jam {une}, kontakti yt për {grupi}. Për çdo gjë, më shkruaj këtu."},
+  {k:"faleminderit",l:"Faleminderit pas takimit",t:"Faleminderit që erdhe sot, {emri}! Ishte kënaqësi. Nëse do të angazhohesh më shumë, formulari i anëtarësimit është këtu: {lidhja}"},
+  {k:"lire",l:"Mesazh i lirë",t:"Përshëndetje {emri}! "},
+];
+function fillTemplate(t,vars){return t.replace(/\{(\w+)\}/g,(m,k)=>vars[k]!=null?vars[k]:m);}
+
+// Public page "?informohu=studentet|rinia&ref=<id>": name, phone/email, university, consent.
+function OutreachInterestForm({group,onBack}){
+  const g=OUTREACH_GROUPS[group]||OUTREACH_GROUPS.studentet;
+  const [f,setF]=useState({name:"",phone:"",email:"",uni:"",consent:false});
+  const [err,setErr]=useState("");
+  const [busy,setBusy]=useState(false);
+  const [done,setDone]=useState(false);
+  async function send(e){
+    e.preventDefault();setErr("");
+    if(!f.name.trim()||(!f.phone.trim()&&!f.email.trim())){setErr("Shkruaj emrin dhe telefonin ose email-in.");return;}
+    if(!f.consent){setErr("Duhet të pranosh që të të kontaktojmë.");return;}
+    let ref=null;try{ref=new URLSearchParams(window.location.search).get("ref");}catch{}
+    setBusy(true);
+    const {error}=supabase?await supabase.rpc("outreach_signup",{p_group:group,p_name:f.name,p_phone:f.phone,p_email:f.email,p_universiteti:f.uni,p_consent:true,p_ref:ref}):{error:null};
+    setBusy(false);
+    if(error){console.error("[informohu]",error);setErr("Nuk u dërgua. Provo përsëri.");return;}
+    setDone(true);
+  }
+  const lbl={display:"block",fontSize:13,fontWeight:600,marginBottom:5};
+  return(
+    <div style={{minHeight:"100vh",background:C.paper,padding:20,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{maxWidth:440,width:"100%"}}>
+        <Card p={28}>
+          <div className="vv-eyebrow" style={{marginBottom:6}}>Lëvizja VETËVENDOSJE! · Pika Zürich</div>
+          {done?<>
+            <h2 style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:24,margin:"0 0 10px"}}>Faleminderit, {f.name.split(" ")[0]}!</h2>
+            <p style={{color:C.inkSoft,lineHeight:1.6}}>Do të të kontaktojmë së shpejti me informata për {g.title.toLowerCase()} e Pikës Zürich.</p>
+            <button className="vv-btn ghost" onClick={()=>{setF({name:"",phone:"",email:"",uni:"",consent:false});setDone(false);}}>Regjistro dikë tjetër</button>
+          </>:<form onSubmit={send}>
+            <h2 style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:24,margin:"0 0 6px"}}>Dua të informohem</h2>
+            <p style={{color:C.inkSoft,fontSize:14,margin:"0 0 18px"}}>{group==="studentet"?"Për studentët shqiptarë në Zürich.":"Për të rinjtë shqiptarë në Zürich."} Lëre kontaktin dhe të shkruajmë ne.</p>
+            <div style={{display:"grid",gap:12}}>
+              <div><label style={lbl}>Emri dhe mbiemri *</label><input className="vv-input" aria-label="Emri dhe mbiemri" style={{width:"100%"}} value={f.name} onChange={e=>setF({...f,name:e.target.value})}/></div>
+              <div><label style={lbl}>Telefoni (WhatsApp)</label><input className="vv-input" aria-label="Telefoni" type="tel" style={{width:"100%"}} value={f.phone} onChange={e=>setF({...f,phone:e.target.value})}/></div>
+              <div><label style={lbl}>Email</label><input className="vv-input" aria-label="Email" type="email" style={{width:"100%"}} value={f.email} onChange={e=>setF({...f,email:e.target.value})}/></div>
+              {group==="studentet"&&<div><label style={lbl}>Universiteti / shkolla</label><input className="vv-input" aria-label="Universiteti" style={{width:"100%"}} value={f.uni} onChange={e=>setF({...f,uni:e.target.value})}/></div>}
+              <label style={{display:"flex",gap:8,alignItems:"flex-start",fontSize:13,lineHeight:1.5,background:"#F8F7F3",padding:"10px 12px",borderRadius:10,cursor:"pointer"}}>
+                <input type="checkbox" checked={f.consent} onChange={e=>setF({...f,consent:e.target.checked})} style={{marginTop:3}}/>
+                <span>Pranoj që Pika Zürich e VETËVENDOSJE! të më kontaktojë për aktivitetet e saj. Të dhënat nuk u jepen të tjerëve. *</span></label>
+            </div>
+            {err&&<div style={{color:C.red,fontSize:13,marginTop:10}}>{err}</div>}
+            <button className="vv-btn" type="submit" disabled={busy} style={{width:"100%",justifyContent:"center",marginTop:16}}>{busy?"Duke dërguar…":"Dërgo"}</button>
+          </form>}
+        </Card>
+        {onBack&&<button className="vv-btn ghost" onClick={onBack} style={{marginTop:14,fontSize:13}}>← Faqja kryesore</button>}
+      </div>
+    </div>
+  );
+}
+
+// Template picker: fills {emri}, {une}, {grupi}, {lidhja}; send by WhatsApp / email or copy.
+function OutreachMessageModal({target,group,me,onClose,onSent}){
+  const [tpl,setTpl]=useState(OUTREACH_TEMPLATES[0].k);
+  const [text,setText]=useState("");
+  const vars=target?{emri:String(target.name||"").split(" ")[0],une:String(me&&me.name||"").split(" ")[0],grupi:group==="studentet"?"studentët":"të rinjtë",
+    lidhja:`${window.location.origin}/?anetaresohu&ref=${me&&me.id||""}`}:{};
+  useEffect(()=>{if(target) setText(fillTemplate(OUTREACH_TEMPLATES.find(x=>x.k===tpl).t,vars));},[tpl,target&&target.name]);
+  if(!target) return null;
+  const done=(kanali)=>{onSent&&onSent(kanali,text);onClose();};
+  return(
+    <Modal open onClose={onClose} title={`Mesazh për ${target.name}`}>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
+        {OUTREACH_TEMPLATES.map(x=><button key={x.k} type="button" onClick={()=>setTpl(x.k)} style={{padding:"5px 12px",borderRadius:999,fontSize:12,fontWeight:600,cursor:"pointer",border:`1.5px solid ${tpl===x.k?C.red:"rgba(23,18,16,.12)"}`,background:tpl===x.k?C.red:"#fff",color:tpl===x.k?"#fff":C.ink}}>{x.l}</button>)}
+      </div>
+      <textarea className="vv-input" aria-label="Teksti i mesazhit" rows={6} style={{width:"100%"}} value={text} onChange={e=>setText(e.target.value)}/>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:12}}>
+        {target.phone&&<a className="vv-btn grn" style={{textDecoration:"none"}} href={waToPhone(target.phone,text)} target="_blank" rel="noreferrer" onClick={()=>done("WhatsApp")}>WhatsApp</a>}
+        {target.email&&<a className="vv-btn ghost" style={{textDecoration:"none"}} href={`mailto:${target.email}?subject=${encodeURIComponent("VV Pika Zürich")}&body=${encodeURIComponent(text)}`} onClick={()=>done("Email")}>Email</a>}
+        <button type="button" className="vv-btn ghost" onClick={()=>navigator.clipboard?.writeText(text).then(()=>done("Tjetër")).catch(()=>{})}>Kopjo</button>
+      </div>
+      {onSent&&<div style={{fontSize:12,color:C.inkSoft,marginTop:8}}>Mesazhi shënohet vetë te historiku i kontaktit.</div>}
+    </Modal>
+  );
+}
+
+// History of one contact (calls, messages, meetings).
+async function addOutreachLog(contact,group,kanali,shenim,me){
+  const {error}=await supabase.from("outreach_log").insert({contact_id:contact.id,grupi:group,kanali,shenim:String(shenim||"").slice(0,1000),author:me&&me.name||""});
+  if(error){dbError(error,"Historiku nuk u ruajt.");return false;}
+  return true;
+}
+function OutreachLog({contact,group,me}){
+  const [items,setItems]=useState(null);
+  const [f,setF]=useState({kanali:"WhatsApp",shenim:""});
+  async function load(){
+    const {data}=await supabase.from("outreach_log").select("*").eq("contact_id",contact.id).order("created_at",{ascending:false});
+    setItems(data||[]);
+  }
+  useEffect(()=>{load();},[contact.id]);
+  async function add(){
+    if(!f.shenim.trim()) return;
+    if(await addOutreachLog(contact,group,f.kanali,f.shenim.trim(),me)){setF({...f,shenim:""});load();}
+  }
+  return(
+    <div style={{marginTop:18,borderTop:`1px solid ${C.line}`,paddingTop:14}}>
+      <div style={{fontWeight:700,marginBottom:8}}>Historiku</div>
+      <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
+        <select className="vv-input" aria-label="Kanali" value={f.kanali} onChange={e=>setF({...f,kanali:e.target.value})} style={{width:120}}>
+          {OUTREACH_CHANNELS.map(k=><option key={k}>{k}</option>)}</select>
+        <input className="vv-input" aria-label="Çfarë u fol" placeholder="Çfarë u fol / rezultati" style={{flex:1,minWidth:160}} value={f.shenim} onChange={e=>setF({...f,shenim:e.target.value})} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();add();}}}/>
+        <button type="button" className="vv-btn ghost" onClick={add}>Shto</button>
+      </div>
+      {!items?<div style={{fontSize:13,color:C.inkSoft}}>Duke ngarkuar…</div>
+      :!items.length?<div style={{fontSize:13,color:C.inkSoft}}>Ende pa histori.</div>
+      :<div style={{maxHeight:200,overflowY:"auto"}}>{items.map(x=>(
+        <div key={x.id} style={{fontSize:13,padding:"6px 0",borderBottom:`1px solid ${C.line}`}}>
+          <b>{new Date(x.created_at).toLocaleDateString("de-CH")}</b> · {x.kanali} — {x.shenim}
+          {x.author&&<span style={{color:C.inkSoft}}> ({x.author.split(" ")[0]})</span>}
+        </div>))}</div>}
+    </div>
+  );
+}
+
+// QR + link for the public "Dua të informohem" form.
+function InterestLinkCard({group,me,showToast}){
+  const link=`${window.location.origin}/?informohu=${group}&ref=${me&&me.id||""}`;
+  const [qr,setQr]=useState("");
+  useEffect(()=>{QRCode.toDataURL(link,{margin:1,width:240}).then(setQr).catch(()=>{});},[link]);
+  return(
+    <Card style={{marginBottom:18}}>
+      <div style={{display:"flex",gap:16,alignItems:"center",flexWrap:"wrap"}}>
+        {qr&&<img src={qr} alt="Kodi QR i formularit Dua të informohem" style={{width:120,height:120,borderRadius:8,border:`1px solid ${C.line}`}}/>}
+        <div style={{flex:"1 1 240px"}}>
+          <div className="vv-eyebrow" style={{marginBottom:6}}>Formulari "Dua të informohem"</div>
+          <div style={{fontSize:13,color:C.inkSoft,marginBottom:10}}>Trego QR-në në takime ose ndaje lidhjen. Kush e plotëson, del vetë te kontaktet e tua, me pëlqim të dhënë.</div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            <button className="vv-btn ghost" onClick={()=>navigator.clipboard?.writeText(link).then(()=>showToast("Lidhja u kopjua ✓")).catch(()=>{})}>Kopjo lidhjen</button>
+            {qr&&<a className="vv-btn ghost" href={qr} download={`qr-informohu-${group}.png`} style={{textDecoration:"none"}}><Download size={14}/>Shkarko QR</a>}
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// Monthly targets (settings.outreach_targets) — progress bars for the secretary.
+function useOutreachTargets(){
+  const [t,setT]=useState(null);
+  async function load(){const {data}=await supabase.from("settings").select("value").eq("key","outreach_targets").maybeSingle();setT(data?data.value:{});}
+  useEffect(()=>{if(supabase) load();},[]);
+  return [t,load];
+}
+function OutreachTargets({group,contacts}){
+  const [targets]=useOutreachTargets();
+  const t=targets&&targets[group];
+  if(!t||!contacts) return null;
+  const month=isoToday().slice(0,7);
+  const people=contacts.filter(c=>(c.extra||{}).lloji!=="shoqate");
+  const rows=[["Kontakte të reja këtë muaj",people.filter(c=>String(c.created_at).slice(0,7)===month).length,t.kontakte],
+    ["Anëtarë të rinj këtë muaj",people.filter(c=>c.status==="anetar"&&String(c.updated_at).slice(0,7)===month).length,t.anetare]];
+  return(
+    <Card style={{marginBottom:18}}>
+      <div className="vv-eyebrow" style={{marginBottom:10}}>Objektivat e muajit</div>
+      {rows.map(([l,v,goal])=>{const pct=goal?Math.min(100,Math.round(v*100/goal)):0;return(
+        <div key={l} style={{marginBottom:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:4}}><span>{l}</span><b>{v} / {goal||"—"}</b></div>
+          <div style={{height:8,background:"#E8E7E3",borderRadius:4,overflow:"hidden"}}><div style={{width:`${pct}%`,height:"100%",background:pct>=100?C.green:C.red}}/></div>
+        </div>);})}
+    </Card>
+  );
+}
+
+// Admin / kryetar Paneli: both groups at a glance, and the monthly targets.
+function OutreachOverviewCard(){
+  const [rows,setRows]=useState(null);
+  const [targets,reloadTargets]=useOutreachTargets();
+  const [edit,setEdit]=useState(null);
+  const [toast,showToast]=useToast();
+  useEffect(()=>{supabase.rpc("outreach_overview").then(({data})=>setRows(data||[]));},[]);
+  async function saveTargets(){
+    const {error}=await supabase.from("settings").upsert({key:"outreach_targets",value:edit});
+    if(error){dbError(error,"Objektivat nuk u ruajtën.");return;}
+    setEdit(null);reloadTargets();showToast("Objektivat u ruajtën ✓");
+  }
+  if(!rows||!rows.length) return null;
+  return(
+    <Card style={{marginBottom:20}}>
+      <div style={{display:"flex",alignItems:"center",marginBottom:12,gap:8}}>
+        <div style={{flex:1,fontWeight:700}}>Rinia & Studentët</div>
+        {targets&&<button className="vv-btn ghost" style={{padding:"6px 10px",fontSize:12}} onClick={()=>setEdit(JSON.parse(JSON.stringify(targets)))}>Objektivat</button>}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:12}}>
+        {rows.map(r=>{const t=(targets||{})[r.grupi]||{};return(
+          <div key={r.grupi} style={{background:"#F8F7F3",borderRadius:12,padding:"12px 14px"}}>
+            <div style={{fontWeight:700,marginBottom:6}}>{OUTREACH_GROUPS[r.grupi].title}</div>
+            <div style={{fontSize:13,lineHeight:1.8}}>
+              Kontakte këtë muaj: <b>{r.kontakte_muaj}{t.kontakte?` / ${t.kontakte}`:""}</b><br/>
+              Anëtarë të rinj këtë muaj: <b>{r.anetare_muaj}{t.anetare?` / ${t.anetare}`:""}</b><br/>
+              Gjithsej: {r.kontakte} kontakte · {r.kontaktuar} të kontaktuar · {r.anetare} anëtarë<br/>
+              {r.te_vonuara>0?<span style={{color:C.red,fontWeight:700}}>{r.te_vonuara} kontakte të vonuara</span>:<span style={{color:C.green}}>Asnjë kontakt i vonuar</span>}
+            </div>
+          </div>);})}
+      </div>
+      <Modal open={!!edit} onClose={()=>setEdit(null)} title="Objektivat mujore">
+        {edit&&<div style={{display:"grid",gap:12}}>
+          {["studentet","rinia"].map(gk=>(
+            <div key={gk}><div style={{fontWeight:700,marginBottom:6}}>{OUTREACH_GROUPS[gk].title}</div>
+              <div style={{display:"flex",gap:10}}>
+                {[["kontakte","Kontakte"],["anetare","Anëtarë"]].map(([k,l])=>(
+                  <label key={k} style={{fontSize:13,flex:1}}>{l}<input className="vv-input" type="number" min={0} aria-label={`${l} ${OUTREACH_GROUPS[gk].title}`} style={{width:"100%"}}
+                    value={(edit[gk]||{})[k]??""} onChange={e=>setEdit({...edit,[gk]:{...(edit[gk]||{}),[k]:Number(e.target.value)}})}/></label>))}
+              </div></div>))}
+          <button className="vv-btn" onClick={saveTargets}>Ruaj</button>
+        </div>}
+      </Modal>
+      <Toast msg={toast}/>
+    </Card>
+  );
 }
