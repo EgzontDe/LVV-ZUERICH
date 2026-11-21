@@ -1204,7 +1204,11 @@ function Shell({role,tab,setTab,onLogout,children,adminTabs,memberTabs,dark,onTo
   const tabs=role==="admin"?adminTabs:memberTabs;
   function navTo(key){setTab(key);setSideOpen(false);}
   function markAll(){setNotifs(prev=>prev.map(n=>({...n,read:true})));}
-  function markRead(id){setNotifs(prev=>prev.map(n=>n.id===id?{...n,read:true}:n));}
+  function markRead(id){
+    setNotifs(prev=>prev.map(n=>n.id===id?{...n,read:true}:n));
+    const n=notifs.find(x=>x.id===id);
+    if(n&&n.go){setTab(n.go);setNotifOpen(false);}
+  }
   return(
     <div className="vv-shell">
       {(refreshing||pull>0.15)&&(
@@ -4161,7 +4165,7 @@ export default function App(){
   function renderMemberTab(){
     switch(tab){
       case"home": return <>
-        {live&&<PaymentReminderBanner notifs={liveNotifs.items.filter(n=>!n.read_at&&n.member_id===me.id)} paid={me.pay!=="papaguar"} onPay={()=>setTab("invoices")} onDismiss={liveNotifs.markAllRead}/>}
+        {live&&<PaymentReminderBanner notifs={liveNotifs.items.filter(n=>!n.read_at&&n.member_id===me.id&&n.kind==="kujtese_pagese")} paid={me.pay!=="papaguar"} onPay={()=>setTab("invoices")} onDismiss={liveNotifs.markAllRead}/>}
         <MemberHome me={me} events={events} announcements={announcements} polls={polls} live={live}/>
       </>;
       case"profile": return <MemberProfile me={me} onSave={saveMyProfile}/>;
@@ -4217,7 +4221,9 @@ export default function App(){
           role={role} tab={tab} setTab={setTab} onLogout={handleLogout}
           adminTabs={myAdminTabs} memberTabs={memberTabs}
           liveNotifs={live?{
-            items:liveNotifs.items.filter(n=>n.member_id===me.id).map(n=>({id:n.id,type:"payment",title:n.title,body:n.body,time:timeAgo(n.created_at),read:!!n.read_at})),
+            items:liveNotifs.items.filter(n=>n.member_id===me.id).map(n=>({id:n.id,type:n.kind==="aplikim_i_ri"?"member":"payment",title:n.title,body:n.body,time:timeAgo(n.created_at),read:!!n.read_at,
+              // A new application opens Onboarding (only from the management view, where that tab exists).
+              go:n.kind==="aplikim_i_ri"&&role==="admin"&&myAdminTabs.some(t=>t.key==="onboarding")?"onboarding":null})),
             markAll:liveNotifs.markAllRead,
           }:null}
           meName={me.name} roleLabel={role==="admin"?STAFF_ROLES[staffRole]||"Administrator":"Anëtar"}
