@@ -1,5 +1,6 @@
-// group-email: the Studentët / Rinia secretary (or admin/kryetar) emails every member of the group.
-// Body: { grupi: "studentet" | "rinia", subject: string, message: string }
+// group-email: the Studentët / Rinia secretary (or admin/kryetar) emails every member of the group;
+// grupi "all" (Komunikimi → Email anëtarëve): admin/kryetar/komunikimi email all active members.
+// Body: { grupi: "studentet" | "rinia" | "all", subject: string, message: string }
 // Recipients come from RPC list_group_members called AS THE CALLER, so the database decides who may send.
 // Sent from the Gmail account in secrets SMTP_USER / SMTP_PASS, recipients in BCC (they don't see each other).
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -14,7 +15,7 @@ const cors = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 const esc = (s: unknown) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
-const TITLES: Record<string, string> = { studentet: "Studentët", rinia: "Rinia" };
+const TITLES: Record<string, string> = { studentet: "Studentët", rinia: "Rinia", all: "Të gjithë anëtarët" };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -34,9 +35,20 @@ Deno.serve(async (req) => {
   const message = String(body.message ?? "").trim().slice(0, 5000);
   if (!TITLES[grupi] || !subject || !message) return json({ error: "invalid_body" }, 400);
 
-  const { data: members, error } = await asUser.rpc("list_group_members", { p_group: grupi });
-  if (error) return json({ error: "not_allowed" }, 403);
-  const to = [...new Set((members ?? []).map((m: { email: string }) => m.email).filter(Boolean))];
+  let members: { email: string }[] = [];
+  if (grupi === "all") {
+    // Komunikimi → "Email anëtarëve": only admin, kryetar and komunikimi; all active members.
+    const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
+    const { data: prof } = await admin.from("profiles").select("role,deleted_at").eq("id", who.user.id).maybeSingle();
+    if (!prof || prof.deleted_at || !["admin", "kryetar", "komunikimi"].includes(prof.role)) return json({ error: "not_allowed" }, 403);
+    const { data } = await admin.from("members").select("email").eq("status", "aktiv").lt("id", 9000);
+    members = data ?? [];
+  } else {
+    const { data, error } = await asUser.rpc("list_group_members", { p_group: grupi });
+    if (error) return json({ error: "not_allowed" }, 403);
+    members = data ?? [];
+  }
+  const to = [...new Set(members.map((m) => m.email).filter(Boolean))];
   if (!to.length) return json({ error: "no_recipients" }, 400);
 
   const user = Deno.env.get("SMTP_USER"), pass = Deno.env.get("SMTP_PASS");

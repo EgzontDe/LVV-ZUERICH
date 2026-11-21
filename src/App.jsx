@@ -770,7 +770,9 @@ function ApplyForm({onBack}){
 }
 
 function PublicHome({onLogin,onApply}){
-  const pubEvents=seedEvents.filter(e=>e.public&&!e.past&&!isPastDate(e.date));
+  // Real events, news and numbers from the database (demo data only without Supabase).
+  const pub=usePublicContent();
+  const pubEvents=pub.events.filter(e=>e.public&&!e.past&&!isPastDate(e.date));
   const [menuOpen,setMenuOpen]=useState(false);
   return(
     <div style={{fontFamily:"'Inter',sans-serif",color:"#171210",background:"#EDECE8",minHeight:"100vh"}}>
@@ -824,7 +826,7 @@ function PublicHome({onLogin,onApply}){
           </div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginTop:56,maxWidth:600,position:"relative",zIndex:1}}>
-          {[["32","Anëtarë"],["2018","Themeluar"],["4 Tet","Zgjedhjet"],["CHF 150","Kuota vjetore"]].map(([v,l])=>(
+          {[[pub.stats?String(pub.stats.members):"…","Anëtarë"],[pub.stats?String(pub.stats.events):"…","Evente të ardhshme"],["CHF 150","Kuota vjetore"]].map(([v,l])=>(
             <div key={l} className="ph-stat">
               <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:24,lineHeight:1}}>{v}</div>
               <div style={{fontSize:11,opacity:.72,marginTop:4,fontWeight:600}}>{l}</div>
@@ -894,7 +896,8 @@ function PublicHome({onLogin,onApply}){
           <div style={{fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:".1em",color:"#E2231A",marginBottom:8}}>Lajme</div>
           <h2 style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:28,letterSpacing:"-1px",marginBottom:24}}>Njoftimet e fundit</h2>
           <div style={{display:"grid",gap:14}}>
-            {seedAnnouncements.map(a=>(
+            {!pub.news.length&&<div style={{color:"#5A524E",fontSize:14}}>Ende nuk ka njoftime publike.</div>}
+            {pub.news.map(a=>(
               <div key={a.id} className="ph-card" style={{display:"flex",gap:16,alignItems:"flex-start"}}>
                 {a.pinned&&<span style={{flexShrink:0,background:"#E2231A",color:"#fff",borderRadius:8,padding:"4px 8px",fontSize:11,fontWeight:700,marginTop:2}}>📌</span>}
                 <div>
@@ -913,7 +916,7 @@ function PublicHome({onLogin,onApply}){
         <div style={{position:"absolute",left:"50%",top:"50%",transform:"translate(-50%,-50%)",fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:400,color:"rgba(255,255,255,.04)",pointerEvents:"none",userSelect:"none",lineHeight:1}}>!</div>
         <div style={{position:"relative",zIndex:1}}>
           <h2 style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:"clamp(28px,5vw,52px)",letterSpacing:"-1.5px",marginBottom:16}}>Bëhu pjesë e lëvizjes</h2>
-          <p style={{fontSize:17,opacity:.88,marginBottom:36,maxWidth:480,margin:"0 auto 36px"}}>Bashkohu me 32 anëtarët e Pikës Zürich. Apliko tani — kryesia do të të kontaktojë brenda 3–5 ditëve.</p>
+          <p style={{fontSize:17,opacity:.88,marginBottom:36,maxWidth:480,margin:"0 auto 36px"}}>Bashkohu me anëtarët e Pikës Zürich. Apliko tani — kryesia do të të kontaktojë brenda 3–5 ditëve.</p>
           <div style={{display:"flex",gap:14,justifyContent:"center",flexWrap:"wrap"}}>
             <button className="ph-btn-pri" onClick={onApply}><UserPlus size={16}/>Apliko për anëtarësim</button>
             <button className="ph-btn-sec" onClick={onLogin}>Hyr si anëtar →</button>
@@ -927,7 +930,6 @@ function PublicHome({onLogin,onApply}){
           <div>
             <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:16,color:"#fff",marginBottom:8}}>VETËVENDOSJE!</div>
             <div style={{marginBottom:4}}>Pika Zürich — Zvicër</div>
-            <div style={{opacity:.55,fontSize:12}}>Themeluar 2018</div>
           </div>
           <div>
             <div style={{fontWeight:700,color:"rgba(255,255,255,.9)",marginBottom:10,fontSize:13}}>Kontakt</div>
@@ -2126,15 +2128,17 @@ function ElectionCountdown({compact=false}){
   );
 }
 
-function generateReport(members,events){
+function generateReport(members,events,payments=null){
+  // Real login: monthly totals of confirmed payments this year; demo: sample months.
+  const FM=payments?monthsFromPayments(payments):FINANCE_MONTHS;
   const now=new Date();
   const dateStr=now.toLocaleDateString("sq-AL",{day:"2-digit",month:"long",year:"numeric"});
   const paid=members.filter(m=>m.pay==="paguar");
   const unpaid=members.filter(m=>m.pay==="papaguar"&&!m.exempt);
   const exempt=members.filter(m=>m.exempt);
   const active=members.filter(m=>m.status==="aktiv");
-  const collected=paid.length*KUOTA;
-  const finTotal=FINANCE_MONTHS.reduce((s,m)=>s+m.collected,0);
+  const collected=payments?FM.reduce((x,m)=>x+m.collected,0):paid.length*KUOTA;
+  const finTotal=FM.reduce((s,m)=>s+m.collected,0);
   const upcoming=events.filter(e=>!e.past);
   const memberRows=members.map(m=>`
     <tr>
@@ -2147,9 +2151,9 @@ function generateReport(members,events){
     </tr>`).join("");
   const eventRows=upcoming.map(e=>`
     <tr><td>${e.title}</td><td>${e.date} · ${e.time}</td><td>${e.place}</td><td>${e.rsvp.length}/${e.max}</td></tr>`).join("");
-  const finRows=FINANCE_MONTHS.map(m=>`
+  const finRows=FM.map(m=>`
     <tr><td>${m.m} 2026</td><td>CHF ${m.collected}</td>
-    <td><div style="background:#eee;border-radius:4px;height:8px"><div style="background:#1E8A4C;height:8px;border-radius:4px;width:${Math.round(m.collected/Math.max(...FINANCE_MONTHS.map(x=>x.collected),1)*100)}%"></div></div></td></tr>`).join("");
+    <td><div style="background:#eee;border-radius:4px;height:8px"><div style="background:#1E8A4C;height:8px;border-radius:4px;width:${Math.round(m.collected/Math.max(...FM.map(x=>x.collected),1)*100)}%"></div></div></td></tr>`).join("");
   const html=`<!DOCTYPE html><html lang="sq"><head><meta charset="utf-8">
 <title>Raport Mujor — VV Pika Zürich</title>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -2204,7 +2208,7 @@ tr:last-child td{border-bottom:none}
   w.document.close();
 }
 
-function AdminHome({members,events,live=false,quota=null,fullAdmin=true}){
+function AdminHome({members,events,live=false,quota=null,fullAdmin=true,payments=null}){
   const paid=members.filter(m=>m.pay==="paguar").length;
   const unpaid=members.filter(m=>m.pay==="papaguar").length;
   const active=members.filter(m=>m.status==="aktiv").length;
@@ -2212,7 +2216,7 @@ function AdminHome({members,events,live=false,quota=null,fullAdmin=true}){
   return(
     <div>
       <SectionTitle title="Paneli kryesor" sub={`Pika Zürich · ${todayCH()}`} action={
-        <button className="vv-btn ghost" onClick={()=>generateReport(members,events)}>
+        <button className="vv-btn ghost" onClick={()=>generateReport(members.filter(m=>m.id<9000),events,live?payments:null)}>
           <FileDown size={15}/>Gjenero Raport PDF
         </button>
       }/>
@@ -2563,7 +2567,7 @@ function AdminEvents({events,setEvents,members}){
   );
 }
 
-function AdminComms({members,announcements,setAnnouncements}){
+function AdminComms({members,announcements,setAnnouncements,live=false,canDocs=false}){
   const [tab,setTab]=useState("njoftimet");
   const [open,setOpen]=useState(false);
   const [form,setForm]=useState({title:"",body:"",pinned:false});
@@ -2578,9 +2582,15 @@ function AdminComms({members,announcements,setAnnouncements}){
     setOpen(false);setForm({title:"",body:"",pinned:false});
     showToast("Njoftimi u publikua!");
   }
-  function sendEmail(e){
+  async function sendEmail(e){
     e.preventDefault();
     if(!emailDraft.subject||!emailDraft.body){showToast("Plotëso subjektin dhe mesazhin");return;}
+    // Real login: really send it (Edge Function group-email, all active members, BCC).
+    if(live){
+      const {data,error}=await supabase.functions.invoke("group-email",{body:{grupi:"all",subject:emailDraft.subject,message:emailDraft.body}});
+      if(error){showToast("Email-i nuk u dërgua. Provo përsëri.");return;}
+      setSent(true);showToast(`Email-i u dërgua te ${data.sent} anëtarë ✓`);setEmailDraft({subject:"",body:""});setTimeout(()=>setSent(false),4000);return;
+    }
     setSent(true);showToast(`Email u dërgua tek ${members.filter(m=>m.status==="aktiv").length} anëtarë!`);
     setTimeout(()=>setSent(false),4000);
   }
@@ -2664,7 +2674,8 @@ function AdminComms({members,announcements,setAnnouncements}){
           </Card>
         </div>
       </div>}
-      {tab==="dokumentet"&&<Card p={0} style={{overflow:"hidden"}}>
+      {tab==="dokumentet"&&live&&<DocumentsPanel canManage={canDocs}/>}
+      {tab==="dokumentet"&&!live&&<Card p={0} style={{overflow:"hidden"}}>
         <div style={{padding:"14px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:`1px solid ${C.line}`}}>
           <div style={{fontWeight:700}}>Dokumentet e Pikës</div>
           <button className="vv-btn" style={{fontSize:13,padding:"7px 14px"}}><Plus size={14}/>Ngarko</button>
@@ -2938,15 +2949,16 @@ function AdminRequests({live=null}={}){
 }
 
 function AdminArchive({live=false}={}){
-  const [tab,setTab]=useState("fotot");
+  const [tab,setTab]=useState(live?"procesverbalet":"fotot");
   return(
     <div>
       <SectionTitle title="Arkiva" sub="Historia dhe materialet e Pikës"/>
       <div style={{display:"flex",gap:8,marginBottom:20}}>
-        {[["fotot","Fotot"],["dokumentet","Procesverbalet"],["aniversaret","Përvjetorët"],...(live?[["auditimi","Auditimi"]]:[])].map(([k,l])=>(
+        {(live?[["procesverbalet","Procesverbalet dhe dokumentet"],["auditimi","Auditimi"]]:[["fotot","Fotot"],["dokumentet","Procesverbalet"],["aniversaret","Përvjetorët"]]).map(([k,l])=>(
           <button key={k} onClick={()=>setTab(k)} style={{padding:"8px 16px",borderRadius:8,border:`1px solid ${C.line}`,background:tab===k?C.ink:"#fff",color:tab===k?"#fff":C.ink,fontWeight:600,fontSize:13}}>{l}</button>
         ))}
       </div>
+      {tab==="procesverbalet"&&live&&<DocumentsPanel canManage/>}
       {tab==="auditimi"&&live&&<Card p={0} style={{overflow:"hidden"}}><AuditFeed limit={200}/></Card>}
       {tab==="fotot"&&<div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
         {ARCHIVE_PHOTOS.map(p=>(
@@ -3278,21 +3290,25 @@ function AdminCalendar({events=seedEvents}){
   );
 }
 
-function AdminMap(){
-  const maxCount=Math.max(...CANTON_DATA.map(c=>c.count));
+function AdminMap({members=[],live=false}={}){
+  // Real login: counts from the real member list; demo: sample data.
+  const CD=live?liveCantonData(members):CANTON_DATA;
+  const total=live?members.filter(m=>m.id<9000&&m.status==="aktiv").length:seedMembers.length;
+  if(!CD.length) return <div><SectionTitle title="Harta e anëtarëve" sub="Shpërndarja sipas kantonit"/><Card><div style={{color:C.inkSoft}}>Ende nuk ka anëtarë me kanton.</div></Card></div>;
+  const maxCount=Math.max(...CD.map(c=>c.count));
   return(
     <div>
       <SectionTitle title="Harta e anëtarëve" sub="Shpërndarja sipas kantonit"/>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:24}}>
-        <StatCard label="Kantone të përfaqësuara" value={CANTON_DATA.length} icon={<MapPin size={26}/>}/>
-        <StatCard label="Kantoni me më shumë" value={CANTON_DATA[0].kanton} icon={<Globe size={26}/>}/>
-        <StatCard label="Anëtarë gjithsej" value={seedMembers.length} color={C.red} icon={<Users size={26}/>}/>
+        <StatCard label="Kantone të përfaqësuara" value={CD.length} icon={<MapPin size={26}/>}/>
+        <StatCard label="Kantoni me më shumë" value={CD[0].kanton} icon={<Globe size={26}/>}/>
+        <StatCard label="Anëtarë gjithsej" value={total} color={C.red} icon={<Users size={26}/>}/>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:20}}>
         <Card>
           <div style={{fontWeight:700,fontSize:15,marginBottom:20}}>Shpërndarja sipas kantonit</div>
           <div style={{display:"grid",gap:12}}>
-            {CANTON_DATA.map(c=>(
+            {CD.map(c=>(
               <div key={c.kanton}>
                 <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
                   <span style={{fontWeight:600,fontSize:14}}>{c.kanton}</span>
@@ -3307,7 +3323,7 @@ function AdminMap(){
         </Card>
         <Card>
           <div style={{fontWeight:700,fontSize:15,marginBottom:14}}>Detajet</div>
-          {CANTON_DATA.map(c=>(
+          {CD.map(c=>(
             <div key={c.kanton} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.line}`}}>
               <div style={{display:"flex",gap:10,alignItems:"center"}}>
                 <div style={{width:28,height:28,borderRadius:6,background:C.red,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:11,fontWeight:700}}>{c.kanton.slice(0,2)}</div>
@@ -3322,20 +3338,23 @@ function AdminMap(){
   );
 }
 
-function AdminRecruitment(){
+function AdminRecruitment({apps=[],live=false}={}){
+  // Real login: who brought members (applications with "Referuar nga"); demo: sample data.
+  const RF=live?liveReferrals(apps):seedReferrals;
+  if(!RF.length) return <div><SectionTitle title="Rekrutimi" sub="Gjurmimi i rekrutimit dhe referimeve"/><Card><div style={{color:C.inkSoft}}>Ende askush nuk ka aplikuar me lidhjen e një anëtari.</div></Card></div>;
   return(
     <div>
       <SectionTitle title="Rekrutimi" sub="Gjurmimi i rekrutimit dhe referimeve"/>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:24}}>
-        <StatCard label="Total referime" value={seedReferrals.reduce((s,r)=>s+r.referred,0)} icon={<UserPlus size={26}/>} color={C.green}/>
-        <StatCard label="Rekrutues aktivë" value={seedReferrals.filter(r=>r.referred>0).length} icon={<Users size={26}/>}/>
-        <StatCard label="Rekrutues kryesor" value={seedReferrals[0].name.split(" ")[0]} icon={<Star size={26}/>} color={C.red}/>
+        <StatCard label="Total referime" value={RF.reduce((s,r)=>s+r.referred,0)} icon={<UserPlus size={26}/>} color={C.green}/>
+        <StatCard label="Rekrutues aktivë" value={RF.filter(r=>r.referred>0).length} icon={<Users size={26}/>}/>
+        <StatCard label="Rekrutues kryesor" value={RF[0].name.split(" ")[0]} icon={<Star size={26}/>} color={C.red}/>
       </div>
       <Card p={0} style={{overflow:"hidden",marginBottom:20}}>
         <div style={{padding:"14px 16px",fontWeight:700,borderBottom:`1px solid ${C.line}`}}>Rekrutuesit dhe kodet e referimit</div>
         <table style={{width:"100%",borderCollapse:"collapse"}}>
           <thead><tr><th className="vv-th">Anëtari</th><th className="vv-th">Kodi</th><th className="vv-th">Referime</th><th className="vv-th">Kush u referua</th></tr></thead>
-          <tbody>{seedReferrals.map(r=>(
+          <tbody>{RF.map(r=>(
             <tr className="vv-row" key={r.id}>
               <td className="vv-td" style={{fontWeight:600}}>{r.name}</td>
               <td className="vv-td"><code style={{background:C.paper,padding:"2px 8px",borderRadius:6,fontSize:12}}>{r.code}</code></td>
@@ -3349,7 +3368,7 @@ function AdminRecruitment(){
       </Card>
       <Card>
         <div style={{fontWeight:700,fontSize:15,marginBottom:14}}>Top rekrutuesit</div>
-        {seedReferrals.filter(r=>r.referred>0).sort((a,b)=>b.referred-a.referred).map((r,i)=>(
+        {RF.filter(r=>r.referred>0).sort((a,b)=>b.referred-a.referred).map((r,i)=>(
           <div key={r.id} style={{display:"flex",gap:12,alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.line}`}}>
             <div style={{width:28,height:28,borderRadius:"50%",background:i===0?C.red:C.paper,color:i===0?"#fff":C.inkSoft,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,flexShrink:0}}>{i+1}</div>
             <div style={{flex:1,fontWeight:600}}>{r.name}</div>
@@ -3687,24 +3706,28 @@ function AdminReminders({members,live=null,events=seedEvents}){
   );
 }
 
-function AdminGrowth(){
-  const maxCount=Math.max(...GROWTH_DATA.map(d=>d.count));
+function AdminGrowth({members=[],live=false}={}){
+  // Real login: members by year joined; at least two points so the chart can be drawn.
+  let GD=live?liveGrowthData(members):GROWTH_DATA;
+  if(GD.length===1) GD=[{year:String(Number(GD[0].year)-1),count:0},...GD];
+  if(!GD.length) return <div><SectionTitle title="Rritja e anëtarësisë" sub="Evoluimi i Pikës Zürich"/><Card><div style={{color:C.inkSoft}}>Ende nuk ka të dhëna.</div></Card></div>;
+  const maxCount=Math.max(...GD.map(d=>d.count));
   const W=560,H=180,padX=40,padY=20;
-  const pts=GROWTH_DATA.map((d,i)=>{
-    const x=padX+i*(W-padX*2)/(GROWTH_DATA.length-1);
+  const pts=GD.map((d,i)=>{
+    const x=padX+i*(W-padX*2)/(GD.length-1);
     const y=padY+(1-d.count/maxCount)*(H-padY*2)+padY;
     return[x,y,d];
   });
   const poly=pts.map(([x,y])=>`${x},${y}`).join(" ");
   const area=[`${pts[0][0]},${H}`,poly,`${pts[pts.length-1][0]},${H}`].join(" ");
-  const newThisYear=GROWTH_DATA[GROWTH_DATA.length-1].count-GROWTH_DATA[GROWTH_DATA.length-2].count;
+  const newThisYear=GD[GD.length-1].count-GD[GD.length-2].count;
   return(
     <div>
       <SectionTitle title="Rritja e anëtarësisë" sub="Evoluimi historik i Pikës Zürich"/>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:24}}>
-        <StatCard label="Anëtarë 2026" value={GROWTH_DATA[GROWTH_DATA.length-1].count} color={C.red} icon={<Users size={26}/>}/>
+        <StatCard label={`Anëtarë ${GD[GD.length-1].year}`} value={GD[GD.length-1].count} color={C.red} icon={<Users size={26}/>}/>
         <StatCard label="Rritja këtë vit" value={`+${newThisYear}`} color={C.green} icon={<TrendingUp size={26}/>}/>
-        <StatCard label="Themeluar" value="2018" icon={<Calendar size={26}/>} sub={`${GROWTH_DATA.length} vjet aktivë`}/>
+        <StatCard label="Viti i parë" value={GD.find(d=>d.count>0)?.year||"—"} icon={<Calendar size={26}/>}/>
       </div>
       <Card style={{marginBottom:20}}>
         <div style={{fontWeight:700,fontSize:15,marginBottom:16}}>Rritja vjetore (2018–2026)</div>
@@ -3733,7 +3756,7 @@ function AdminGrowth(){
         <div style={{padding:"14px 16px",fontWeight:700,borderBottom:`1px solid ${C.line}`}}>Historiku vjetor</div>
         <table style={{width:"100%",borderCollapse:"collapse"}}>
           <thead><tr><th className="vv-th">Viti</th><th className="vv-th">Anëtarë</th><th className="vv-th">Rritja</th><th className="vv-th">Progresi</th></tr></thead>
-          <tbody>{[...GROWTH_DATA].reverse().map((d,i,arr)=>{
+          <tbody>{[...GD].reverse().map((d,i,arr)=>{
             const prev=arr[i+1];
             const delta=prev?d.count-prev.count:0;
             return(
@@ -3993,7 +4016,8 @@ export default function App(){
   const staffRole=authUser?(authUser.staffRole||"member"):(role==="admin"?"admin":"member");
   // liveAdmin: logged in with a staff role AND currently in the management view.
   const liveAdmin=live&&staffRole!=="member"&&role==="admin";
-  const myAdminTabs=tabsForRole(staffRole,adminTabs);
+  // Zgjedhjet is still demo content: hidden with a real login until it is built on real data.
+  const myAdminTabs=tabsForRole(staffRole,adminTabs).filter(t=>!(live&&t.key==="elections"));
   const [dbMembers,setDbMembers,dbMembersLoaded]=useDbTable("members",live,{
     // Members may only change their own basic data; payment, status and role need the 'members' permission.
     onUpdate:async(old,row)=>{
@@ -4214,7 +4238,7 @@ export default function App(){
     const allowed=myAdminTabs.some(t=>t.key===tab);
     switch(allowed?tab:"home"){
       case"home": if(OUTREACH_GROUPS[staffRole]) return <OutreachHome key={staffRole} group={staffRole} me={me} live={liveAdmin} onOpen={()=>setTab(staffRole)}/>;
-        return <>{liveAdmin&&isFullAdmin(staffRole)&&<OutreachOverviewCard/>}<AdminHome members={members} events={events} live={liveAdmin} quota={{collected:quotaCollected,target:quotaTarget}} fullAdmin={isFullAdmin(staffRole)}/></>;
+        return <>{liveAdmin&&isFullAdmin(staffRole)&&<OutreachOverviewCard/>}<AdminHome members={members} events={events} live={liveAdmin} quota={{collected:quotaCollected,target:quotaTarget}} fullAdmin={isFullAdmin(staffRole)} payments={livePayments.payments}/></>;
       case"members": return <AdminMembers members={members} setMembers={setMembers} events={events} polls={polls} live={live}/>;
       case"onboarding": return <AdminOnboarding live={liveAdmin?{apps:dbApplications,setApps:setDbApplications,members,setMembers}:null}/>;
       case"payments": return <AdminPayments members={members} setMembers={setMembers} live={liveAdmin?livePayments:null} fee={quotaFee}/>;
@@ -4223,15 +4247,15 @@ export default function App(){
       case"calendar": return <AdminCalendar events={events}/>;
       case"checkin": return <AdminCheckin key={live?"live":"demo"} members={members} events={events} live={liveAdmin}/>;
       case"tasks": return <AdminTasks members={members} meId={me.id} live={live?{tasks:dbTasks,setTasks:setDbTasks}:null}/>;
-      case"comms": return <AdminComms members={members} announcements={announcements} setAnnouncements={setAnnouncements}/>;
+      case"comms": return <AdminComms members={members} announcements={announcements.filter(a=>!a.grupi)} setAnnouncements={setAnnouncements} live={liveAdmin} canDocs={hasPerm(staffRole,"documents")}/>;
       case"elections": return <AdminElections members={members}/>;
       case"polls": return <AdminPolls polls={polls} setPolls={setPolls}/>;
       case"donations": return <AdminDonations live={live?{donations:dbDonations,setDonations:setDbDonations}:null}/>;
-      case"recruitment": return <AdminRecruitment/>;
-      case"map": return <AdminMap/>;
-      case"processverbal": return <>{liveAdmin&&<DocumentsPanel canManage/>}<AdminProcessverbal/></>;
+      case"recruitment": return <AdminRecruitment apps={dbApplications} live={liveAdmin}/>;
+      case"map": return <AdminMap members={members} live={liveAdmin}/>;
+      case"processverbal": return liveAdmin?<DocumentsPanel canManage/>:<AdminProcessverbal/>;
       case"reminders": return <AdminReminders members={members} events={events} live={liveAdmin?{remindedIds:liveNotifs.remindedIds,notify:liveNotifs.notifyPayment}:null}/>;
-      case"growth": return <AdminGrowth/>;
+      case"growth": return <AdminGrowth members={members} live={liveAdmin}/>;
       case"requests": return <AdminRequests live={live?{requests:dbRequests,setRequests:setDbRequests}:null}/>;
       case"studentet": case"rinia": return <AdminOutreach key={tab} group={tab} me={me} live={liveAdmin} events={events} announcements={announcements} polls={polls}/>;
       case"archive": return <AdminArchive live={liveAdmin}/>;
@@ -7797,4 +7821,60 @@ function PastEventsFeedback({events}){
         </div>))}
     </Card>
   );
+}
+
+/* ── Real data instead of demo (after the user test: "everything should be actual") ── */
+// Public home page: public events, news (not group-only) and counts from the database.
+function usePublicContent(){
+  const [state,setState]=useState(()=>supabase?{events:[],news:[],stats:null}:{events:seedEvents,news:seedAnnouncements,stats:{members:seedMembers.length,events:seedEvents.length}});
+  useEffect(()=>{
+    if(!supabase) return;
+    (async()=>{
+      const [ev,an,st]=await Promise.all([
+        supabase.from("events").select("*").eq("public",true).order("id",{ascending:true}),
+        supabase.from("announcements").select("*").order("id",{ascending:false}).limit(5),
+        supabase.rpc("public_stats"),
+      ]);
+      const events=(ev.data||[]).map(r=>dbToRow("events",r)).filter(e=>!e.grupi&&e.miratuar!==false);
+      const news=(an.data||[]).map(r=>dbToRow("announcements",r)).filter(a=>!a.grupi);
+      setState({events,news,stats:st.data||{members:0,events:0}});
+    })().catch(()=>{});
+  },[]);
+  return state;
+}
+
+// Harta: members per canton, from the real member list.
+function liveCantonData(members){
+  const counts={};
+  for(const m of members) if(m.id<9000&&m.status==="aktiv"){const k=(m.kanton&&m.kanton!=="—")?m.kanton:"Pa kanton";counts[k]=(counts[k]||0)+1;}
+  return Object.entries(counts).map(([kanton,count])=>({kanton,count})).sort((a,b)=>b.count-a.count);
+}
+
+// Rritja: members by year joined ("joined" dd.mm.yyyy), cumulative.
+function liveGrowthData(members){
+  const byYear={};
+  for(const m of members){if(m.id>=9000) continue;const y=Number(String(m.joined||"").slice(-4));if(y>2000) byYear[y]=(byYear[y]||0)+1;}
+  const years=Object.keys(byYear).map(Number).sort();
+  let total=0;
+  return years.map(y=>({year:String(y),count:(total+=byYear[y])}));
+}
+
+// Rekrutimi: who brought new members (applications with "Referuar nga").
+function liveReferrals(apps){
+  const by={};
+  for(const a of apps){if(!a.referredBy) continue;(by[a.referredBy]=by[a.referredBy]||[]).push(a.name);}
+  return Object.entries(by).map(([name,names],i)=>({id:i+1,name,code:"",referred:names.length,names})).sort((a,b)=>b.referred-a.referred);
+}
+
+// Report PDF: confirmed payments of this year per month (Jan … current month).
+function monthsFromPayments(payments){
+  const names=["Jan","Shk","Mar","Pri","Maj","Qer","Kor","Gus","Sht","Tet","Nën","Dhj"];
+  const y=new Date().getFullYear(), now=new Date().getMonth();
+  const out=names.slice(0,now+1).map(m=>({m,collected:0}));
+  for(const p of payments){
+    if(p.status!=="konfirmuar"||Number(p.year)!==y) continue;
+    const d=new Date(p.updated_at||p.created_at);
+    if(d.getFullYear()===y&&out[d.getMonth()]) out[d.getMonth()].collected+=Number(p.amount)||0;
+  }
+  return out;
 }
