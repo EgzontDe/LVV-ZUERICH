@@ -798,7 +798,7 @@ function PublicHome({onLogin,onApply}){
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <a href="#eventet" className="ph-nav-link" style={{display:"none"}}>Eventet</a>
-          <button onClick={onApply} className="ph-nav-link">Apliko</button>
+          <button onClick={onApply} className="ph-nav-link">Anëtarësohu</button>
           <button onClick={onLogin} style={{background:"linear-gradient(135deg,#E2231A,#B5170F)",color:"#fff",border:"none",borderRadius:10,padding:"8px 18px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",boxShadow:"0 2px 8px rgba(226,35,26,.30)"}}>Hyr →</button>
         </div>
       </nav>
@@ -1424,6 +1424,7 @@ function MemberProfile({me,onSave}){
             :<button className="vv-btn ghost" style={{marginTop:20,fontSize:13}}><KeyRound size={14}/>Kërko ndryshim të dhënash</button>}
         </Card>
       </div>
+      <div style={{marginTop:20}}><MemberDetailsCard memberId={me.id} title="Të dhënat e anëtarësimit"/></div>
       <Modal open={editOpen} onClose={()=>setEditOpen(false)} title="Ndrysho të dhënat e mia">
         {editOpen&&<ProfileEditForm me={me} onSave={onSave} onCancel={saved=>{setEditOpen(false);if(saved) showToast("Të dhënat u ruajtën!");}}/>}
       </Modal>
@@ -2336,6 +2337,7 @@ function AdminMembers({members,setMembers,events=[],polls=[],live=false}){
           <Field icon={<MapPin size={15}/>} label="Kantoni" value={sel.kanton}/>
           <Field icon={<Building2 size={15}/>} label="Profesioni" value={sel.prof}/>
           <Field icon={<Calendar size={15}/>} label="Anëtar që nga" value={sel.joined}/>
+          <MemberDetailsCard memberId={sel.id}/>
           <div style={{paddingTop:12,borderTop:`1px solid ${C.line}`,marginTop:4}}>
             <div style={{fontSize:11,fontWeight:700,color:C.inkSoft,textTransform:"uppercase",letterSpacing:".07em",marginBottom:8}}>Statistika</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
@@ -4113,7 +4115,7 @@ export default function App(){
   if(needsPassword) return <LangCtx.Provider value={lang}><div className={`vv${dark?" vv--dark":""}`}><style>{css}</style><SetPasswordScreen kind={AUTH_LINK_TYPE} onDone={finishPasswordSetup}/></div></LangCtx.Provider>;
   if(!role&&!showLogin) return <PublicHome onLogin={()=>setShowLogin(true)} onApply={()=>setRole("apply")}/>;
   if(!role&&showLogin) return <LangCtx.Provider value={lang}><div className={`vv${dark?" vv--dark":""}`}><style>{css}</style><Login onLogin={handleLogin} lang={lang} onLangToggle={()=>setLang(l=>l==="sq"?"de":"sq")} onBack={()=>setShowLogin(false)}/></div></LangCtx.Provider>;
-  if(role==="apply") return <LangCtx.Provider value={lang}><div className={`vv${dark?" vv--dark":""}`}><style>{css}</style><ApplyForm onBack={()=>{setRole(null);setShowLogin(false);}}/></div></LangCtx.Provider>;
+  if(role==="apply") return <LangCtx.Provider value={lang}><div className={`vv${dark?" vv--dark":""}`}><style>{css}</style><MembershipApplyForm onBack={()=>{setRole(null);setShowLogin(false);}}/></div></LangCtx.Provider>;
 
   const demoMe=role==="member"?members.find(m=>m.id===5)||members[4]:members.find(m=>m.id===3)||members[2];
   // Real login: match the member record by email; if none exists yet, show a minimal profile instead of demo data.
@@ -4450,10 +4452,15 @@ function AdminOnboarding({live=null}={}){
       role:"Anëtar",status:"aktiv",pay:pay||"papaguar",joined:new Date().toLocaleDateString("de-CH")}]);
   }
   async function inviteApplicant(a){
-    ensureMember(a);
-    showToast("Po dërgohet ftesa…");
-    const r=await sendInvite(a.email,a.name);
-    showToast(r.text);
+    showToast("Po krijohet llogaria dhe po dërgohet ftesa…");
+    const r=await callCreateAccount({name:a.name,email:a.email,role:"member",mode:"invite"});
+    showToast(r.ok?`Ftesa u dërgua te ${a.email}.`:r.text);
+  }
+  // Live: the database creates the member and keeps the full form in member_details.
+  async function approveLive(a){
+    const {data,error}=await supabase.rpc("approve_application",{p_id:a.id});
+    if(error){dbError(error,"Aplikimi nuk u aprovua.");return;}
+    showToast(`Aplikimi u aprovua · anëtari #${data}`);
   }
 
   const counts=Object.fromEntries(OB_STAGES.map(s=>[s.key,apps.filter(a=>a.status===s.key).length]));
@@ -4477,8 +4484,8 @@ function AdminOnboarding({live=null}={}){
   const visible=filter==="all"?apps.filter(a=>a.status!=="refuzuar"):apps.filter(a=>a.status===filter);
 
   const ACTIONS={
-    aplikim:[{label:"Aprovo",cls:"grn",next:"aprovuar"},{label:"Refuzo",cls:"ghost",next:"refuzuar"}],
-    aprovuar:[{label:live?"Dërgo ftesë me email":"Email mirëseardhjeje",cls:"ghost",fn:(a)=>live?inviteApplicant(a):showToast(`Email u dërgua tek ${a.email}`)},{label:"Konfirmo dërgim kuotë",cls:"grn",next:"pret_pagesen"}],
+    aplikim:[live?{label:"Aprovo",cls:"grn",fn:approveLive}:{label:"Aprovo",cls:"grn",next:"aprovuar"},{label:"Refuzo",cls:"ghost",next:"refuzuar"}],
+    aprovuar:[{label:live?"Krijo llogarinë (ftesë me email)":"Email mirëseardhjeje",cls:"ghost",fn:(a)=>live?inviteApplicant(a):showToast(`Email u dërgua tek ${a.email}`)},{label:"Konfirmo dërgim kuotë",cls:"grn",next:"pret_pagesen"}],
     pret_pagesen:[{label:"Konfirmo pagesën ✓",cls:"grn",next:"aktiv"}],
     aktiv:[],
     refuzuar:[{label:"Rishiko",cls:"ghost",next:"aplikim"}],
@@ -4584,6 +4591,8 @@ function AdminOnboarding({live=null}={}){
                 ))}
               </div>
             </div>
+
+            <MembershipDetailsView data={sel}/>
 
             {/* Referral */}
             {sel.referredBy&&(
@@ -6501,4 +6510,238 @@ function DeleteAccountButton({row,onDone}){
       </div>
     </Modal>
   </>);
+}
+
+/* ── Formulari i anëtarësimit (4 hapa) ─────────────────────────────────────
+   Public page "Anëtarësohu". Saves to applications (extra), then asks the Edge Function
+   notify-application to email the board. On approval (Onboarding → Aprovo, RPC approve_application)
+   the answers move to member_details, readable only by the member and admin/kryetar/sekretar. */
+const MS_CANTONS=["Zürich","Aargau","Basel","Bern","Graubünden","Luzern","Schaffhausen","Schwyz","Solothurn","St. Gallen","Thurgau","Zug","Tjetër"];
+const MEMBERSHIP_STEPS=[
+  {title:"Të dhënat personale",fields:[
+    {k:"emri",l:"Emri",req:true},
+    {k:"prindi",l:"Emri i njërit prind"},
+    {k:"mbiemri",l:"Mbiemri",req:true},
+    {k:"dobIso",l:"Data e lindjes",type:"date",req:true},
+    {k:"gjinia",l:"Gjinia",type:"radio",opts:["M","F"],req:true},
+    {k:"martesor",l:"Statusi martesor",type:"radio",opts:["I/E martuar","Beqar/e"]},
+    {k:"nrPersonal",l:"Nr. personal",req:true},
+    {k:"qendra",l:"Qendra",req:true,def:"Zvicër"},
+    {k:"pika",l:"Pika",req:true,def:"Zürich"},
+  ]},
+  {title:"Adresa dhe kontakti",fields:[
+    {k:"rruga",l:"Rruga"},
+    {k:"lagjja",l:"Lagjja / Fshati"},
+    {k:"kodiPostar",l:"Kodi postar"},
+    {k:"qyteti",l:"Qyteti / Komuna"},
+    {k:"kanton",l:"Kantoni",type:"select",opts:MS_CANTONS,def:"Zürich"},
+    {k:"phone",l:"Nr. i telefonit",type:"tel",req:true},
+    {k:"email",l:"Email adresa",type:"email",req:true,hint:"Me këtë email do të hysh në platformë."},
+  ]},
+  {title:"Arsimi dhe puna",fields:[
+    {k:"arsimimi",l:"Arsimimi",type:"select",opts:["","I mesëm","I lartë","Magjistraturë","Doktoraturë"]},
+    {k:"universiteti",l:"Universiteti"},
+    {k:"fakulteti",l:"Fakulteti"},
+    {k:"drejtimi",l:"Drejtimi"},
+    {k:"gjuhet",l:"Gjuhë të huaja që i njihni mirë (shkrim & lexim)",type:"multi",opts:["Anglisht","Frëngjisht","Italisht","Gjermanisht","Spanjisht","Turqisht","Tjetër"]},
+    {k:"prof",l:"Profesioni"},
+    {k:"puna",l:"Vendi dhe pozicioni i punës"},
+    {k:"punesimi",l:"Statusi i punësimit",type:"radio",opts:["I/E punësuar","I/E papunësuar","I/E vetëpunësuar","Pensionist/e"]},
+    {k:"financat",l:"Gjendja financiare në familje",type:"radio",opts:["E dobët","Mesatare","E lartë"]},
+    {k:"familjaMbi16",l:"Numri i anëtarëve të familjes mbi 16 vjet",type:"number"},
+    {k:"familjaNen16",l:"Numri i anëtarëve të familjes nën 16 vjet",type:"number"},
+    {k:"familjare",l:"Familjarë të anëtarësuar"},
+  ]},
+  {title:"Angazhimi dhe nënshkrimi",fields:[
+    {k:"ndihma",l:"Në fushatë zgjedhore apo raste të veçanta, me çka mund ta ndihmoni Lëvizjen?",type:"textarea"},
+    {k:"note",l:"Shënime tjera",type:"textarea"},
+    {k:"pranoj",l:"Unë, personi i nënshkruar, kam lexuar dhe pranoj të drejtat dhe detyrimet e anëtarit.",type:"check",req:true},
+    {k:"dataNenshkrimit",l:"Data",type:"date",req:true,def:"today"},
+    {k:"nenshkrimi",l:"Nënshkrimi",type:"signature"},
+  ]},
+];
+const MS_ALL_FIELDS=MEMBERSHIP_STEPS.flatMap(s=>s.fields);
+
+function isoToday(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;}
+function isoToCH(iso){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(iso||"");return m?`${m[3]}.${m[2]}.${m[1]}`:(iso||"");}
+
+function SignaturePad({value,onChange}){
+  const ref=useRef(null);
+  const drawing=useRef(false);
+  useEffect(()=>{
+    const c=ref.current;if(!c) return;
+    const ctx=c.getContext("2d");
+    ctx.fillStyle="#fff";ctx.fillRect(0,0,c.width,c.height);
+    if(value){const img=new Image();img.onload=()=>ctx.drawImage(img,0,0);img.src=value;}
+  },[]);
+  function pos(e){const r=ref.current.getBoundingClientRect();return [(e.clientX-r.left)*ref.current.width/r.width,(e.clientY-r.top)*ref.current.height/r.height];}
+  function down(e){e.preventDefault();ref.current.setPointerCapture(e.pointerId);drawing.current=true;const ctx=ref.current.getContext("2d");ctx.beginPath();ctx.moveTo(...pos(e));}
+  function move(e){if(!drawing.current) return;const ctx=ref.current.getContext("2d");ctx.lineWidth=2.5;ctx.lineCap="round";ctx.strokeStyle=C.ink;ctx.lineTo(...pos(e));ctx.stroke();}
+  function up(){if(!drawing.current) return;drawing.current=false;onChange(ref.current.toDataURL("image/png"));}
+  function clear(){const c=ref.current,ctx=c.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,c.width,c.height);onChange("");}
+  return(
+    <div>
+      <canvas ref={ref} width={600} height={180} aria-label="Fusha e nënshkrimit"
+        style={{width:"100%",height:140,border:`1.5px dashed ${C.inkSoft}`,borderRadius:10,background:"#fff",touchAction:"none",cursor:"crosshair",display:"block"}}
+        onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerLeave={up}/>
+      <div style={{display:"flex",justifyContent:"space-between",marginTop:6,fontSize:12,color:C.inkSoft}}>
+        <span>Nënshkruaj me gisht ose me maus</span>
+        <button type="button" onClick={clear} style={{background:"none",border:"none",color:C.red,cursor:"pointer",fontSize:12,fontWeight:600}}>Fshi nënshkrimin</button>
+      </div>
+    </div>
+  );
+}
+
+function MsField({f,value,onChange,error}){
+  const lbl=<label style={{fontSize:13,fontWeight:600,display:"block",marginBottom:5}}>{f.l}{f.req?" *":""}</label>;
+  const pill=(on)=>({padding:"8px 14px",borderRadius:999,fontSize:13,fontWeight:600,cursor:"pointer",border:`1.5px solid ${on?C.red:"rgba(23,18,16,.15)"}`,background:on?C.red:"#fff",color:on?"#fff":C.ink});
+  let input;
+  if(f.type==="radio") input=<div style={{display:"flex",gap:8,flexWrap:"wrap"}} role="radiogroup" aria-label={f.l}>
+    {f.opts.map(o=><button type="button" key={o} role="radio" aria-checked={value===o} style={pill(value===o)} onClick={()=>onChange(value===o&&!f.req?"":o)}>{o}</button>)}</div>;
+  else if(f.type==="multi") input=<div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+    {f.opts.map(o=>{const on=(value||[]).includes(o);return <button type="button" key={o} aria-pressed={on} style={pill(on)} onClick={()=>onChange(on?value.filter(x=>x!==o):[...(value||[]),o])}>{o}</button>;})}</div>;
+  else if(f.type==="select") input=<select className="vv-input" aria-label={f.l} style={{width:"100%"}} value={value||""} onChange={e=>onChange(e.target.value)}>
+    {f.opts.map(o=><option key={o} value={o}>{o||"— Zgjidh —"}</option>)}</select>;
+  else if(f.type==="textarea") input=<textarea className="vv-input" aria-label={f.l} rows={3} style={{width:"100%"}} value={value||""} onChange={e=>onChange(e.target.value)}/>;
+  else if(f.type==="check") return(
+    <div><label style={{display:"flex",gap:10,alignItems:"flex-start",fontSize:14,lineHeight:1.5,cursor:"pointer",background:"#F8F7F3",padding:"12px 14px",borderRadius:10,border:`1.5px solid ${error?C.red:"transparent"}`}}>
+      <input type="checkbox" checked={!!value} onChange={e=>onChange(e.target.checked)} style={{marginTop:4}}/><span>{f.l} *</span></label>
+      {error&&<div style={{color:C.red,fontSize:12,marginTop:4}}>{error}</div>}</div>);
+  else if(f.type==="signature") input=<SignaturePad value={value} onChange={onChange}/>;
+  else input=<input className="vv-input" aria-label={f.l} type={f.type||"text"} min={f.type==="number"?0:undefined} style={{width:"100%"}} value={value??""} onChange={e=>onChange(e.target.value)}/>;
+  return(
+    <div>
+      {lbl}{input}
+      {f.hint&&<div style={{fontSize:12,color:C.inkSoft,marginTop:4}}>{f.hint}</div>}
+      {error&&<div style={{color:C.red,fontSize:12,marginTop:4}}>{error}</div>}
+    </div>
+  );
+}
+
+function MembershipApplyForm({onBack}){
+  const [step,setStep]=useState(0);
+  const [form,setForm]=useState(()=>Object.fromEntries(MS_ALL_FIELDS.map(f=>[f.k,f.def==="today"?isoToday():f.def??(f.type==="multi"?[]:f.type==="check"?false:"")])));
+  const [errors,setErrors]=useState({});
+  const [sending,setSending]=useState(false);
+  const [done,setDone]=useState(false);
+  const [toast,showToast]=useToast();
+  const set=(k,v)=>{setForm(p=>({...p,[k]:v}));setErrors(p=>({...p,[k]:undefined}));};
+
+  function check(i){
+    const e={};
+    for(const f of MEMBERSHIP_STEPS[i].fields){
+      const v=form[f.k];
+      if(f.req&&(v===""||v===false||v==null)) e[f.k]=f.type==="check"?"Duhet ta pranoni për të aplikuar.":"Kjo fushë është e detyrueshme.";
+    }
+    if(i===1&&form.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) e.email="Email-i nuk është i saktë.";
+    if(i===1&&form.phone&&form.phone.replace(/\D/g,"").length<8) e.phone="Numri i telefonit duket i shkurtër.";
+    setErrors(e);
+    return !Object.keys(e).length;
+  }
+  function next(){if(check(step)){setStep(s=>s+1);window.scrollTo(0,0);}}
+  async function submit(){
+    if(!check(step)) return;
+    const name=`${form.emri.trim()} ${form.mbiemri.trim()}`;
+    const email=form.email.trim().toLowerCase();
+    const extra={...form,email:undefined,dob:isoToCH(form.dobIso),applied:new Date().toLocaleDateString("de-CH"),dataNenshkrimit:isoToCH(form.dataNenshkrimit),referredBy:null,formVersion:2};
+    delete extra.email;
+    const id=Date.now();
+    if(supabase){
+      setSending(true);
+      const {error}=await supabase.from("applications").insert({id,name,email,status:"aplikim",extra});
+      setSending(false);
+      if(error){console.error("[apply]",error);showToast("Aplikimi nuk u dërgua. Provo përsëri.");return;}
+      // Email to the board; the application is saved even if this fails.
+      supabase.functions.invoke("notify-application",{body:{id}}).catch(()=>{});
+    }
+    setDone(true);window.scrollTo(0,0);
+  }
+
+  if(done) return(
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:C.paper,padding:20}}>
+      <div style={{maxWidth:460,width:"100%",textAlign:"center"}}>
+        <div style={{width:72,height:72,borderRadius:"50%",background:"#E7F4ED",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px"}}><CheckCircle2 size={34} color={C.green}/></div>
+        <h2 style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:26,marginBottom:10}}>Aplikimi u dërgua!</h2>
+        <p style={{color:C.inkSoft,lineHeight:1.6,marginBottom:24}}>Faleminderit, <b>{form.emri}</b>! Kërkesa juaj u regjistrua. Kryesia e Pikës do t'ju kontaktojë së shpejti në <b>{form.email}</b>.</p>
+        <button className="vv-btn ghost" onClick={onBack}>← Kthehu</button>
+      </div>
+    </div>
+  );
+
+  const s=MEMBERSHIP_STEPS[step],last=step===MEMBERSHIP_STEPS.length-1;
+  return(
+    <div style={{minHeight:"100vh",background:C.paper,padding:20,display:"flex",justifyContent:"center"}}>
+      <div style={{maxWidth:560,width:"100%"}}>
+        <button className="vv-btn ghost" onClick={step?()=>setStep(step-1):onBack} style={{marginBottom:20,fontSize:13}}>← {step?"Hapi i mëparshëm":"Kthehu"}</button>
+        <Card p={28}>
+          <div className="vv-eyebrow" style={{marginBottom:6}}>Hapi {step+1} nga {MEMBERSHIP_STEPS.length}</div>
+          <div style={{display:"flex",gap:6,marginBottom:14}}>
+            {MEMBERSHIP_STEPS.map((_,i)=><div key={i} style={{flex:1,height:4,borderRadius:2,background:i<=step?C.red:"#E8E7E3"}}/>)}
+          </div>
+          <h2 style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:22,margin:"0 0 4px"}}>Formular anëtarësimi</h2>
+          <div style={{color:C.inkSoft,fontSize:14,marginBottom:20}}>{s.title}</div>
+          <div style={{display:"grid",gap:16}}>
+            {s.fields.map(f=><MsField key={f.k} f={f} value={form[f.k]} onChange={v=>set(f.k,v)} error={errors[f.k]}/>)}
+          </div>
+          {Object.values(errors).some(Boolean)&&<div style={{color:C.red,fontSize:13,marginTop:14}}>Plotëso fushat e shënuara me të kuqe.</div>}
+          <button className="vv-btn" style={{width:"100%",justifyContent:"center",marginTop:22}} disabled={sending} onClick={last?submit:next}>
+            {last?(sending?<><RefreshCw size={15} className="vv-spin"/>Duke dërguar…</>:<><Send size={15}/>Apliko për anëtarësim</>):<>Vazhdo <ChevronRight size={15}/></>}
+          </button>
+          <div style={{fontSize:12,color:C.inkSoft,marginTop:12,textAlign:"center"}}>Të dhënat i sheh vetëm kryesia e Pikës.</div>
+        </Card>
+      </div>
+      <Toast msg={toast}/>
+    </div>
+  );
+}
+
+// Read-only view of the form answers (Onboarding detail, member profile, member detail).
+function MembershipDetailsView({data,title="Formulari i anëtarësimit"}){
+  if(!data||!MS_ALL_FIELDS.some(f=>f.k!=="kanton"&&f.k!=="phone"&&f.k!=="prof"&&f.k!=="note"&&data[f.k])) return null;
+  const show=(f)=>{
+    const v=data[f.k];
+    if(f.type==="signature") return v?<img src={v} alt="Nënshkrimi" style={{maxWidth:240,width:"100%",border:`1px solid ${C.line}`,borderRadius:8,background:"#fff"}}/>:null;
+    if(f.type==="check") return v?"Po ✓":null;
+    if(f.type==="date") return isoToCH(v)||null;
+    if(Array.isArray(v)) return v.length?v.join(", "):null;
+    return v===""||v==null?null:String(v);
+  };
+  return(
+    <div style={{background:"#F8F7F3",borderRadius:14,padding:"16px 18px"}}>
+      <div className="vv-eyebrow" style={{marginBottom:12}}>{title}</div>
+      {MEMBERSHIP_STEPS.map(s=>{
+        const rows=s.fields.map(f=>[f,show(f)]).filter(([,v])=>v);
+        if(!rows.length) return null;
+        return(
+          <div key={s.title} style={{marginBottom:14}}>
+            <div style={{fontSize:12,fontWeight:700,color:C.red,marginBottom:6}}>{s.title}</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:"8px 18px"}}>
+              {rows.map(([f,v])=>(
+                <div key={f.k} style={{gridColumn:f.type==="textarea"||f.type==="signature"||f.type==="check"?"1/-1":undefined}}>
+                  <div style={{fontSize:10,color:C.inkSoft,fontWeight:600,textTransform:"uppercase",letterSpacing:".05em"}}>{f.l}</div>
+                  <div style={{fontSize:13,fontWeight:600,marginTop:1,whiteSpace:"pre-wrap"}}>{v}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// member_details row for one member (only visible to the member and admin/kryetar/sekretar).
+function MemberDetailsCard({memberId,title}){
+  const [data,setData]=useState(null);
+  useEffect(()=>{
+    let alive=true;setData(null);
+    if(!supabase||!memberId) return;
+    supabase.auth.getSession().then(({data:s})=>{
+      if(!s.session) return;
+      supabase.from("member_details").select("data").eq("member_id",memberId).maybeSingle()
+        .then(({data:r})=>{if(alive&&r) setData(r.data);});
+    });
+    return()=>{alive=false;};
+  },[memberId]);
+  return <MembershipDetailsView data={data} title={title}/>;
 }
