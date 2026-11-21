@@ -1831,7 +1831,7 @@ function MemberPolls({me,polls,setPolls}){
     <div>
       <SectionTitle title="Sondazhet" sub="Votoni për vendimet e Pikës"/>
       <div style={{display:"grid",gap:16}}>
-        {polls.map(p=>{
+        {sortPolls(polls).map(p=>{
           const voted=p.voted.includes(me.id);
           const total=p.yes+p.no+p.abstain||1;
           const isLive=p.status==="aktiv";
@@ -2878,7 +2878,7 @@ function AdminRequests({live=null}={}){
   const [filter,setFilter]=useState("");
   const [toast,showToast]=useToast();
   const detail=requests.find(r=>r.id===open);
-  const filtered=filter?requests.filter(r=>r.status===filter):requests;
+  const filtered=newestFirst(filter?requests.filter(r=>r.status===filter):requests);
   function sendReply(e){
     e.preventDefault();
     setRequests(prev=>prev.map(r=>r.id===open?{...r,status:"u_pergjigj",reply:replyText}:r));
@@ -3133,7 +3133,7 @@ function AdminPolls({polls,setPolls}){
         </div>
       )}
       <div style={{display:"grid",gap:14}}>
-        {polls.map(p=>{
+        {sortPolls(polls).map(p=>{
           const total=p.yes+p.no+p.abstain||1;
           const isLive=p.status==="aktiv";
           return(
@@ -5119,7 +5119,7 @@ function MemberMessages({me,live=null}){
       <div style={{fontWeight:700,fontSize:14,marginBottom:12}}>Historiku i mesazheve</div>
       {reqs.length===0?<div style={{color:C.inkSoft,fontSize:14,textAlign:"center",padding:32}}>Nuk ke dërguar asnjë mesazh ende.</div>:(
         <div style={{display:"grid",gap:12}}>
-          {reqs.map(r=>{
+          {newestFirst(reqs).map(r=>{
             const s=STATUS[r.status]||STATUS.pret;
             return(
               <div key={r.id} className="vv-card" style={{padding:"16px 20px"}}>
@@ -5367,7 +5367,7 @@ const DB_TABLES={
   members:{cols:{name:"name",email:"email",status:"status",pay:"pay"},order:["id",true]},
   events:{cols:{title:"title",public:"public",rsvp:"rsvp"},order:["id",true]},
   announcements:{cols:{title:"title"},order:["id",false]},
-  polls:{cols:{question:"question",status:"status",yes:"yes",no:"no",abstain:"abstain",voted:"voted"},order:["id",true]},
+  polls:{cols:{question:"question",status:"status",yes:"yes",no:"no",abstain:"abstain",voted:"voted"},order:["id",false]},
   applications:{cols:{name:"name",email:"email",status:"status"},order:["id",true]},
   donations:{cols:{amount:"amount",memberId:"member_id",status:"status"},order:["id",false]},
   requests:{cols:{status:"status",memberId:"member_id"},order:["id",false]},
@@ -7878,3 +7878,8 @@ function monthsFromPayments(payments){
   }
   return out;
 }
+
+// Lists the testers asked for: newest first (ids are creation timestamps / sequence numbers).
+function newestFirst(list){return [...list].sort((a,b)=>Number(b.id)-Number(a.id));}
+// Polls: active ones first, then newest first.
+function sortPolls(list){return [...list].sort((a,b)=>((a.status==="aktiv"?0:1)-(b.status==="aktiv"?0:1))||(Number(b.id)-Number(a.id)));}
