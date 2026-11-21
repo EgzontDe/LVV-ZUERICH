@@ -580,6 +580,15 @@ function InstallBanner(){
   const[canInstall,install]=useInstallPrompt();
   const[dismissed,setDismissed]=useState(()=>localStorage.getItem("vv-pwa-dismissed")==="1");
   function dismiss(){localStorage.setItem("vv-pwa-dismissed","1");setDismissed(true);}
+  // iPhone/iPad (Safari) has no install prompt: explain "Share → Add to Home Screen" instead.
+  const ios=/iphone|ipad|ipod/i.test(navigator.userAgent)&&!window.navigator.standalone;
+  if(ios&&!dismissed) return(
+    <div style={{background:"linear-gradient(90deg,#E2231A 0%,#8C1009 100%)",color:"#fff",padding:"10px 16px",display:"flex",alignItems:"center",gap:10}}>
+      <Zap size={15} style={{flexShrink:0}}/>
+      <span style={{flex:1,fontSize:13,lineHeight:1.4}}>Instalo VV Zürich në iPhone: shtyp <b>Ndaj</b> (katrori me shigjetë ↑) poshtë, pastaj <b>“Shto në ekranin kryesor”</b>.</span>
+      <button onClick={dismiss} style={{background:"none",border:"none",color:"rgba(255,255,255,.8)",cursor:"pointer",fontSize:12,fontWeight:600}}>OK</button>
+    </div>
+  );
   if(!canInstall||dismissed)return null;
   return(
     <div style={{background:"linear-gradient(90deg,#E2231A 0%,#8C1009 100%)",color:"#fff",padding:"10px 20px",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap",position:"sticky",top:0,zIndex:20}}>
@@ -2890,7 +2899,10 @@ function AdminRequests({live=null}={}){
                 <div style={{fontSize:13,color:C.ink,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.msg}</div>
               </td>
               <td className="vv-td vv-hide-sm" style={{color:C.inkSoft,fontSize:13}}>{r.date}</td>
-              <td className="vv-td">{reqChip(r.status)}</td>
+              <td className="vv-td"><div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>{reqChip(r.status)}
+                {/* e.g. "faleminderit 👍" needs no answer: close it straight from the list */}
+                {r.status==="pret"&&<button className="vv-btn ghost" style={{padding:"3px 8px",fontSize:11}} title="Mbyll pa përgjigje" onClick={e=>{e.stopPropagation();closeReq(r.id);}}>✓ Mbyll</button>}
+              </div></td>
               <td className="vv-td vv-hide-sm"><button className="vv-link">Shiko →</button></td>
             </tr>
           ))}
@@ -4509,7 +4521,7 @@ function AdminOnboarding({live=null}={}){
 
   const ACTIONS={
     aplikim:[live?{label:"Aprovo",cls:"grn",fn:approveLive}:{label:"Aprovo",cls:"grn",next:"aprovuar"},{label:"Refuzo",cls:"ghost",next:"refuzuar"}],
-    aprovuar:[{label:live?"Krijo llogarinë (ftesë me email)":"Email mirëseardhjeje",cls:"ghost",fn:(a)=>live?inviteApplicant(a):showToast(`Email u dërgua tek ${a.email}`)},{label:"Konfirmo dërgim kuotë",cls:"grn",next:"pret_pagesen"}],
+    aprovuar:[{label:live?"Krijo llogarinë (ftesë me email)":"Email mirëseardhjeje",cls:"ghost",fn:(a)=>live?inviteApplicant(a):showToast(`Email u dërgua tek ${a.email}`)},{label:"Shëno: pret pagesën",cls:"grn",next:"pret_pagesen"}],
     pret_pagesen:[{label:"Konfirmo pagesën ✓",cls:"grn",next:"aktiv"}],
     aktiv:[],
     refuzuar:[{label:"Rishiko",cls:"ghost",next:"aplikim"}],
@@ -6856,6 +6868,21 @@ function OutreachHome({group,me,live,onOpen}){
           </div>
         ))}
       </Card>
+      {contacts&&!people.length&&(
+        <Card style={{marginBottom:18,border:`2px solid ${C.red}`,background:"#FFF7F6"}}>
+          <div className="vv-eyebrow" style={{marginBottom:6}}>Fillo këtu</div>
+          <div style={{fontWeight:800,fontSize:18,marginBottom:8}}>Puna jote si sekretare e {g.title==="Rinia"?"Rinisë":"Studentëve"} në 3 hapa</div>
+          <ol style={{margin:"0 0 14px",paddingLeft:20,lineHeight:1.8,fontSize:14}}>
+            <li><b>Shto kontaktet</b> e {g.title==="Rinia"?"të rinjve":"studentëve"} që i njeh (emri, telefoni, pëlqimi).</li>
+            <li><b>Ndaj QR-në “Dua të informohem”</b> në grupet tuaja: kush e plotëson, del vetë këtu.</li>
+            <li><b>Kontaktoji</b> me butonin “Mesazh” dhe ndiq statusin deri te “U bë anëtar”.</li>
+          </ol>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            <button className="vv-btn" onClick={()=>{try{sessionStorage.setItem("vv-outreach-add","1");}catch{}onOpen();}}><Plus size={15}/>Shto kontaktin e parë</button>
+            <button className="vv-btn ghost" onClick={onOpen}>Ndaj formularin me QR</button>
+          </div>
+        </Card>
+      )}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(170px,1fr))",gap:12}}>
         {stats.map(([l,v,col])=>(
           <Card key={l}><div style={{fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",color:C.inkSoft}}>{l}</div>
@@ -6876,6 +6903,8 @@ function AdminOutreach({group,me,live,events=[],announcements=[],polls=[]}){
   const [msg,setMsg]=useState(null);
   const [toast,showToast]=useToast();
   const link=`${window.location.origin}/?anetaresohu&ref=${me&&me.id||""}`;
+  // "Shto kontaktin e parë" on the Paneli opens the add form right away.
+  useEffect(()=>{try{if(sessionStorage.getItem("vv-outreach-add")){sessionStorage.removeItem("vv-outreach-add");setEdit({name:"",status:"identifikuar"});}}catch{}},[]);
   // A message sent to a contact goes into its history; a first message marks it "I kontaktuar".
   async function messageSent(kanali,text){
     if(!msg||!msg.grupi) return;
@@ -6942,11 +6971,11 @@ function AdminOutreach({group,me,live,events=[],announcements=[],polls=[]}){
       <InterestLinkCard group={group} me={me} showToast={showToast}/>
       <OutreachTargets group={group} contacts={o.contacts}/>
 
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:10,marginBottom:18}}>
+      {/* Compact status counters (one short row on phones too) */}
+      <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:16}}>
         {OUTREACH_STATUS.map(([k,l,bg,col])=>(
-          <div key={k} style={{background:bg,borderRadius:12,padding:"12px 14px"}}>
-            <div style={{fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",color:col}}>{l}</div>
-            <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:26,color:col}}>{counts[k]}</div>
+          <div key={k} style={{background:bg,color:col,borderRadius:999,padding:"5px 12px",fontSize:12,fontWeight:700,display:"flex",gap:6,alignItems:"baseline"}}>
+            <span style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:16}}>{counts[k]}</span>{l}
           </div>
         ))}
       </div>
