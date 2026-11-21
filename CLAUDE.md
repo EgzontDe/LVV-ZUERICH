@@ -29,7 +29,7 @@ No `Co-Authored-By`. No `--no-verify`. Commit messages may be in Albanian or Eng
 | Apliko (public apply) | — | ApplyForm component |
 
 ## Roles (real Supabase login, since 2026-11-21)
-`profiles.role` is one of `member, admin, kryetar, sekretar, financa, komunikimi, eventet`.
+`profiles.role` is one of `member, admin, kryetar, sekretar, financa, komunikimi, eventet, studentet, rinia`.
 The database enforces permissions (`private.has_perm(area)` in `supabase/migrations/20261121000000_roles.sql`);
 the app only filters the menu (`ROLE_PERMS` / `TAB_PERM` / `tabsForRole` at the end of `App.jsx`). Keep the two in sync.
 
@@ -40,6 +40,10 @@ the app only filters the menu (`ROLE_PERMS` / `TAB_PERM` / `tabsForRole` at the 
 | financa | payments, reminders, donations, finance reports |
 | komunikimi | announcements, polls, requests |
 | eventet | events, calendar, check-in |
+| studentet | Studentët page: student members (contact fields only, RPC `list_group_members`), own `outreach_contacts`, referral link `?anetaresohu&ref=<id>` |
+| rinia | Rinia page: members aged 14–30 (same as studentet), own contacts, referral link |
+
+studentet/rinia do NOT read the full `members` table (`private.reads_all_members()`), applications or member_details.
 | member | own data only |
 
 **Accounts:** Cilësimet → Rolet → "Krijo llogari" calls Edge Function `create-account` (modes `password` = returns a generated password, `invite` = Supabase invite email, `new_password` = fresh password for an existing account). It creates the auth user, the `members` row (next id < 9000) and sets `profiles.role`. Admin/kryetar: any role; sekretar: members only. **Soft delete:** RPC `admin_delete_user` bans the login, ends sessions, sets `profiles.deleted_at` and member status `joaktiv`; `admin_restore_user` undoes it; cron `fshirja-perfundimtare-llogarive` (`private.purge_deleted_accounts`) deletes after 30 days (payments kept with `member_id` null → "Anëtar i fshirë"). `profiles` is in the realtime publication; `useMyRoleLive` switches the person's menu as soon as their role changes.

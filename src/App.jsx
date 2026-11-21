@@ -3943,6 +3943,8 @@ const adminTabs=[
   {key:"elections",label:"Zgjedhjet",icon:<Zap size={15}/>,section:"Politika"},
   {key:"recruitment",label:"Rekrutimi",icon:<UserPlus size={15}/>},
   {key:"map",label:"Harta",icon:<MapPin size={15}/>},
+  {key:"studentet",label:"Studentët",icon:<GraduationCap size={15}/>},
+  {key:"rinia",label:"Rinia",icon:<Flame size={15}/>},
   {key:"tasks",label:"Detyrat",icon:<ClipboardCheck size={15}/>,section:"Organizimi"},
   {key:"comms",label:"Komunikimi",icon:<Megaphone size={15}/>},
   {key:"polls",label:"Sondazhet",icon:<ClipboardList size={15}/>},
@@ -3955,7 +3957,8 @@ const adminTabs=[
 ];
 
 export default function App(){
-  const [role,setRole]=useState(null);
+  // A shared link "?anetaresohu" (optionally "&ref=<member id>") opens the membership form directly.
+  const [role,setRole]=useState(()=>{try{return new URLSearchParams(window.location.search).has("anetaresohu")?"apply":null;}catch{return null;}});
   const [tab,setTab]=useState("home");
   // Demo data (demo role buttons): kept in this browser's localStorage.
   const [localMembers,setLocalMembers]=useLocalState("vv-members",seedMembers);
@@ -4207,6 +4210,7 @@ export default function App(){
       case"reminders": return <AdminReminders members={members} events={events} live={liveAdmin?{remindedIds:liveNotifs.remindedIds,notify:liveNotifs.notifyPayment}:null}/>;
       case"growth": return <AdminGrowth/>;
       case"requests": return <AdminRequests live={live?{requests:dbRequests,setRequests:setDbRequests}:null}/>;
+      case"studentet": case"rinia": return <AdminOutreach key={tab} group={tab} me={me} live={liveAdmin}/>;
       case"archive": return <AdminArchive live={liveAdmin}/>;
       case"settings": return <>{liveAdmin&&isFullAdmin(staffRole)&&<RoleManager/>}<AdminSettings members={members} live={liveAdmin}/></>;
       default: return <AdminHome members={members} events={events} live={liveAdmin}/>;
@@ -6117,8 +6121,8 @@ function ReceiptsCard({payments,onToast}){
 /* ── Rolet dhe lejet (2026-11-21) ───────────────────────────────────────────
    Must match private.has_perm() in supabase/migrations/20261121000000_roles.sql.
    The database enforces the permissions; this only decides what the menu shows. */
-const STAFF_ROLES={member:"Anëtar",admin:"Administrator",kryetar:"Kryetar",sekretar:"Sekretar",financa:"Financat",komunikimi:"Komunikimi",eventet:"Eventet"};
-const ROLE_PERMS={admin:"*",kryetar:"*",sekretar:["members","requests","documents"],financa:["payments","donations"],komunikimi:["comms","requests"],eventet:["events"],member:[]};
+const STAFF_ROLES={member:"Anëtar",admin:"Administrator",kryetar:"Kryetar",sekretar:"Sekretar",financa:"Financat",komunikimi:"Komunikimi",eventet:"Eventet",studentet:"Studentët",rinia:"Rinia"};
+const ROLE_PERMS={admin:"*",kryetar:"*",sekretar:["members","requests","documents"],financa:["payments","donations"],komunikimi:["comms","requests"],eventet:["events"],studentet:["studentet"],rinia:["rinia"],member:[]};
 const ROLE_DESC={
   member:"Vetëm të dhënat e veta",
   admin:"Qasje e plotë, cilësimet dhe rolet",
@@ -6127,12 +6131,15 @@ const ROLE_DESC={
   financa:"Pagesat, kujtesat, donacionet, financat",
   komunikimi:"Njoftimet, sondazhet, kërkesat",
   eventet:"Eventet, kalendari, check-in",
+  studentet:"Studentët anëtarë (vetëm kontakti), kontaktet e studentëve, lidhja e anëtarësimit",
+  rinia:"Anëtarët e rinj deri 30 vjeç (vetëm kontakti), kontaktet e rinisë, lidhja e anëtarësimit",
 };
 function hasPerm(role,area){const p=ROLE_PERMS[role]||[];return p==="*"||p.includes(area);}
 function isFullAdmin(role){return ROLE_PERMS[role]==="*";}
 // Which permission each admin tab needs. Tabs not listed here are for admin/kryetar only.
 const TAB_PERM={members:"members",onboarding:"members",payments:"payments",finance:"payments",reminders:"payments",donations:"donations",
-  events:"events",calendar:"events",checkin:"events",comms:"comms",polls:"comms",requests:"requests",processverbal:"documents"};
+  events:"events",calendar:"events",checkin:"events",comms:"comms",polls:"comms",requests:"requests",processverbal:"documents",
+  studentet:"studentet",rinia:"rinia"};
 function tabsForRole(role,tabs){
   if(isFullAdmin(role)) return tabs;
   // "Detyrat" (Kanban) is shared by every staff role.
@@ -6553,7 +6560,7 @@ const MEMBERSHIP_STEPS=[
     {k:"gjuhet",l:"Gjuhë të huaja që i njihni mirë (shkrim & lexim)",type:"multi",opts:["Anglisht","Frëngjisht","Italisht","Gjermanisht","Spanjisht","Turqisht","Tjetër"]},
     {k:"prof",l:"Profesioni"},
     {k:"puna",l:"Vendi dhe pozicioni i punës"},
-    {k:"punesimi",l:"Statusi i punësimit",type:"radio",opts:["I/E punësuar","I/E papunësuar","I/E vetëpunësuar","Pensionist/e"]},
+    {k:"punesimi",l:"Statusi i punësimit",type:"radio",opts:["Student/e","I/E punësuar","I/E papunësuar","I/E vetëpunësuar","Pensionist/e"]},
     {k:"financat",l:"Gjendja financiare në familje",type:"radio",opts:["E dobët","Mesatare","E lartë"]},
     {k:"familjaMbi16",l:"Numri i anëtarëve të familjes mbi 16 vjet",type:"number"},
     {k:"familjaNen16",l:"Numri i anëtarëve të familjes nën 16 vjet",type:"number"},
@@ -6650,7 +6657,10 @@ function MembershipApplyForm({onBack}){
     if(!check(step)) return;
     const name=`${form.emri.trim()} ${form.mbiemri.trim()}`;
     const email=form.email.trim().toLowerCase();
-    const extra={...form,email:undefined,dob:isoToCH(form.dobIso),applied:new Date().toLocaleDateString("de-CH"),dataNenshkrimit:isoToCH(form.dataNenshkrimit),referredBy:null,formVersion:2};
+    // Referral link "?anetaresohu&ref=<member id>": the database fills in the referrer's name.
+    let ref=null;try{ref=new URLSearchParams(window.location.search).get("ref");}catch{}
+    const extra={...form,email:undefined,dob:isoToCH(form.dobIso),applied:new Date().toLocaleDateString("de-CH"),dataNenshkrimit:isoToCH(form.dataNenshkrimit),
+      referredBy:null,referredById:/^\d+$/.test(ref||"")?ref:null,formVersion:2};
     delete extra.email;
     const id=Date.now();
     if(supabase){
@@ -6751,4 +6761,189 @@ function MemberDetailsCard({memberId,title}){
     return()=>{alive=false;};
   },[memberId]);
   return <MembershipDetailsView data={data} title={title}/>;
+}
+
+/* ── Studentët / Rinia: outreach pages for the narrow roles "studentet" and "rinia" ──
+   Members of the group (contact fields only, RPC list_group_members), the secretary's own
+   contact list (table outreach_contacts) and a personal link to the membership form. */
+const OUTREACH_GROUPS={
+  studentet:{title:"Studentët",sub:"Identifikimi dhe kontaktimi i studentëve të Zürich-ut",membersLabel:"Studentët anëtarë",empty:"Ende nuk ka anëtarë që janë shënuar si studentë."},
+  rinia:{title:"Rinia",sub:"Anëtarët e rinj (14–30 vjeç) dhe kontaktet e rinisë",membersLabel:"Të rinjtë anëtarë",empty:"Ende nuk ka anëtarë nën 30 vjeç me datëlindje të regjistruar."},
+};
+const OUTREACH_STATUS=[
+  ["identifikuar","I identifikuar","#F3F2EF","#5A524E"],
+  ["kontaktuar","I kontaktuar","#E0F2FE","#0369A1"],
+  ["interesuar","I interesuar","#FEF3C7","#92400E"],
+  ["aplikoi","Aplikoi","#E7F4ED","#1E8A4C"],
+  ["jo","Nuk është i interesuar","#FDE2E1","#B5170F"],
+];
+const outreachStatus=k=>OUTREACH_STATUS.find(s=>s[0]===k)||OUTREACH_STATUS[0];
+const waToPhone=(phone,text)=>`https://wa.me/${String(phone||"").replace(/[^\d]/g,"").replace(/^0(?=7)/,"41")}?text=${encodeURIComponent(text)}`;
+
+function AdminOutreach({group,me,live}){
+  const g=OUTREACH_GROUPS[group];
+  const [view,setView]=useState("contacts");
+  const [members,setMembers]=useState(null);
+  const [contacts,setContacts]=useState(null);
+  const [edit,setEdit]=useState(null);
+  const [toast,showToast]=useToast();
+  const link=`${window.location.origin}/?anetaresohu&ref=${me&&me.id||""}`;
+
+  async function loadMembers(){
+    const {data,error}=await supabase.rpc("list_group_members",{p_group:group});
+    if(error){dbError(error,"Lista nuk u ngarkua.");setMembers([]);return;}
+    setMembers(data||[]);
+  }
+  async function loadContacts(){
+    const {data,error}=await supabase.from("outreach_contacts").select("*").eq("grupi",group).order("updated_at",{ascending:false});
+    if(error){dbError(error,"Kontaktet nuk u ngarkuan.");setContacts([]);return;}
+    setContacts(data||[]);
+  }
+  useEffect(()=>{if(live&&supabase){loadMembers();loadContacts();}},[group,live]);
+  useRealtime("outreach_contacts",!!live,loadContacts);
+
+  async function save(c){
+    const row={grupi:group,name:c.name.trim(),phone:(c.phone||"").trim(),email:(c.email||"").trim(),status:c.status,
+      extra:{universiteti:c.universiteti||"",fakulteti:c.fakulteti||"",ku:c.ku||"",shenime:c.shenime||"",kontakti_radhes:c.kontakti_radhes||""}};
+    const q=c.id?supabase.from("outreach_contacts").update(row).eq("id",c.id):supabase.from("outreach_contacts").insert(row);
+    const {error}=await q;
+    if(error){dbError(error,"Kontakti nuk u ruajt.");return false;}
+    showToast(c.id?"Kontakti u ruajt ✓":"Kontakti u shtua ✓");loadContacts();return true;
+  }
+  async function setStatus(c,status){
+    const {error}=await supabase.from("outreach_contacts").update({status}).eq("id",c.id);
+    if(error){dbError(error);return;}
+    loadContacts();
+  }
+  async function remove(c){
+    const {error}=await supabase.from("outreach_contacts").delete().eq("id",c.id);
+    if(error){dbError(error);return;}
+    setEdit(null);showToast("Kontakti u fshi.");loadContacts();
+  }
+
+  if(!live) return(
+    <div><SectionTitle title={g.title} sub={g.sub}/>
+      <Card><div style={{color:C.inkSoft,fontSize:14}}>Kjo faqe punon vetëm me hyrje të vërtetë (jo me butonat demo).</div></Card></div>
+  );
+
+  const counts=Object.fromEntries(OUTREACH_STATUS.map(([k])=>[k,(contacts||[]).filter(c=>c.status===k).length]));
+  const invite=`Përshëndetje! Bashkohu me Lëvizjen VETËVENDOSJE! — Pika Zürich. Formulari i anëtarësimit: ${link}`;
+  return(
+    <div>
+      <SectionTitle title={g.title} sub={g.sub} action={
+        <button className="vv-btn" onClick={()=>setEdit({name:"",phone:"",email:"",status:"identifikuar"})}><Plus size={15}/>Shto kontakt</button>
+      }/>
+
+      {/* Personal membership link */}
+      <Card style={{marginBottom:18}}>
+        <div className="vv-eyebrow" style={{marginBottom:6}}>Lidhja ime për anëtarësim</div>
+        <div style={{fontSize:13,color:C.inkSoft,marginBottom:10}}>Kush aplikon me këtë lidhje, del te Onboarding si "Referuar nga {me&&me.name}".</div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+          <input className="vv-input" readOnly value={link} aria-label="Lidhja ime për anëtarësim" style={{flex:"1 1 260px",fontFamily:"monospace",fontSize:13}} onFocus={e=>e.target.select()}/>
+          <button className="vv-btn ghost" onClick={()=>navigator.clipboard?.writeText(link).then(()=>showToast("Lidhja u kopjua ✓")).catch(()=>{})}>Kopjo</button>
+          <a className="vv-btn grn" href={`https://wa.me/?text=${encodeURIComponent(invite)}`} target="_blank" rel="noreferrer" style={{textDecoration:"none"}}>WhatsApp</a>
+        </div>
+      </Card>
+
+      {/* Pipeline counts */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:10,marginBottom:18}}>
+        {OUTREACH_STATUS.map(([k,l,bg,col])=>(
+          <div key={k} style={{background:bg,borderRadius:12,padding:"12px 14px"}}>
+            <div style={{fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",color:col}}>{l}</div>
+            <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:26,color:col}}>{counts[k]}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{display:"flex",gap:6,marginBottom:14}}>
+        {[["contacts",`Kontaktet (${(contacts||[]).length})`],["members",`${g.membersLabel} (${(members||[]).length})`]].map(([k,l])=>(
+          <button key={k} onClick={()=>setView(k)} style={{padding:"6px 14px",borderRadius:999,fontSize:13,fontWeight:600,cursor:"pointer",border:`1.5px solid ${view===k?C.red:"rgba(23,18,16,.12)"}`,background:view===k?C.red:"transparent",color:view===k?"#fff":C.inkSoft}}>{l}</button>
+        ))}
+      </div>
+
+      {view==="contacts"?(
+        <Card p={0} style={{overflow:"hidden"}}>
+          {!contacts?<div style={{padding:16,color:C.inkSoft}}>Duke ngarkuar…</div>
+          :!contacts.length?<div style={{padding:24,color:C.inkSoft,fontSize:14,textAlign:"center"}}>Ende nuk ke shtuar kontakte. Kliko "Shto kontakt".</div>
+          :<div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse"}}>
+            <thead><tr><th className="vv-th">Emri</th><th className="vv-th">{group==="studentet"?"Universiteti":"Ku u takuam"}</th><th className="vv-th">Statusi</th><th className="vv-th">Kontakti i radhës</th><th className="vv-th"></th></tr></thead>
+            <tbody>{contacts.map(c=>{const x=c.extra||{};return(
+              <tr className="vv-row" key={c.id}>
+                <td className="vv-td"><div style={{fontWeight:600}}>{c.name}</div><div style={{fontSize:12,color:C.inkSoft}}>{[c.phone,c.email].filter(Boolean).join(" · ")}</div></td>
+                <td className="vv-td" style={{fontSize:13}}>{group==="studentet"?[x.universiteti,x.fakulteti].filter(Boolean).join(" · ")||"—":x.ku||"—"}</td>
+                <td className="vv-td">
+                  <select className="vv-input" aria-label={`Statusi i ${c.name}`} value={c.status} onChange={e=>setStatus(c,e.target.value)} style={{minWidth:170,background:outreachStatus(c.status)[2]}}>
+                    {OUTREACH_STATUS.map(([k,l])=><option key={k} value={k}>{l}</option>)}
+                  </select>
+                </td>
+                <td className="vv-td" style={{fontSize:13}}>{x.kontakti_radhes?isoToCH(x.kontakti_radhes):"—"}</td>
+                <td className="vv-td"><div style={{display:"flex",gap:6}}>
+                  {c.phone&&<a className="vv-btn grn" style={{padding:"6px 10px",fontSize:12,textDecoration:"none"}} href={waToPhone(c.phone,`Përshëndetje ${c.name.split(" ")[0]}! `)} target="_blank" rel="noreferrer">WhatsApp</a>}
+                  <button className="vv-btn ghost" style={{padding:"6px 10px",fontSize:12}} onClick={()=>setEdit({...c,...x})}>Hap</button>
+                </div></td>
+              </tr>);})}</tbody>
+          </table></div>}
+        </Card>
+      ):(
+        <Card p={0} style={{overflow:"hidden"}}>
+          {!members?<div style={{padding:16,color:C.inkSoft}}>Duke ngarkuar…</div>
+          :!members.length?<div style={{padding:24,color:C.inkSoft,fontSize:14,textAlign:"center"}}>{g.empty}</div>
+          :<div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse"}}>
+            <thead><tr><th className="vv-th">Anëtari</th>{group==="studentet"?<th className="vv-th">Studimet</th>:<th className="vv-th">Mosha</th>}<th className="vv-th">Kontakti</th><th className="vv-th"></th></tr></thead>
+            <tbody>{members.map(m=>(
+              <tr className="vv-row" key={m.id}>
+                <td className="vv-td"><div style={{fontWeight:600}}>{m.name}</div>{m.punesimi==="Student/e"&&<span className="vv-chip" style={{background:"#E0F2FE",color:"#0369A1",fontSize:11}}>Student/e</span>}</td>
+                {group==="studentet"
+                  ?<td className="vv-td" style={{fontSize:13}}>{[m.universiteti,m.fakulteti,m.drejtimi].filter(Boolean).join(" · ")||"—"}</td>
+                  :<td className="vv-td" style={{fontSize:13}}>{m.age!=null?`${m.age} vjeç`:"—"}</td>}
+                <td className="vv-td" style={{fontSize:13}}>{[m.phone,m.email].filter(Boolean).join(" · ")}</td>
+                <td className="vv-td"><div style={{display:"flex",gap:6}}>
+                  {m.phone&&<a className="vv-btn grn" style={{padding:"6px 10px",fontSize:12,textDecoration:"none"}} href={waToPhone(m.phone,`Përshëndetje ${m.name.split(" ")[0]}! `)} target="_blank" rel="noreferrer">WhatsApp</a>}
+                  {m.email&&<a className="vv-btn ghost" style={{padding:"6px 10px",fontSize:12,textDecoration:"none"}} href={`mailto:${m.email}`}>Email</a>}
+                </div></td>
+              </tr>
+            ))}</tbody>
+          </table></div>}
+        </Card>
+      )}
+
+      <Modal open={!!edit} onClose={()=>setEdit(null)} title={edit&&edit.id?"Kontakti":"Shto kontakt"}>
+        {edit&&<OutreachContactForm group={group} initial={edit} onSave={async c=>{if(await save(c)) setEdit(null);}} onDelete={edit.id?()=>remove(edit):null}/>}
+      </Modal>
+      <Toast msg={toast}/>
+    </div>
+  );
+}
+
+function OutreachContactForm({group,initial,onSave,onDelete}){
+  const [c,setC]=useState(initial);
+  const [busy,setBusy]=useState(false);
+  const [ask,setAsk]=useState(false);
+  const set=(k,v)=>setC(p=>({...p,[k]:v}));
+  const lbl={display:"block",fontSize:13,fontWeight:600,marginBottom:4};
+  const fields=[["name","Emri dhe mbiemri *","text"],["phone","Telefoni","tel"],["email","Email","email"],
+    ...(group==="studentet"?[["universiteti","Universiteti","text"],["fakulteti","Fakulteti / drejtimi","text"]]:[]),
+    ["ku","Ku u takuat / si u identifikua","text"],["kontakti_radhes","Kontakti i radhës","date"]];
+  return(
+    <form onSubmit={async e=>{e.preventDefault();if(!c.name||!c.name.trim()) return;setBusy(true);await onSave(c);setBusy(false);}}>
+      <div style={{display:"grid",gap:12}}>
+        {fields.map(([k,l,t])=>(
+          <div key={k}><label style={lbl}>{l}</label>
+            <input className="vv-input" aria-label={l.replace(" *","")} type={t} style={{width:"100%"}} value={c[k]||""} onChange={e=>set(k,e.target.value)} required={k==="name"}/></div>
+        ))}
+        <div><label style={lbl}>Statusi</label>
+          <select className="vv-input" aria-label="Statusi" style={{width:"100%"}} value={c.status} onChange={e=>set("status",e.target.value)}>
+            {OUTREACH_STATUS.map(([k,l])=><option key={k} value={k}>{l}</option>)}
+          </select></div>
+        <div><label style={lbl}>Shënime</label>
+          <textarea className="vv-input" aria-label="Shënime" rows={3} style={{width:"100%"}} value={c.shenime||""} onChange={e=>set("shenime",e.target.value)}/></div>
+      </div>
+      <div style={{display:"flex",gap:8,marginTop:16,flexWrap:"wrap"}}>
+        <button className="vv-btn" type="submit" disabled={busy}>{busy?"Duke ruajtur…":"Ruaj"}</button>
+        {onDelete&&(ask
+          ?<><span style={{fontSize:13,alignSelf:"center"}}>Ta fshij?</span><button type="button" className="vv-btn ghost" style={{color:C.red}} onClick={onDelete}>Po, fshije</button><button type="button" className="vv-btn ghost" onClick={()=>setAsk(false)}>Jo</button></>
+          :<button type="button" className="vv-btn ghost" style={{color:C.red}} onClick={()=>setAsk(true)}><Trash2 size={13}/>Fshi</button>)}
+      </div>
+    </form>
+  );
 }
