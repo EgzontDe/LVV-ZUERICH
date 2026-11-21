@@ -244,9 +244,9 @@ const seedMembers=[
   {id:12,name:"Florent Ahmeti",role:"Anëtar",status:"aktiv",pay:"papaguar",kanton:"Schaffhausen",email:"florent.a@example.ch",phone:"+41 79 000 00 12",joined:"18.11.2022",prof:"Kuzhinier",dob:"09.01.1989"},
 ];
 const seedEvents=[
-  {id:1,title:"Mbledhja e Rregullt e Pikës",date:"27.06.2026",time:"18:00",place:"Salla e Komunitetit, Winterthur",type:"Mbledhje",public:false,max:60,rsvp:[1,2,3,4,6,8],past:false},
-  {id:2,title:"Festa e Flamurit — 28 Nëntori",date:"28.11.2026",time:"19:00",place:"Eulachhalle, Winterthur",type:"Manifestim",public:true,max:300,rsvp:[1,2,3,5,6,8,9,12],past:false},
-  {id:3,title:"Aksion Humanitar për Familjet",date:"12.07.2026",time:"10:00",place:"Qendra e Pikës, Winterthur",type:"Aktivitet",public:true,max:40,rsvp:[3,4,6],past:false},
+  {id:1,title:"Mbledhja e Rregullt e Pikës",date:"27.06.2026",time:"18:00",place:"Salla e Komunitetit, Zürich",type:"Mbledhje",public:false,max:60,rsvp:[1,2,3,4,6,8],past:false},
+  {id:2,title:"Festa e Flamurit — 28 Nëntori",date:"28.11.2026",time:"19:00",place:"Volkshaus, Zürich",type:"Manifestim",public:true,max:300,rsvp:[1,2,3,5,6,8,9,12],past:false},
+  {id:3,title:"Aksion Humanitar për Familjet",date:"12.07.2026",time:"10:00",place:"Qendra e Pikës, Zürich",type:"Aktivitet",public:true,max:40,rsvp:[3,4,6],past:false},
   {id:4,title:"Manifestim për Pavarësinë",date:"17.02.2026",time:"17:00",place:"Sheshi Qendror, Zürich",type:"Manifestim",public:true,max:200,rsvp:[1,2,3,4,5,6,7,8,9,12],past:true},
 ];
 const seedAnnouncements=[
@@ -288,9 +288,9 @@ const VOTE_STATUS_CONFIG={
 };
 const INITIAL_VOTE_STATUSES={1:"ka_votuar",2:"ka_votuar",3:"konfirmuar",4:"konfirmuar",5:"i_kontaktuar",6:"konfirmuar",7:"pa_kontaktuar",8:"konfirmuar",9:"ka_votuar",10:"i_kontaktuar",11:"pa_kontaktuar",12:"pa_kontaktuar"};
 const ELECTION_VOLUNTEERS=[
-  {id:1,name:"Sami Biqkaj",zone:"Winterthur Qendër",task:"Koordinator kryesor",confirmed:true},
-  {id:3,name:"Egzont Demiri",zone:"Winterthur Nord",task:"Transport votuesish",confirmed:true},
-  {id:4,name:"Arta Krasniqi",zone:"Winterthur Süd",task:"Pikë informacioni",confirmed:true},
+  {id:1,name:"Sami Biqkaj",zone:"Zürich Qendër",task:"Koordinator kryesor",confirmed:true},
+  {id:3,name:"Egzont Demiri",zone:"Zürich Nord",task:"Transport votuesish",confirmed:true},
+  {id:4,name:"Arta Krasniqi",zone:"Zürich Süd",task:"Pikë informacioni",confirmed:true},
   {id:9,name:"Vjosa Salihu",zone:"Zürich HB",task:"Shpërndarje materialesh",confirmed:true},
   {id:null,name:"Arbresha Gjakova",zone:"Aargau",task:"Kontakt telefonik",confirmed:false},
 ];
@@ -302,7 +302,7 @@ const ELECTION_MATERIALS=[
   {name:"Story Instagram — Votova!",type:"PNG",size:"1.8 MB"},
   {name:"Mesazh WhatsApp — template",type:"TXT",size:"2 KB"},
 ];
-const MOBILIZATION_TEMPLATE="Të nderuar anëtarë të Pikës Winterthur,\n\nZgjedhjet parlamentare të Kosovës do të mbahen më 4 tetor 2026.\n\n🗳️ SI TË VOTOSH NGA ZVICRA:\n• Regjistrohu online: evz.rks-gov.net deri më 15 shtator\n• Voto me postë ose personalisht\n\n💪 Çdo votë nga diaspora ka rëndësi!\n\nKontakt: Sami Biqkaj +41 79 111 22 33\n— Lëvizja VETËVENDOSJE! Pika Winterthur";
+const MOBILIZATION_TEMPLATE="Të nderuar anëtarë të Pikës Zürich,\n\nZgjedhjet parlamentare të Kosovës do të mbahen më 4 tetor 2026.\n\n🗳️ SI TË VOTOSH NGA ZVICRA:\n• Regjistrohu online: evz.rks-gov.net deri më 15 shtator\n• Voto me postë ose personalisht\n\n💪 Çdo votë nga diaspora ka rëndësi!\n\nKontakt: Sami Biqkaj +41 79 111 22 33\n— Lëvizja VETËVENDOSJE! Pika Zürich";
 const seedRequests=[
   {id:"q1",from:"Blerim Gashi",email:"blerim.g@example.ch",type:"Pyetje për pagesën",msg:"Si mund ta paguaj kuotën në dy këste?",date:"15.06.2026 10:22",status:"pret",reply:""},
   {id:"q2",from:"Driton Morina",email:"driton.m@example.ch",type:"Ndryshim të dhënash",msg:"Numri im i ri i telefonit është +41 78 999 11 22.",date:"14.06.2026 18:05",status:"u_pergjigj",reply:"Të dhënat u përditësuan. Faleminderit!"},
@@ -314,7 +314,7 @@ const ARCHIVE_PHOTOS=[
   {id:2,title:"Manifestim për Pavarësinë — Zürich 2026",date:"17.02.2026",count:28},
   {id:3,title:"Mbledhja vjetore e Pikës — 2025",date:"15.03.2025",count:15},
   {id:4,title:"Aksion humanitar — dhjetor 2025",date:"10.12.2025",count:20},
-  {id:5,title:"Themelimi i Pikës Winterthur — 2018",date:"12.03.2018",count:7},
+  {id:5,title:"Themelimi i Pikës Zürich — 2018",date:"12.03.2018",count:7},
 ];
 const ARCHIVE_DOCS=[
   {id:1,name:"Procesverbal — Mbledhja 28.03.2026",date:"28.03.2026",size:"210 KB"},
@@ -330,7 +330,7 @@ const seedDonations=[
   {id:5,from:"Blerim Gashi",amount:50,date:"20.05.2026",msg:"Vullnetarisht"},
 ];
 const seedPolls=[
-  {id:1,question:"A duhet të organizojmë tubim publik në Winterthur HB?",yes:8,no:2,abstain:1,deadline:"30.06.2026",status:"aktiv",voted:[1,2,4,6,8,9,3,7,10,11,5]},
+  {id:1,question:"A duhet të organizojmë tubim publik në Zürich HB?",yes:8,no:2,abstain:1,deadline:"30.06.2026",status:"aktiv",voted:[1,2,4,6,8,9,3,7,10,11,5]},
   {id:2,question:"A jeni dakord me draftin e rregullores së re për diasporën?",yes:10,no:1,abstain:2,deadline:"15.06.2026",status:"mbyllur",voted:[1,2,3,4,5,6,7,8,9,10,11,12]},
   {id:3,question:"A duhet Pika të kontribuojë financiarisht për aksionin humanitar?",yes:5,no:0,abstain:0,deadline:"25.07.2026",status:"aktiv",voted:[1,2,3,4,9]},
 ];
@@ -343,13 +343,13 @@ const CANTON_DATA=[
   {kanton:"St. Gallen",count:1},{kanton:"Schaffhausen",count:1},
 ];
 const seedReferrals=[
-  {id:1,name:"Egzont Demiri",code:"WTH-ED03",referred:3,names:["Vjosa Salihu","Florent Ahmeti","Donjeta Bytyqi"]},
-  {id:2,name:"Sami Biqkaj",code:"WTH-SB01",referred:2,names:["Blerim Gashi","Leotrim Hoxha"]},
-  {id:3,name:"Valton Rexha",code:"WTH-VR02",referred:2,names:["Driton Morina","Fatlinda Berisha"]},
-  {id:4,name:"Arta Krasniqi",code:"WTH-AK04",referred:1,names:["Ramadan Kelmendi"]},
-  {id:5,name:"Leotrim Hoxha",code:"WTH-LH08",referred:1,names:["Vjosa Salihu"]},
-  {id:6,name:"Vjosa Salihu",code:"WTH-VS09",referred:0,names:[]},
-  {id:7,name:"Blerim Gashi",code:"WTH-BG05",referred:0,names:[]},
+  {id:1,name:"Egzont Demiri",code:"ZH-ED03",referred:3,names:["Vjosa Salihu","Florent Ahmeti","Donjeta Bytyqi"]},
+  {id:2,name:"Sami Biqkaj",code:"ZH-SB01",referred:2,names:["Blerim Gashi","Leotrim Hoxha"]},
+  {id:3,name:"Valton Rexha",code:"ZH-VR02",referred:2,names:["Driton Morina","Fatlinda Berisha"]},
+  {id:4,name:"Arta Krasniqi",code:"ZH-AK04",referred:1,names:["Ramadan Kelmendi"]},
+  {id:5,name:"Leotrim Hoxha",code:"ZH-LH08",referred:1,names:["Vjosa Salihu"]},
+  {id:6,name:"Vjosa Salihu",code:"ZH-VS09",referred:0,names:[]},
+  {id:7,name:"Blerim Gashi",code:"ZH-BG05",referred:0,names:[]},
 ];
 const GROWTH_DATA=[
   {year:"2018",count:4},{year:"2019",count:8},{year:"2020",count:14},
@@ -357,9 +357,9 @@ const GROWTH_DATA=[
   {year:"2024",count:29},{year:"2025",count:31},{year:"2026",count:32},
 ];
 const seedMinutes=[
-  {id:1,title:"Mbledhja e rregullt — 28.03.2026",date:"28.03.2026",place:"Salla e Komunitetit, Winterthur",present:[1,2,3,4,6,8,9],decisions:["U miratua buxheti për Q2 2026","U planifikua Festa e Flamurit"],status:"final"},
+  {id:1,title:"Mbledhja e rregullt — 28.03.2026",date:"28.03.2026",place:"Salla e Komunitetit, Zürich",present:[1,2,3,4,6,8,9],decisions:["U miratua buxheti për Q2 2026","U planifikua Festa e Flamurit"],status:"final"},
   {id:2,title:"Mbledhja e jashtëzakonshme — 15.01.2026",date:"15.01.2026",place:"Online (Zoom)",present:[1,2,3,4],decisions:["U aprovua statuti i ri i Pikës","U vendos kuota vjetore CHF 150"],status:"final"},
-  {id:3,title:"Mbledhja e rregullt — 12.11.2025",date:"12.11.2025",place:"Salla e Komunitetit, Winterthur",present:[1,2,3,4,5,6,8],decisions:["U raportuan financat e Q3","U planifikua aksioni humanitar"],status:"final"},
+  {id:3,title:"Mbledhja e rregullt — 12.11.2025",date:"12.11.2025",place:"Salla e Komunitetit, Zürich",present:[1,2,3,4,5,6,8],decisions:["U raportuan financat e Q3","U planifikua aksioni humanitar"],status:"final"},
 ];
 const CHECKIN_EVENT_ID=1;
 
@@ -376,7 +376,7 @@ const seedTasks=[
   {id:6,title:"Regjistro anëtarët e rinj në sistem",assignee:3,priority:"mesatare",col:"done",due:"08.06.2026",note:"3 anëtarë të rinj"},
   {id:7,title:"Përgatit raportin financiar Q2",assignee:4,priority:"mesatare",col:"todo",due:"15.07.2026",note:""},
   {id:8,title:"Organizoi transport për zgjedhjet",assignee:1,priority:"e_larte",col:"todo",due:"01.10.2026",note:"Min. 2 makina"},
-  {id:9,title:"Shpërndaj flyer-at për Festën e Flamurit në Winterthur",assignee:5,priority:"mesatare",col:"todo",due:"20.11.2026",note:"Merr flyer-at te zyra e Pikës"},
+  {id:9,title:"Shpërndaj flyer-at për Festën e Flamurit në Zürich",assignee:5,priority:"mesatare",col:"todo",due:"20.11.2026",note:"Merr flyer-at te zyra e Pikës"},
 ];
 
 
@@ -475,7 +475,7 @@ function shareEventCard(ev){
 <body>
 <div class="card">
   <div class="bg">!</div>
-  <div><div class="label">VETËVENDOSJE! · Pika Winterthur</div>
+  <div><div class="label">VETËVENDOSJE! · Pika Zürich</div>
   <div class="title">${ev.title}</div></div>
   <div class="meta">
     <div class="meta-row">📅 ${ev.date} · ${ev.time}</div>
@@ -584,7 +584,7 @@ function InstallBanner(){
   return(
     <div style={{background:"linear-gradient(90deg,#E2231A 0%,#8C1009 100%)",color:"#fff",padding:"10px 20px",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap",position:"sticky",top:0,zIndex:20}}>
       <Zap size={15} style={{flexShrink:0}}/>
-      <span style={{flex:1,fontWeight:500,fontSize:13,minWidth:180}}>Instalo VV Winterthur në celularin tënd — akses i shpejtë!</span>
+      <span style={{flex:1,fontWeight:500,fontSize:13,minWidth:180}}>Instalo VV Zürich në celularin tënd — akses i shpejtë!</span>
       <div style={{display:"flex",gap:8,alignItems:"center"}}>
         <button onClick={install} style={{background:"rgba(255,255,255,.20)",border:"1.5px solid rgba(255,255,255,.50)",borderRadius:8,color:"#fff",padding:"6px 14px",fontWeight:700,fontSize:13,cursor:"pointer"}}>
           ⬇ Instalo
@@ -651,7 +651,7 @@ function Login({onLogin,lang="sq",onLangToggle,onBack}){
             <div className="vv-emblem lg">VV</div>
             <div>
               <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:22,letterSpacing:"-0.5px"}}>VETËVENDOSJE!</div>
-              <div style={{opacity:.8,fontSize:14}}>Pika Winterthur — Zvicër</div>
+              <div style={{opacity:.8,fontSize:14}}>Pika Zürich — Zvicër</div>
             </div>
           </div>
           <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:"clamp(32px,7vw,52px)",lineHeight:1.0,letterSpacing:"-2px",maxWidth:420}}>Platforma Digjitale e Pikës</div>
@@ -793,7 +793,7 @@ function PublicHome({onLogin,onApply}){
           <div style={{width:36,height:36,borderRadius:"50%",background:"linear-gradient(135deg,#E2231A,#B5170F)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:15}}>VV</div>
           <div>
             <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:13,lineHeight:1}}>VETËVENDOSJE!</div>
-            <div style={{fontSize:11,color:"#5A524E"}}>Pika Winterthur</div>
+            <div style={{fontSize:11,color:"#5A524E"}}>Pika Zürich</div>
           </div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -807,8 +807,8 @@ function PublicHome({onLogin,onApply}){
       <section className="ph-hero">
         <div style={{maxWidth:720,position:"relative",zIndex:1}}>
           <div className="ph-badge"><span>🇦🇱</span>Lëvizja VETËVENDOSJE! · Zvicër</div>
-          <h1 style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:"clamp(36px,6vw,68px)",lineHeight:1.02,letterSpacing:"-2px",marginBottom:22}}>Pika Winterthur<br/>Bashkë për Kosovën</h1>
-          <p style={{fontSize:18,lineHeight:1.65,opacity:.88,marginBottom:36,maxWidth:540}}>Organizata jonë bashkon shqiptarët e Winterthur-it dhe rajonit në mbështetje të Lëvizjes VETËVENDOSJE! dhe zhvillimit demokratik të Kosovës.</p>
+          <h1 style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:"clamp(36px,6vw,68px)",lineHeight:1.02,letterSpacing:"-2px",marginBottom:22}}>Pika Zürich<br/>Bashkë për Kosovën</h1>
+          <p style={{fontSize:18,lineHeight:1.65,opacity:.88,marginBottom:36,maxWidth:540}}>Organizata jonë bashkon shqiptarët e Zürich-ut dhe rajonit në mbështetje të Lëvizjes VETËVENDOSJE! dhe zhvillimit demokratik të Kosovës.</p>
           <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
             <button className="ph-btn-pri" onClick={onApply}><UserPlus size={16}/>Bëhu anëtar</button>
             <button className="ph-btn-sec" onClick={onLogin}>Hyr në platformë →</button>
@@ -831,11 +831,11 @@ function PublicHome({onLogin,onApply}){
           <div style={{display:"grid",gap:24}} className="ph-grid ph-grid-2">
             <div>
               <h2 style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:32,letterSpacing:"-1px",marginBottom:16,lineHeight:1.15}}>Kush jemi ne?</h2>
-              <p style={{color:"#5A524E",lineHeight:1.75,fontSize:15,marginBottom:14}}>Pika Winterthur është dega lokale e Lëvizjes VETËVENDOSJE! në Zvicër. Veprojmë në Winterthur dhe rajonin e Zürich-ut, duke mobilizuar diasporën shqiptare për zgjedhjet dhe çështjet demokratike të Kosovës.</p>
+              <p style={{color:"#5A524E",lineHeight:1.75,fontSize:15,marginBottom:14}}>Pika Zürich është dega lokale e Lëvizjes VETËVENDOSJE! në Zvicër. Veprojmë në Zürich dhe rajonin e Zürich-ut, duke mobilizuar diasporën shqiptare për zgjedhjet dhe çështjet demokratike të Kosovës.</p>
               <p style={{color:"#5A524E",lineHeight:1.75,fontSize:15}}>Organizojmë mbledhje të rregullta, manifesime, aktivitete kulturore dhe humanitare, gjithmonë me synim forcimin e lidhjes mes diasporës dhe atdheut.</p>
             </div>
             <div style={{display:"grid",gap:14}}>
-              {[["🗳️ Mobilizim zgjedhor","Ndihmojmë anëtarët të regjistrohen dhe votojnë nga Zvicra."],["🤝 Solidaritet","Organizojmë aksione humanitare dhe mbështetje për familjet."],["🎓 Kulturë & Edukim","Evente kulturore, debate dhe formim politik për brezin e ri."],["📢 Zë i Diasporës","Përfaqësojmë interesat e shqiptarëve të Winterthur-it."]].map(([t,d])=>(
+              {[["🗳️ Mobilizim zgjedhor","Ndihmojmë anëtarët të regjistrohen dhe votojnë nga Zvicra."],["🤝 Solidaritet","Organizojmë aksione humanitare dhe mbështetje për familjet."],["🎓 Kulturë & Edukim","Evente kulturore, debate dhe formim politik për brezin e ri."],["📢 Zë i Diasporës","Përfaqësojmë interesat e shqiptarëve të Zürich-it."]].map(([t,d])=>(
                 <div key={t} className="ph-card" style={{display:"flex",gap:14,alignItems:"flex-start",padding:"16px 18px"}}>
                   <span style={{fontSize:22,flexShrink:0}}>{t.split(" ")[0]}</span>
                   <div>
@@ -904,7 +904,7 @@ function PublicHome({onLogin,onApply}){
         <div style={{position:"absolute",left:"50%",top:"50%",transform:"translate(-50%,-50%)",fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:400,color:"rgba(255,255,255,.04)",pointerEvents:"none",userSelect:"none",lineHeight:1}}>!</div>
         <div style={{position:"relative",zIndex:1}}>
           <h2 style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:"clamp(28px,5vw,52px)",letterSpacing:"-1.5px",marginBottom:16}}>Bëhu pjesë e lëvizjes</h2>
-          <p style={{fontSize:17,opacity:.88,marginBottom:36,maxWidth:480,margin:"0 auto 36px"}}>Bashkohu me 32 anëtarët e Pikës Winterthur. Apliko tani — kryesia do të të kontaktojë brenda 3–5 ditëve.</p>
+          <p style={{fontSize:17,opacity:.88,marginBottom:36,maxWidth:480,margin:"0 auto 36px"}}>Bashkohu me 32 anëtarët e Pikës Zürich. Apliko tani — kryesia do të të kontaktojë brenda 3–5 ditëve.</p>
           <div style={{display:"flex",gap:14,justifyContent:"center",flexWrap:"wrap"}}>
             <button className="ph-btn-pri" onClick={onApply}><UserPlus size={16}/>Apliko për anëtarësim</button>
             <button className="ph-btn-sec" onClick={onLogin}>Hyr si anëtar →</button>
@@ -917,13 +917,13 @@ function PublicHome({onLogin,onApply}){
         <div style={{maxWidth:1100,margin:"0 auto",display:"grid",gap:32}} className="ph-grid ph-grid-3">
           <div>
             <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:16,color:"#fff",marginBottom:8}}>VETËVENDOSJE!</div>
-            <div style={{marginBottom:4}}>Pika Winterthur — Zvicër</div>
+            <div style={{marginBottom:4}}>Pika Zürich — Zvicër</div>
             <div style={{opacity:.55,fontSize:12}}>Themeluar 2018</div>
           </div>
           <div>
             <div style={{fontWeight:700,color:"rgba(255,255,255,.9)",marginBottom:10,fontSize:13}}>Kontakt</div>
-            <div>📧 winterthur@vetevendosje.org</div>
-            <div style={{marginTop:4}}>📍 Winterthur, Kanton Zürich</div>
+            <div>📧 zuerich@vetevendosje.org</div>
+            <div style={{marginTop:4}}>📍 Zürich, Zvicër</div>
           </div>
           <div>
             <div style={{fontWeight:700,color:"rgba(255,255,255,.9)",marginBottom:10,fontSize:13}}>Lëvizja</div>
@@ -932,7 +932,7 @@ function PublicHome({onLogin,onApply}){
           </div>
         </div>
         <div style={{borderTop:"1px solid rgba(255,255,255,.08)",marginTop:36,paddingTop:20,textAlign:"center",opacity:.45,fontSize:12}}>
-          © 2026 Lëvizja VETËVENDOSJE! Pika Winterthur · Të gjitha të drejtat të rezervuara
+          © 2026 Lëvizja VETËVENDOSJE! Pika Zürich · Të gjitha të drejtat të rezervuara
         </div>
       </footer>
     </div>
@@ -1139,16 +1139,16 @@ function ChatWidget({role,meId,members}){
 
 const seedNotifs=[
   {id:1,type:"payment",title:"Blerim Gashi — kuota pa paguar",body:"Anëtari nuk ka paguar kuotën 2026 (CHF 150)",time:"2 orë",read:false},
-  {id:2,type:"event",title:"Mbledhja e radhës nesër",body:"27 qershor ora 18:00 · Salla e Komunitetit, Winterthur",time:"5 orë",read:false},
+  {id:2,type:"event",title:"Mbledhja e radhës nesër",body:"27 qershor ora 18:00 · Salla e Komunitetit, Zürich",time:"5 orë",read:false},
   {id:3,type:"member",title:"Anëtar i ri — Donjeta Bytyqi",body:"Aplikimi u pranua dhe anëtarja u aktivizua",time:"1 ditë",read:false},
-  {id:4,type:"poll",title:"Sondazh i ri aktiv",body:"«A duhet tubim në Winterthur HB?» · afati 30.06.2026",time:"2 ditë",read:true},
+  {id:4,type:"poll",title:"Sondazh i ri aktiv",body:"«A duhet tubim në Zürich HB?» · afati 30.06.2026",time:"2 ditë",read:true},
   {id:5,type:"request",title:"Kërkesë nga Blerim Gashi",body:"«Si mund ta paguaj kuotën në dy këste?»",time:"3 ditë",read:true},
   {id:6,type:"payment",title:"Arta Krasniqi — pagesa e marrë",body:"CHF 150 paguar me transfertë bankare",time:"5 ditë",read:true},
 ];
 const seedMemberNotifs=[
   {id:1,type:"payment",title:"Kuota 2026 — papaguar",body:"Pagesa jote e anëtarësisë CHF 150 pret konfirmim. Transfero te IBAN-i i pikës.",time:"tani",read:false},
   {id:2,type:"poll",title:"Sondazh aktiv — vota mungon",body:"«A duhet Pika të kontribuojë për aksionin humanitar?» · afati 25.07.2026",time:"1 ditë",read:false},
-  {id:3,type:"event",title:"Event nesër — Mbledhja e Rregullt",body:"27 qershor ora 18:00 · Salla e Komunitetit, Winterthur",time:"5 orë",read:true},
+  {id:3,type:"event",title:"Event nesër — Mbledhja e Rregullt",body:"27 qershor ora 18:00 · Salla e Komunitetit, Zürich",time:"5 orë",read:true},
   {id:4,type:"request",title:"Kërkesa jote pret përgjigje",body:"«Si mund ta paguaj kuotën në dy këste?» — pret përgjigje nga kryesia",time:"12 ditë",read:true},
 ];
 const NOTIF_CFG={
@@ -1217,7 +1217,7 @@ function Shell({role,tab,setTab,onLogout,children,adminTabs,memberTabs,dark,onTo
       <aside className={`vv-side${sideOpen?" open":""}`}>
         <div style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",marginBottom:18}}>
           <div className="vv-emblem">VV</div>
-          <div style={{flex:1}}><div style={{fontWeight:800,fontSize:13,fontFamily:"'Archivo',sans-serif",color:"#fff"}}>VETËVENDOSJE!</div><div style={{fontSize:11,color:"rgba(255,255,255,0.5)"}}>Pika Winterthur</div></div>
+          <div style={{flex:1}}><div style={{fontWeight:800,fontSize:13,fontFamily:"'Archivo',sans-serif",color:"#fff"}}>VETËVENDOSJE!</div><div style={{fontSize:11,color:"rgba(255,255,255,0.5)"}}>Pika Zürich</div></div>
           <button className="vv-hamburger" onClick={()=>setSideOpen(false)} style={{color:"rgba(255,255,255,.55)"}}><X size={18}/></button>
         </div>
         {tabs.map((tb,i)=>(
@@ -1315,10 +1315,10 @@ function MemberHome({me,events,announcements,polls,live=false}){
     {label:"Referuar një mik",done:hasReferred},
   ];
   const doneCount=progressItems.filter(p=>p.done).length;
-  const waShare=`https://wa.me/?text=${encodeURIComponent(`Bashkoju Lëvizjes VETËVENDOSJE! Pika Winterthur 🦅\nRegjistrohu me kodin tim: ${myRef.code}\n👉 vv-winterthur.ch`)}`;
+  const waShare=`https://wa.me/?text=${encodeURIComponent(`Bashkoju Lëvizjes VETËVENDOSJE! Pika Zürich 🦅\nRegjistrohu me kodin tim: ${myRef.code}\n👉 vv-zuerich.ch`)}`;
   return(
     <div>
-      <SectionTitle title={`Mirëmëngjesi, ${me.name.split(" ")[0]}!`} sub="Lëvizja VETËVENDOSJE! — Pika Winterthur"/>
+      <SectionTitle title={`Mirëmëngjesi, ${me.name.split(" ")[0]}!`} sub="Lëvizja VETËVENDOSJE! — Pika Zürich"/>
       {/* Sample election banner: demo only until elections are managed in the database. */}
       {!live&&<ElectionCountdown compact/>}
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:20}}>
@@ -1497,7 +1497,7 @@ function PaymentModal({open,onClose,me,amount,onPaid,twint=null}){
                 <div style={{fontSize:13,color:C.inkSoft,marginTop:12,lineHeight:1.6}}>Pagesë nëpërmjet <b>PostFinance E-Finance</b><br/>ose <b>PostFinance App</b></div>
                 <div style={{background:"#fff",borderRadius:10,padding:"14px",marginTop:16,textAlign:"left"}}>
                   <div style={{fontSize:11,color:C.inkSoft,fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",marginBottom:6}}>Detajet e pagesës</div>
-                  {[["IBAN",iban],["Përfituesi","VETËVENDOSJE! Pika Winterthur"],["Shuma",`CHF ${amount}`],["Referenca",ref]].map(([l,v])=>(
+                  {[["IBAN",iban],["Përfituesi","VETËVENDOSJE! Pika Zürich"],["Shuma",`CHF ${amount}`],["Referenca",ref]].map(([l,v])=>(
                     <div key={l} style={{display:"flex",justifyContent:"space-between",fontSize:13,padding:"5px 0",borderBottom:`1px solid ${C.line}`}}>
                       <span style={{color:C.inkSoft}}>{l}</span><span style={{fontWeight:600}}>{v}</span>
                     </div>
@@ -1514,7 +1514,7 @@ function PaymentModal({open,onClose,me,amount,onPaid,twint=null}){
             <div>
               <div style={{background:C.paper,borderRadius:14,padding:20,marginBottom:12}}>
                 <div style={{fontWeight:700,fontSize:14,marginBottom:14}}>Detajet e transfertës bankare</div>
-                {[["Banka","PostFinance AG"],["IBAN",iban],["BIC/SWIFT","POFICHBEXXX"],["Përfituesi","VETËVENDOSJE! Winterthur"],["Shuma",`CHF ${amount}`],["Referenca / Mesazhi",ref]].map(([l,v])=>(
+                {[["Banka","PostFinance AG"],["IBAN",iban],["BIC/SWIFT","POFICHBEXXX"],["Përfituesi","VETËVENDOSJE! Zürich"],["Shuma",`CHF ${amount}`],["Referenca / Mesazhi",ref]].map(([l,v])=>(
                   <div key={l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${C.line}`}}>
                     <span style={{fontSize:12,color:C.inkSoft,fontWeight:600}}>{l}</span>
                     <span style={{fontSize:13,fontWeight:700,color:C.ink,fontFamily:l==="IBAN"||l==="BIC/SWIFT"?"monospace":"inherit"}}>{v}</span>
@@ -1868,7 +1868,7 @@ function MemberPolls({me,polls,setPolls}){
 
 function printMemberCard(me){
   const year=new Date().getFullYear();
-  const id=`WTH-${String(me.id).padStart(3,"0")}`;
+  const id=`ZH-${String(me.id).padStart(3,"0")}`;
   const html=`<!DOCTYPE html><html><head><meta charset="utf-8">
 <title>Kartela — ${me.name}</title>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800;900&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1915,7 +1915,7 @@ p{font-size:13px;color:#9A938F;margin-bottom:24px}
 <p>Klikoni "Printo / Ruaj si PDF" për ta shkarkuar</p>
 <div class="cards">
   <div class="card front">
-    <div class="row"><div class="logo">VETËVENDOSJE!</div><div class="sub">Pika Winterthur<br>Zvicër</div></div>
+    <div class="row"><div class="logo">VETËVENDOSJE!</div><div class="sub">Pika Zürich<br>Zvicër</div></div>
     <div style="position:relative">
       <div class="name-label">ANËTAR</div>
       <div class="name">${me.name}</div>
@@ -1966,7 +1966,7 @@ function MemberCard({me}){
               <div style={{position:"absolute",right:20,bottom:-40,width:220,height:220,borderRadius:"50%",background:"rgba(255,255,255,0.05)"}}/>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",position:"relative"}}>
                 <div style={{fontWeight:900,fontSize:18,letterSpacing:"-0.5px"}}>VETËVENDOSJE!</div>
-                <div style={{fontSize:11,opacity:.7,textAlign:"right"}}>Pika Winterthur<br/>Zvicër</div>
+                <div style={{fontSize:11,opacity:.7,textAlign:"right"}}>Pika Zürich<br/>Zvicër</div>
               </div>
               <div style={{marginTop:28,position:"relative"}}>
                 <div style={{fontSize:13,opacity:.7,marginBottom:4,fontFamily:"'Inter',sans-serif"}}>ANËTAR</div>
@@ -1980,7 +1980,7 @@ function MemberCard({me}){
                 </div>
                 <div style={{background:"rgba(255,255,255,0.15)",borderRadius:8,padding:"6px 12px"}}>
                   <div style={{fontSize:10,opacity:.7,fontFamily:"'Inter',sans-serif"}}>ID</div>
-                  <div style={{fontSize:14,fontWeight:700}}>WTH-{String(me.id).padStart(3,"0")}</div>
+                  <div style={{fontSize:14,fontWeight:700}}>ZH-{String(me.id).padStart(3,"0")}</div>
                 </div>
               </div>
             </div>
@@ -2003,7 +2003,7 @@ function MemberCard({me}){
                 <div style={{display:"inline-block",borderRadius:8,overflow:"hidden",border:"3px solid rgba(255,255,255,.15)"}}>
                   <MemberQR id={me.id} size={100} bg="#171210" fg="rgba(255,255,255,0.88)"/>
                 </div>
-                <div style={{fontSize:10,opacity:.45,marginTop:8,fontFamily:"'Inter',sans-serif",letterSpacing:".06em"}}>WTH-{String(me.id).padStart(3,"0")} · KODI QR</div>
+                <div style={{fontSize:10,opacity:.45,marginTop:8,fontFamily:"'Inter',sans-serif",letterSpacing:".06em"}}>ZH-{String(me.id).padStart(3,"0")} · KODI QR</div>
               </div>
               <div style={{fontSize:11,opacity:.4,textAlign:"center",marginTop:12,fontFamily:"'Inter',sans-serif"}}>lëvizjavetëvendosje.org</div>
             </div>
@@ -2012,7 +2012,7 @@ function MemberCard({me}){
         <div style={{textAlign:"center",color:C.inkSoft,fontSize:13}}>Klikoni kartën për të parë anën tjetër</div>
         <div style={{display:"flex",gap:10}}>
           <button className="vv-btn" style={{fontSize:13}} onClick={()=>printMemberCard(me)}><Download size={14}/>Shkarko / Printo PDF</button>
-          <WaBtn text={`Kartela ime e anëtarësisë VETËVENDOSJE! Pika Winterthur\n👤 ${me.name}\n🆔 WTH-${String(me.id).padStart(3,"0")}\n📍 ${me.kanton}`} label="Ndaj WhatsApp" style={{fontSize:13,padding:"9px 16px",borderRadius:10}}/>
+          <WaBtn text={`Kartela ime e anëtarësisë VETËVENDOSJE! Pika Zürich\n👤 ${me.name}\n🆔 ZH-${String(me.id).padStart(3,"0")}\n📍 ${me.kanton}`} label="Ndaj WhatsApp" style={{fontSize:13,padding:"9px 16px",borderRadius:10}}/>
         </div>
         <Card style={{maxWidth:420,width:"100%"}}>
           <div style={{fontWeight:700,fontSize:14,marginBottom:12}}>Detajet e anëtarësisë</div>
@@ -2029,7 +2029,7 @@ function MemberCard({me}){
 }
 
 
-// Real, scannable QR code with the member code (e.g. "WTH-005") plus a 2-module quiet zone.
+// Real, scannable QR code with the member code (e.g. "ZH-005") plus a 2-module quiet zone.
 function memberQRMatrix(memberId){
   const {modules}=QRCode.create(memberCode(memberId),{errorCorrectionLevel:"M"});
   const n=modules.size,Q=2;
@@ -2038,7 +2038,7 @@ function memberQRMatrix(memberId){
     return rr>=0&&cc>=0&&rr<n&&cc<n&&modules.get(rr,cc)?1:0;
   }));
 }
-function memberCode(memberId){return `WTH-${String(memberId).padStart(3,"0")}`;}
+function memberCode(memberId){return `ZH-${String(memberId).padStart(3,"0")}`;}
 function MemberQR({id,size=128,bg="#fff",fg="#171210"}){
   const m=useMemo(()=>memberQRMatrix(id),[id]);
   const N=m.length,cell=size/N;
@@ -2136,7 +2136,7 @@ function generateReport(members,events){
     <tr><td>${m.m} 2026</td><td>CHF ${m.collected}</td>
     <td><div style="background:#eee;border-radius:4px;height:8px"><div style="background:#1E8A4C;height:8px;border-radius:4px;width:${Math.round(m.collected/Math.max(...FINANCE_MONTHS.map(x=>x.collected),1)*100)}%"></div></div></td></tr>`).join("");
   const html=`<!DOCTYPE html><html lang="sq"><head><meta charset="utf-8">
-<title>Raport Mujor — VV Pika Winterthur</title>
+<title>Raport Mujor — VV Pika Zürich</title>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -2161,7 +2161,7 @@ tr:last-child td{border-bottom:none}
 @media print{.print-btn{display:none}body{padding:16px}@page{margin:1.5cm}}
 </style></head><body>
 <div class="header">
-  <div><div class="logo">VETËVENDOSJE!</div><div class="subtitle">Lëvizja — Pika Winterthur, Zvicër</div></div>
+  <div><div class="logo">VETËVENDOSJE!</div><div class="subtitle">Lëvizja — Pika Zürich, Zvicër</div></div>
   <div class="meta"><b>Raport Mujor</b><br>${dateStr}<br>Gjeneruar nga sistemi</div>
 </div>
 <div class="stats">
@@ -2181,7 +2181,7 @@ tr:last-child td{border-bottom:none}
 <tbody>${finRows}</tbody></table>
 <div style="margin-top:14px;font-size:13px;color:#5A524E">Gjithsej arkëtuar YTD: <b>CHF ${finTotal}</b> nga target <b>CHF ${FINANCE_TARGET_YEAR}</b> (${Math.round(finTotal/FINANCE_TARGET_YEAR*100)}%)</div>
 </div>
-<div class="footer">Raport i gjeneruar automatikisht nga Platforma Digjitale e Pikës Winterthur · VETËVENDOSJE! · ${dateStr}</div>
+<div class="footer">Raport i gjeneruar automatikisht nga Platforma Digjitale e Pikës Zürich · VETËVENDOSJE! · ${dateStr}</div>
 <button class="print-btn" onclick="window.print()">🖨 Printo / Ruaj si PDF</button>
 </body></html>`;
   const w=window.open("","_blank","width=960,height=820");
@@ -2196,7 +2196,7 @@ function AdminHome({members,events,live=false,quota=null,fullAdmin=true}){
   const upcoming=events.filter(e=>!e.past);
   return(
     <div>
-      <SectionTitle title="Paneli kryesor" sub={`Pika Winterthur · ${todayCH()}`} action={
+      <SectionTitle title="Paneli kryesor" sub={`Pika Zürich · ${todayCH()}`} action={
         <button className="vv-btn ghost" onClick={()=>generateReport(members,events)}>
           <FileDown size={15}/>Gjenero Raport PDF
         </button>
@@ -2283,7 +2283,7 @@ function AdminMembers({members,setMembers,events=[],polls=[],live=false}){
             "Emri":m.name,"Email":m.email,"Telefon":m.phone||"","Roli":m.role,
             "Kantoni":m.kanton,"Statusi":m.status,"Pagesa":m.pay,
             "Profesioni":m.prof||"","Anëtar që nga":m.joined,
-          })),"anetaret-vv-winterthur.csv")}>
+          })),"anetaret-vv-zuerich.csv")}>
             <Download size={14}/>CSV
           </button>
           <button className="vv-btn" onClick={()=>setAddOpen(true)}><Plus size={15}/>Shto anëtar</button>
@@ -2418,7 +2418,7 @@ function AdminPayments({members,setMembers,live=null,fee=KUOTA}){
           "Statusi pagesës":m.exempt?"Liruar":m.pay==="paguar"?"Paguar":"Papaguar",
           "Shuma CHF":m.exempt?0:m.pay==="paguar"?paidAmount(m.id):0,
           "Anëtar që nga":m.joined,
-        })),"pagesat-2026-vv-winterthur.csv")}>
+        })),"pagesat-2026-vv-zuerich.csv")}>
           <Download size={14}/>Eksporto CSV
         </button>
       }/>
@@ -2496,7 +2496,7 @@ function AdminEvents({events,setEvents,members}){
                   <ImageIcon size={14}/>
                 </button>
                 <WaBtn
-                  text={`📅 ${ev.title}\n🕐 ${ev.date} · ${ev.time}\n📍 ${ev.place}\n\nRegjistrohu: kontakto kryesinë e Pikës Winterthur`}
+                  text={`📅 ${ev.title}\n🕐 ${ev.date} · ${ev.time}\n📍 ${ev.place}\n\nRegjistrohu: kontakto kryesinë e Pikës Zürich`}
                   label=""
                   style={{padding:"7px 10px",fontSize:13,borderRadius:8}}
                 />
@@ -2589,7 +2589,7 @@ function AdminComms({members,announcements,setAnnouncements}){
                 <div style={{color:C.inkSoft,fontSize:13,marginTop:4,lineHeight:1.5}}>{a.body}</div>
                 <div style={{fontSize:12,color:C.inkSoft,marginTop:6}}>{a.date}</div>
               </div>
-              <WaBtn text={`🔔 ${a.title}\n\n${a.body}\n\n— Lëvizja VETËVENDOSJE! Pika Winterthur`} label="Ndaj" style={{fontSize:12,padding:"6px 12px",borderRadius:8,whiteSpace:"nowrap"}}/>
+              <WaBtn text={`🔔 ${a.title}\n\n${a.body}\n\n— Lëvizja VETËVENDOSJE! Pika Zürich`} label="Ndaj" style={{fontSize:12,padding:"6px 12px",borderRadius:8,whiteSpace:"nowrap"}}/>
             </Card>
           ))}
         </div>
@@ -2629,7 +2629,7 @@ function AdminComms({members,announcements,setAnnouncements}){
               <div style={{fontWeight:600,fontSize:14,marginBottom:6}}>{emailDraft.subject||"(pa subjekt)"}</div>
               <div style={{fontSize:13,color:C.inkSoft,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{emailDraft.body||"(pa tekst)"}</div>
               <div style={{marginTop:16,paddingTop:12,borderTop:`1px solid ${C.line}`,fontSize:12,color:C.inkSoft}}>
-                — Lëvizja VETËVENDOSJE! Pika Winterthur
+                — Lëvizja VETËVENDOSJE! Pika Zürich
               </div>
             </div>
           </Card>
@@ -2640,7 +2640,7 @@ function AdminComms({members,announcements,setAnnouncements}){
                 <div style={{fontWeight:700,fontSize:14,color:"#166534"}}>Dërgoje edhe si mesazh WhatsApp</div>
                 <div style={{fontSize:13,color:"#166534",opacity:.8,marginTop:3,marginBottom:12}}>Hap WhatsApp dhe ngjit mesazhin te grupi i Pikës</div>
                 <WaBtn
-                  text={emailDraft.body?`${emailDraft.subject}\n\n${emailDraft.body}\n\n— VETËVENDOSJE! Pika Winterthur`:"Plotëso mesazhin fillimisht…"}
+                  text={emailDraft.body?`${emailDraft.subject}\n\n${emailDraft.body}\n\n— VETËVENDOSJE! Pika Zürich`:"Plotëso mesazhin fillimisht…"}
                   label="Hap në WhatsApp"
                 />
               </div>
@@ -2672,13 +2672,13 @@ function AdminComms({members,announcements,setAnnouncements}){
 }
 
 function AdminSettings({members,live=false}){
-  const [org,setOrg]=useState({name:"Lëvizja VETËVENDOSJE!",pike:"Pika Winterthur",city:"Winterthur",canton:"Zürich",email:"winterthur@vetevendosje.org",phone:"+41 79 111 22 33",kuota:KUOTA});
+  const [org,setOrg]=useState({name:"Lëvizja VETËVENDOSJE!",pike:"Pika Zürich",city:"Zürich",canton:"Zürich",email:"zuerich@vetevendosje.org",phone:"+41 79 111 22 33",kuota:KUOTA});
   const [toast,showToast]=useToast();
   function save(e){e.preventDefault();showToast("Cilësimet u ruajtën!");}
   const [exporting,setExporting]=useState(null);
   async function runExport(type){
     if(!live){
-      if(type==="members-csv") exportCSV(members.map(m=>({Emri:m.name,Email:m.email,Kantoni:m.kanton,Statusi:m.status,Pagesa:m.pay})),"anetaret-vv-winterthur.csv");
+      if(type==="members-csv") exportCSV(members.map(m=>({Emri:m.name,Email:m.email,Kantoni:m.kanton,Statusi:m.status,Pagesa:m.pay})),"anetaret-vv-zuerich.csv");
       else showToast("Ky eksport kërkon hyrje me email.");
       return;
     }
@@ -2959,7 +2959,7 @@ function AdminArchive({live=false}={}){
       {tab==="aniversaret"&&<div style={{display:"grid",gap:12}}>
         {[
           {month:"Shkurt",day:"17",title:"Pavarësia e Kosovës",year:"2008",type:"kombëtare"},
-          {month:"Mars",day:"12",title:"Themelimi i Pikës Winterthur",year:"2018",type:"pike"},
+          {month:"Mars",day:"12",title:"Themelimi i Pikës Zürich",year:"2018",type:"pike"},
           {month:"Prill",day:"4",title:"Dita e Kushtetutës",year:"2009",type:"kombëtare"},
           {month:"Nëntor",day:"28",title:"Dita e Flamurit",year:"1912",type:"kombëtare"},
           {month:"Dhjetor",day:"9",title:"Dita e Luftëtarit",year:"1942",type:"kombëtare"},
@@ -3011,7 +3011,7 @@ function AdminDonations({live=null}={}){
         <div style={{display:"flex",gap:8}}>
           <button className="vv-btn ghost" onClick={()=>exportCSV(confirmed.map(d=>({
             "Donatori":d.from,"Shuma CHF":d.amount,"Data":d.date,"Mesazhi":d.msg||"",
-          })),"donacionet-vv-winterthur.csv")}><Download size={14}/>CSV</button>
+          })),"donacionet-vv-zuerich.csv")}><Download size={14}/>CSV</button>
           <button className="vv-btn" onClick={()=>setOpen(true)}><Plus size={15}/>Regjistro donacion</button>
         </div>
       }/>
@@ -3367,7 +3367,7 @@ function AdminCheckin({members,events,live=false}){
   }
   function scanQR(raw){
     const code=raw.trim().toUpperCase();
-    const m=members.find(x=>`WTH-${String(x.id).padStart(3,"0")}`===code||String(x.id)===raw.trim());
+    const m=members.find(x=>[`ZH-${String(x.id).padStart(3,"0")}`,`WTH-${String(x.id).padStart(3,"0")}`].includes(code)||String(x.id)===raw.trim());
     if(!m){setLastScan({member:null,ok:false,code});setQrInput("");return;}
     if(!checkedIn.includes(m.id))setCheckedIn(prev=>[...prev,m.id]);
     setLastScan({member:m,ok:true});
@@ -3413,9 +3413,9 @@ function AdminCheckin({members,events,live=false}){
             </div>
             {/* Simulated scan input */}
             <div style={{marginTop:4}}>
-              <div style={{fontSize:12,color:C.inkSoft,marginBottom:6,textAlign:"center"}}>Ose shtyp ID-në manualisht (p.sh. WTH-005)</div>
+              <div style={{fontSize:12,color:C.inkSoft,marginBottom:6,textAlign:"center"}}>Ose shtyp ID-në manualisht (p.sh. ZH-005)</div>
               <div style={{display:"flex",gap:8}}>
-                <input ref={qrRef} className="vv-input" placeholder="WTH-001" value={qrInput}
+                <input ref={qrRef} className="vv-input" placeholder="ZH-001" value={qrInput}
                   onChange={e=>setQrInput(e.target.value)}
                   onKeyDown={e=>e.key==="Enter"&&qrInput&&scanQR(qrInput)}
                   style={{fontFamily:"'Archivo',monospace",fontWeight:700,letterSpacing:".1em",textTransform:"uppercase"}}/>
@@ -3441,7 +3441,7 @@ function AdminCheckin({members,events,live=false}){
               {members.filter(m=>checkedIn.includes(m.id)).map(m=>(
                 <div key={m.id} style={{display:"flex",gap:10,alignItems:"center",padding:"10px 12px",borderRadius:10,background:"#E7F4ED"}}>
                   <CheckCircle2 size={16} color={C.green} style={{flexShrink:0}}/>
-                  <div style={{flex:1}}><div style={{fontWeight:600,fontSize:13}}>{m.name}</div><div style={{fontSize:11,color:C.inkSoft}}>WTH-{String(m.id).padStart(3,"0")}</div></div>
+                  <div style={{flex:1}}><div style={{fontWeight:600,fontSize:13}}>{m.name}</div><div style={{fontSize:11,color:C.inkSoft}}>ZH-{String(m.id).padStart(3,"0")}</div></div>
                   <MemberQR id={m.id} size={36} bg="#E7F4ED" fg="#1E8A4C"/>
                 </div>
               ))}
@@ -3681,7 +3681,7 @@ function AdminGrowth(){
   const newThisYear=GROWTH_DATA[GROWTH_DATA.length-1].count-GROWTH_DATA[GROWTH_DATA.length-2].count;
   return(
     <div>
-      <SectionTitle title="Rritja e anëtarësisë" sub="Evoluimi historik i Pikës Winterthur"/>
+      <SectionTitle title="Rritja e anëtarësisë" sub="Evoluimi historik i Pikës Zürich"/>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:24}}>
         <StatCard label="Anëtarë 2026" value={GROWTH_DATA[GROWTH_DATA.length-1].count} color={C.red} icon={<Users size={26}/>}/>
         <StatCard label="Rritja këtë vit" value={`+${newThisYear}`} color={C.green} icon={<TrendingUp size={26}/>}/>
@@ -4288,7 +4288,7 @@ function OnboardingFlow({me,onDone,onSavePhone,onSaveProfile}){
           <div className="vv-emblem">VV</div>
           <div>
             <div style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:13,lineHeight:1}}>VETËVENDOSJE!</div>
-            <div style={{fontSize:11,color:C.inkSoft}}>Pika Winterthur</div>
+            <div style={{fontSize:11,color:C.inkSoft}}>Pika Zürich</div>
           </div>
         </div>
 
@@ -4299,7 +4299,7 @@ function OnboardingFlow({me,onDone,onSavePhone,onSaveProfile}){
               <Dots/>
               <div style={{color:"rgba(255,255,255,.65)",fontSize:11,fontWeight:700,letterSpacing:".09em",textTransform:"uppercase",marginBottom:8}}>Hapi 1 nga {TOTAL}</div>
               <h1 style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:30,color:"#fff",lineHeight:1.05,marginBottom:10}}>Mirë se erdhe,<br/>{me.name.split(" ")[0]}!</h1>
-              <p style={{color:"rgba(255,255,255,.8)",fontSize:14,lineHeight:1.6,position:"relative",zIndex:1,margin:0}}>Jeni anëtar i ri i Pikës Winterthur. Ja çfarë ju pret në platformë.</p>
+              <p style={{color:"rgba(255,255,255,.8)",fontSize:14,lineHeight:1.6,position:"relative",zIndex:1,margin:0}}>Jeni anëtar i ri i Pikës Zürich. Ja çfarë ju pret në platformë.</p>
             </div>
             <div className="ob-card-body">
               <div className="ob-feature-grid">
@@ -4378,7 +4378,7 @@ function OnboardingFlow({me,onDone,onSavePhone,onSaveProfile}){
               </div>
               <div style={{background:"#F8F7F3",borderRadius:12,padding:"16px 18px",marginBottom:16,border:`1px solid ${C.line}`}}>
                 <div style={{fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:".08em",color:C.inkSoft,marginBottom:12}}>Transfertë bankare</div>
-                {[["IBAN","CH56 0483 5012 3456 7800 9"],["Përfituesi","VV Pika Winterthur"],["Qëllimi",`Kuota 2026 – ${me.name}`],["Shuma","CHF 150.00"]].map(([lbl,val])=>(
+                {[["IBAN","CH56 0483 5012 3456 7800 9"],["Përfituesi","VV Pika Zürich"],["Qëllimi",`Kuota 2026 – ${me.name}`],["Shuma","CHF 150.00"]].map(([lbl,val])=>(
                   <div key={lbl} style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"6px 0",borderBottom:`1px solid ${C.line}`}}>
                     <span style={{fontSize:12,color:C.inkSoft,fontWeight:600}}>{lbl}</span>
                     <span style={{fontSize:12,fontWeight:700,textAlign:"right",maxWidth:"62%"}}>{val}</span>
@@ -4409,7 +4409,7 @@ function OnboardingFlow({me,onDone,onSavePhone,onSaveProfile}){
               </div>
               <h2 style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:28,marginBottom:10}}>Gati, {me.name.split(" ")[0]}!</h2>
               <p style={{color:C.inkSoft,lineHeight:1.65,fontSize:14,marginBottom:32,maxWidth:320,margin:"0 auto 32px"}}>
-                Mirë se erdhe në familjen e Pikës Winterthur. Platforma është gati — eksploroni eventet, votoni në sondazhe dhe qëndroni të lidhur.
+                Mirë se erdhe në familjen e Pikës Zürich. Platforma është gati — eksploroni eventet, votoni në sondazhe dhe qëndroni të lidhur.
               </p>
               <button className="vv-btn" style={{justifyContent:"center",paddingLeft:28,paddingRight:28}} onClick={onDone}>
                 <Zap size={15}/>Hyr në platformë
@@ -4605,7 +4605,7 @@ function AdminOnboarding({live=null}={}){
             {(sel.status==="aprovuar"||sel.status==="pret_pagesen")&&(
               <div style={{background:"#E0F2FE",borderRadius:14,padding:"14px 16px",border:"1px solid #38BDF844"}}>
                 <div className="vv-eyebrow" style={{color:"#0369A1",marginBottom:10}}>Detajet e pagesës — CHF 150</div>
-                {[["IBAN","CH56 0483 5012 3456 7800 9"],["Përfituesi","VV Pika Winterthur"],["Qëllimi",`Kuota 2026 – ${sel.name}`],["Shuma","CHF 150.00"]].map(([lbl,val])=>(
+                {[["IBAN","CH56 0483 5012 3456 7800 9"],["Përfituesi","VV Pika Zürich"],["Qëllimi",`Kuota 2026 – ${sel.name}`],["Shuma","CHF 150.00"]].map(([lbl,val])=>(
                   <div key={lbl} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid rgba(3,105,161,.1)"}}>
                     <span style={{fontSize:12,color:"#0369A1",fontWeight:600}}>{lbl}</span>
                     <span style={{fontSize:12,fontWeight:700}}>{val}</span>
@@ -5760,7 +5760,7 @@ function waReminderLink(m){
   else if(d.startsWith("0")) d="41"+d.slice(1);
   const year=new Date().getFullYear();
   const first=(m.name||"").split(" ")[0];
-  const text=`Përshëndetje ${first}! Kujtesë miqësore nga VV Pika Winterthur: kuota e anëtarësisë ${year} (CHF ${KUOTA}) nuk është paguar ende. Referenca: ${payRef(m.id,year)}. Faleminderit!`;
+  const text=`Përshëndetje ${first}! Kujtesë miqësore nga VV Pika Zürich: kuota e anëtarësisë ${year} (CHF ${KUOTA}) nuk është paguar ende. Referenca: ${payRef(m.id,year)}. Faleminderit!`;
   return `https://wa.me/${d}?text=${encodeURIComponent(text)}`;
 }
 
@@ -6211,11 +6211,11 @@ function timeAgo(iso){
 // Demo rows have no status; with a real login only confirmed donations count.
 function isConfirmedDonation(d){return !d.status||d.status==="konfirmuar";}
 
-// "Test Anëtari", 9001 -> "WTH-TA9001"; "Blerim Gashi", 5 -> "WTH-BG005"
+// "Test Anëtari", 9001 -> "ZH-TA9001"; "Blerim Gashi", 5 -> "ZH-BG005"
 function referralCode(me){
   const ini=String(me.name||"").trim().split(/\s+/).map(w=>w.charAt(0)).join("").slice(0,2).toUpperCase()||"VV";
   const id=Number(me.id)||0;
-  return `WTH-${ini}${id<1000?String(id).padStart(3,"0"):id}`;
+  return `ZH-${ini}${id<1000?String(id).padStart(3,"0"):id}`;
 }
 
 // "27.06.2026", "7.6.2026" or "2026-06-27" -> Date (local midnight); null if it can't be read.
@@ -6329,7 +6329,7 @@ async function callCreateAccount(body){
 }
 
 function credentialsText(email,password){
-  return `VV Pika Winterthur\nHyrja: ${window.location.origin}\nEmail: ${email}\nFjalëkalimi: ${password}`;
+  return `VV Pika Zürich\nHyrja: ${window.location.origin}\nEmail: ${email}\nFjalëkalimi: ${password}`;
 }
 
 function CredentialsBox({email,password}){

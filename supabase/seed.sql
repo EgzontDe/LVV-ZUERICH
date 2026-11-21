@@ -13,9 +13,9 @@ insert into public.members (id,name,email,status,pay,extra) values
 (12,'Florent Ahmeti','florent.a@example.ch','aktiv','papaguar','{"role":"Anëtar","kanton":"Schaffhausen","phone":"+41 79 000 00 12","joined":"18.11.2022","prof":"Kuzhinier","dob":"09.01.1989"}'::jsonb);
 
 insert into public.events (id,title,public,rsvp,extra) values
-(1,'Mbledhja e Rregullt e Pikës',false,'{1,2,3,4,6,8}'::bigint[],'{"date":"27.06.2026","time":"18:00","place":"Salla e Komunitetit, Winterthur","type":"Mbledhje","max":60,"past":false}'::jsonb),
-(2,'Festa e Flamurit — 28 Nëntori',true,'{1,2,3,5,6,8,9,12}'::bigint[],'{"date":"28.11.2026","time":"19:00","place":"Eulachhalle, Winterthur","type":"Manifestim","max":300,"past":false}'::jsonb),
-(3,'Aksion Humanitar për Familjet',true,'{3,4,6}'::bigint[],'{"date":"12.07.2026","time":"10:00","place":"Qendra e Pikës, Winterthur","type":"Aktivitet","max":40,"past":false}'::jsonb),
+(1,'Mbledhja e Rregullt e Pikës',false,'{1,2,3,4,6,8}'::bigint[],'{"date":"27.06.2026","time":"18:00","place":"Salla e Komunitetit, Zürich","type":"Mbledhje","max":60,"past":false}'::jsonb),
+(2,'Festa e Flamurit — 28 Nëntori',true,'{1,2,3,5,6,8,9,12}'::bigint[],'{"date":"28.11.2026","time":"19:00","place":"Volkshaus, Zürich","type":"Manifestim","max":300,"past":false}'::jsonb),
+(3,'Aksion Humanitar për Familjet',true,'{3,4,6}'::bigint[],'{"date":"12.07.2026","time":"10:00","place":"Qendra e Pikës, Zürich","type":"Aktivitet","max":40,"past":false}'::jsonb),
 (4,'Manifestim për Pavarësinë',true,'{1,2,3,4,5,6,7,8,9,12}'::bigint[],'{"date":"17.02.2026","time":"17:00","place":"Sheshi Qendror, Zürich","type":"Manifestim","max":200,"past":true}'::jsonb);
 
 insert into public.announcements (id,title,extra) values
@@ -24,7 +24,7 @@ insert into public.announcements (id,title,extra) values
 (1,'Mirëserdhët në platformën digjitale','{"body":"Pika jonë tani ka platformën e saj digjitale për menaxhimin e anëtarësisë dhe eventeve.","date":"28.05.2026","pinned":false}'::jsonb);
 
 insert into public.polls (id,question,status,yes,no,abstain,voted,extra) values
-(1,'A duhet të organizojmë tubim publik në Winterthur HB?','aktiv',8,2,1,'{1,2,4,6,8,9,3,7,10,11,5}'::bigint[],'{"deadline":"30.06.2026"}'::jsonb),
+(1,'A duhet të organizojmë tubim publik në Zürich HB?','aktiv',8,2,1,'{1,2,4,6,8,9,3,7,10,11,5}'::bigint[],'{"deadline":"30.06.2026"}'::jsonb),
 (2,'A jeni dakord me draftin e rregullores së re për diasporën?','mbyllur',10,1,2,'{1,2,3,4,5,6,7,8,9,10,11,12}'::bigint[],'{"deadline":"15.06.2026"}'::jsonb),
 (3,'A duhet Pika të kontribuojë financiarisht për aksionin humanitar?','aktiv',5,0,0,'{1,2,3,4,9}'::bigint[],'{"deadline":"25.07.2026"}'::jsonb);
 

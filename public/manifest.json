@@ -1,7 +1,7 @@
 {
-  "name": "VV Pika Winterthur",
-  "short_name": "VV Winterthur",
-  "description": "Platforma digjitale e Lëvizjes VETËVENDOSJE! Pika Winterthur",
+  "name": "VV Pika Zürich",
+  "short_name": "VV Zürich",
+  "description": "Platforma digjitale e Lëvizjes VETËVENDOSJE! Pika Zürich",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#EDECE8",

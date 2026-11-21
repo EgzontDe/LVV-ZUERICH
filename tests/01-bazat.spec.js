@@ -4,7 +4,7 @@ import { test, expect } from "@playwright/test";
 test("faqja publike hapet", async ({ page }) => {
   await page.goto("/");                                   // baseURL + "/"
   await expect(page).toHaveTitle(/.+/);                   // faqja ka titull
-  await expect(page.getByText("Pika Winterthur").first()).toBeVisible();
+  await expect(page.getByText("Pika Zürich").first()).toBeVisible();
 });
 
 test("butoni 'Hyr' çon te faqja e hyrjes", async ({ page }) => {

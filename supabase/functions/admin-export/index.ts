@@ -44,7 +44,7 @@ async function paymentsPdf(members: Row[], payments: Row[], year: number) {
   const text = (s: string, x: number, size = 10, f = font, color = ink) => page.drawText(safe(s), { x, y, size, font: f, color });
 
   page.drawRectangle({ x: 0, y: 812, width: 595, height: 30, color: red });
-  page.drawText("VETËVENDOSJE! · Pika Winterthur", { x: 40, y: 822, size: 12, font: bold, color: rgb(1, 1, 1) });
+  page.drawText("VETËVENDOSJE! · Pika Zürich", { x: 40, y: 822, size: 12, font: bold, color: rgb(1, 1, 1) });
   text(`Raporti i pagesave ${year}`, 40, 20, bold); y -= 22;
   text(`Gjeneruar më ${new Date().toLocaleDateString("de-CH")}`, 40, 10, font, soft); y -= 30;
 
@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
         if (error) throw error;
         out[t] = data;
       }
-      return file(JSON.stringify(out, null, 2), "application/json", `backup-vv-winterthur-${day}.json`);
+      return file(JSON.stringify(out, null, 2), "application/json", `backup-vv-zuerich-${day}.json`);
     }
 
     if (body.type === "payments-pdf") {

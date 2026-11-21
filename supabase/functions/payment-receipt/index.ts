@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
     page.drawText(safe(s), { x, y, size, font: f, color });
 
   page.drawRectangle({ x: 0, y: 262, width: 420, height: 36, color: red });
-  t("VETËVENDOSJE! · Pika Winterthur", 24, 275, 12, bold, rgb(1, 1, 1));
+  t("VETËVENDOSJE! · Pika Zürich", 24, 275, 12, bold, rgb(1, 1, 1));
   t("Vërtetim pagese", 24, 230, 18, bold);
   t(`Nr. VP-${p.year}-${String(p.id).padStart(5, "0")}`, 24, 212, 10, font, soft);
 

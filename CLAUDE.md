@@ -1,7 +1,7 @@
-# VV Pika Winterthur — CLAUDE.md
+# VV Pika Zürich — CLAUDE.md
 
 ## Project overview
-Single-page React prototype for the **Lëvizja VETËVENDOSJE! Pika Winterthur** membership platform. All UI, state, data, and logic live in one file: `src/App.jsx`. No backend — all data is mock/seed. Language: Albanian (Shqip).
+Single-page React prototype for the **Lëvizja VETËVENDOSJE! Pika Zürich** membership platform. All UI, state, data, and logic live in one file: `src/App.jsx`. No backend — all data is mock/seed. Language: Albanian (Shqip).
 
 **Stack:** React 18 · Vite 4 · lucide-react · single-file architecture  
 **Dev server:** `npm run dev` → http://localhost:5173  
