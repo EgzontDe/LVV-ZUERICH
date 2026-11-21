@@ -17,10 +17,10 @@ const SB_URL = env.VITE_SUPABASE_URL;
 const SB_KEY = env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 const ROLES = {
-  financa:    { email: "qa-financa@vv-test.ch",    label: "Financat",   sees: ["Pagesat", "Financat", "Donacionet", "Kujtesat"], hidden: ["Anëtarët", "Check-in", "Komunikimi", "Cilësimet"] },
-  eventet:    { email: "qa-eventet@vv-test.ch",    label: "Eventet",    sees: ["Eventet", "Kalendari", "Check-in"],               hidden: ["Pagesat", "Anëtarët", "Komunikimi", "Cilësimet"] },
-  komunikimi: { email: "qa-komunikimi@vv-test.ch", label: "Komunikimi", sees: ["Komunikimi", "Sondazhet", "Kërkesat"],            hidden: ["Pagesat", "Anëtarët", "Check-in", "Cilësimet"] },
-  sekretar:   { email: "qa-sekretar@vv-test.ch",   label: "Sekretar",   sees: ["Anëtarët", "Onboarding", "Kërkesat", "Procesverbalet"], hidden: ["Pagesat", "Financat", "Check-in", "Cilësimet"] },
+  financa:    { email: "qa-financa@vv-test.ch",    label: "Financat",   sees: ["Pagesat", "Financat", "Donacionet", "Kujtesat", "Detyrat"], hidden: ["Anëtarët", "Check-in", "Komunikimi", "Cilësimet"] },
+  eventet:    { email: "qa-eventet@vv-test.ch",    label: "Eventet",    sees: ["Eventet", "Kalendari", "Check-in", "Detyrat"],               hidden: ["Pagesat", "Anëtarët", "Komunikimi", "Cilësimet"] },
+  komunikimi: { email: "qa-komunikimi@vv-test.ch", label: "Komunikimi", sees: ["Komunikimi", "Sondazhet", "Kërkesat", "Detyrat"],            hidden: ["Pagesat", "Anëtarët", "Check-in", "Cilësimet"] },
+  sekretar:   { email: "qa-sekretar@vv-test.ch",   label: "Sekretar",   sees: ["Anëtarët", "Onboarding", "Kërkesat", "Procesverbalet", "Detyrat"], hidden: ["Pagesat", "Financat", "Check-in", "Cilësimet"] },
 };
 
 async function hyrReale(page, email) {

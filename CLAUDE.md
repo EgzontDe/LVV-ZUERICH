@@ -42,7 +42,7 @@ the app only filters the menu (`ROLE_PERMS` / `TAB_PERM` / `tabsForRole` at the 
 | eventet | events, calendar, check-in |
 | member | own data only |
 
-Staff can switch to their own member view ("Pamja ime si anëtar"). Demo buttons are unaffected (demo admin = full access).
+Every staff role also sees **Detyrat** (Kanban, table `tasks`). Staff can switch to their own member view ("Pamja ime si anëtar"). Demo buttons are unaffected (demo admin = full access).
 Live tests: `tests/10-rolet.spec.js`, `tests/11-anetari-real.spec.js` need `QA_PASSWORD` (QA accounts `qa-*@vv-test.ch`); without it they are skipped.
 
 ## Component status
@@ -57,6 +57,7 @@ Live tests: `tests/10-rolet.spec.js`, `tests/11-anetari-real.spec.js` need `QA_P
 | news | Njoftimet | MemberNews | ✅ |
 | donate | Dono | MemberDonate | ✅ |
 | polls | Sondazhet | MemberPolls | ✅ |
+| tasks | Detyrat e mia | MemberTasks | ✅ (tasks assigned to me; move via RPC `set_my_task_col`) |
 
 ### Admin nav tabs
 | key | label | component | status |

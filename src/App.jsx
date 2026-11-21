@@ -364,7 +364,7 @@ const seedMinutes=[
 const CHECKIN_EVENT_ID=1;
 
 const TASK_COLS=["todo","doing","done"];
-const TASK_COL_LABELS={"todo":"Të bëra","doing":"Duke bërë","done":"Bërë"};
+const TASK_COL_LABELS={"todo":"Për t'u bërë","doing":"Duke bërë","done":"Bërë"};
 const TASK_COL_COLORS={"todo":C.inkSoft,"doing":C.amber,"done":C.green};
 const PRIORITY_CFG={e_larte:{label:"E lartë",bg:"#FEE2E2",color:"#C8342B"},mesatare:{label:"Mesatare",bg:"#FEF3C7",color:"#92400E"},e_ulet:{label:"E ulët",bg:"#E7F4ED",color:"#1E8A4C"}};
 const seedTasks=[
@@ -376,6 +376,7 @@ const seedTasks=[
   {id:6,title:"Regjistro anëtarët e rinj në sistem",assignee:3,priority:"mesatare",col:"done",due:"08.06.2026",note:"3 anëtarë të rinj"},
   {id:7,title:"Përgatit raportin financiar Q2",assignee:4,priority:"mesatare",col:"todo",due:"15.07.2026",note:""},
   {id:8,title:"Organizoi transport për zgjedhjet",assignee:1,priority:"e_larte",col:"todo",due:"01.10.2026",note:"Min. 2 makina"},
+  {id:9,title:"Shpërndaj flyer-at për Festën e Flamurit në Winterthur",assignee:5,priority:"mesatare",col:"todo",due:"20.11.2026",note:"Merr flyer-at te zyra e Pikës"},
 ];
 
 
@@ -552,7 +553,7 @@ const DE={
   /* nav — admin */"Paneli":"Dashboard","Anëtarët":"Mitglieder","Pagesat":"Zahlungen","Financat":"Finanzen","Rritja":"Wachstum","Kalendari":"Kalender","Zgjedhjet":"Wahlen","Rekrutimi":"Rekrutierung","Harta":"Karte","Komunikimi":"Kommunikation","Donacionet":"Spenden","Kujtesat":"Erinnerungen","Procesverbalet":"Protokolle","Kërkesat":"Anfragen","Arkiva":"Archiv","Cilësimet":"Einstellungen","Detyrat":"Aufgaben",
   /* sidebar sections */"Anëtar":"Mitglied","Pjesëmarrja":"Teilnahme","Kontributi":"Beitrag","Kryesore":"Hauptmenü","Aktiviteti":"Aktivitäten","Politika":"Politik","Organizimi":"Organisation","Sistemi":"System",
   /* section titles */"Paneli kryesor":"Dashboard","Historia e pagesave të anëtarësisë":"Mitgliedsbeitrag-Geschichte","Të gjitha ngjarjet e Pikës":"Alle Veranstaltungen","Tabela Kanban e Pikës":"Kanban-Aufgaben","Rritja e anëtarësisë":"Mitgliederwachstum","Shpërndarja sipas kantonit":"Verteilung nach Kanton","Rekrutimi dhe referimi":"Rekrutierung & Empfehlungen","Komunikimi":"Kommunikation","Cilësimet":"Einstellungen","Arkiva":"Archiv","Sondazhet":"Umfragen","Donacionet":"Spenden","Kujtesat automatike":"Automatische Erinnerungen","Procesverbalet":"Protokolle","Kërkesat":"Anfragen","Zgjedhjet":"Wahlen","Financat":"Finanzen","Eventet":"Veranstaltungen","Check-in i eventit":"Event Check-in","Anëtarët":"Mitglieder","Pagesat":"Zahlungen","Karta digjitale":"Digitale Karte","Profili im":"Mein Profil","Njoftimet":"Mitteilungen","Faturat":"Rechnungen","Dono":"Spenden",
-  /* stat labels */"Anëtarë total":"Mitglieder gesamt","Anëtarë aktivë":"Aktive Mitglieder","Kuota paguar":"Beitrag bezahlt","Eventet e ardhshme":"Kommende Events","Kuota vjetore":"Jahresbeitrag","Pagesa 2026":"Zahlung 2026","Anëtar prej":"Mitglied seit","Arkëtuar YTD":"Einnahmen YTD","Target vjetor":"Jahresziel","Progresi":"Fortschritt","Anëtarë 2026":"Mitglieder 2026","Rritja këtë vit":"Wachstum dieses Jahr","Themeluar":"Gegründet","Kantone të përfaqësuara":"Vertretene Kantone","Kantoni me më shumë":"Stärkster Kanton","Anëtarë gjithsej":"Mitglieder gesamt","Gjithsej kërkesa":"Anfragen gesamt","Presin përgjigje":"Warten auf Antwort","U përgjigj":"Beantwortet","Total referime":"Empfehlungen gesamt","Rekrutues aktivë":"Aktive Werber","Rekrutues kryesor":"Top-Werber","Kanë ardhur":"Anwesend","Mungojnë":"Fehlend","Të regjistruar":"Registriert","Gjithsej":"Gesamt","Presin":"Warten","Donacioni mesatar":"Ø Spende","Donacioni më i madh":"Größte Spende","Të bëra":"Zu tun","Duke bërë":"In Arbeit","Bërë":"Erledigt",
+  /* stat labels */"Anëtarë total":"Mitglieder gesamt","Anëtarë aktivë":"Aktive Mitglieder","Kuota paguar":"Beitrag bezahlt","Eventet e ardhshme":"Kommende Events","Kuota vjetore":"Jahresbeitrag","Pagesa 2026":"Zahlung 2026","Anëtar prej":"Mitglied seit","Arkëtuar YTD":"Einnahmen YTD","Target vjetor":"Jahresziel","Progresi":"Fortschritt","Anëtarë 2026":"Mitglieder 2026","Rritja këtë vit":"Wachstum dieses Jahr","Themeluar":"Gegründet","Kantone të përfaqësuara":"Vertretene Kantone","Kantoni me më shumë":"Stärkster Kanton","Anëtarë gjithsej":"Mitglieder gesamt","Gjithsej kërkesa":"Anfragen gesamt","Presin përgjigje":"Warten auf Antwort","U përgjigj":"Beantwortet","Total referime":"Empfehlungen gesamt","Rekrutues aktivë":"Aktive Werber","Rekrutues kryesor":"Top-Werber","Kanë ardhur":"Anwesend","Mungojnë":"Fehlend","Të regjistruar":"Registriert","Gjithsej":"Gesamt","Presin":"Warten","Donacioni mesatar":"Ø Spende","Donacioni më i madh":"Größte Spende","Të bëra":"Zu tun","Për t'u bërë":"Zu tun","Detyrat e mia":"Meine Aufgaben","Duke bërë":"In Arbeit","Bërë":"Erledigt",
   /* buttons */"Shto anëtar":"Mitglied +","Krijo event":"Event +","Shto detyrë":"Aufgabe +","Dil":"Abmelden","Paguaj tani":"Jetzt zahlen","Paguaj":"Bezahlen","Konfirmo pagesën me TWINT":"Mit TWINT bestätigen","Konfirmo pagesën me PostFinance":"Mit PostFinance bestätigen",
   /* roles */"Admin":"Admin","Anëtar":"Mitglied","Sekretar / Admin":"Sekretär / Admin",
   /* login */"Mirëserdhët":"Willkommen","Hyni në platformë":"Plattform-Login","Zgjidhni rolin tuaj për të vazhduar":"Wählen Sie Ihre Rolle","Administrator":"Administrator","Apliko për anëtarësim":"Mitgliedschaft beantragen","Hyni si Blerim Gashi (demo)":"Als Blerim Gashi einloggen (Demo)","Qasje e plotë — Egzont Demiri":"Vollzugriff — Egzont Demiri","Formulari publik i aplikimit":"Öffentliches Antragsformular",
@@ -3736,8 +3737,11 @@ function AdminGrowth(){
 }
 
 
-function AdminTasks({members}){
-  const [tasks,setTasks]=useState(seedTasks);
+function AdminTasks({members,meId=null,live=null}){
+  const [localTasks,setLocalTasks]=useState(seedTasks);
+  const allTasks=live?live.tasks:localTasks, setTasks=live?live.setTasks:setLocalTasks;
+  const [onlyMine,setOnlyMine]=useState(false);
+  const tasks=onlyMine?allTasks.filter(t=>t.assignee===meId):allTasks;
   const [open,setOpen]=useState(false);
   const [detail,setDetail]=useState(null);
   const [toast,showToast]=useToast();
@@ -3763,11 +3767,19 @@ function AdminTasks({members}){
   }
 
   const colCounts=Object.fromEntries(TASK_COLS.map(c=>[c,tasks.filter(t=>t.col===c).length]));
+  const mineFilter=meId?(
+    <div style={{display:"flex",gap:8,marginBottom:14}}>
+      {[[false,"Të gjitha"],[true,"Të miat"]].map(([v,l])=>(
+        <button key={l} onClick={()=>setOnlyMine(v)} style={{padding:"7px 14px",borderRadius:8,border:`1px solid ${C.line}`,background:onlyMine===v?C.ink:"#fff",color:onlyMine===v?"#fff":C.inkSoft,fontWeight:600,fontSize:13}}>{l}</button>
+      ))}
+    </div>
+  ):null;
 
   return(
     <div>
       <SectionTitle title="Detyrat" sub="Tabela Kanban e Pikës"
         action={<button className="vv-btn" onClick={()=>setOpen(true)}><Plus size={15}/>Shto detyrë</button>}/>
+      {mineFilter}
 
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:24}}>
         {TASK_COLS.map(c=>(
@@ -3909,6 +3921,7 @@ const memberTabs=[
   {key:"donate",label:"Dono",icon:<Heart size={15}/>,section:"Kontributi"},
   {key:"messages",label:"Mesazhe",icon:<MessageSquare size={15}/>},
   {key:"minutes",label:"Procesverbale",icon:<Scroll size={15}/>},
+  {key:"tasks",label:"Detyrat e mia",icon:<ClipboardCheck size={15}/>},
   {key:"meso",label:"Mëso",icon:<BookOpen size={15}/>,section:"Edukimi"},
 ];
 const adminTabs=[
@@ -3993,6 +4006,16 @@ export default function App(){
   const livePayments=usePayments(live);
   const liveSettings=useSettings(live);
   const [dbRequests,setDbRequests]=useDbTable("requests",live);
+  const [dbTasks,setDbTasks]=useDbTable("tasks",live,{
+    // In the member view a task is only moved between columns, via RPC (members may not edit tasks).
+    onUpdate:async(old,row)=>{
+      if(liveAdmin) return false;
+      if(old.col===row.col) return true;
+      const {error}=await supabase.rpc("set_my_task_col",{p_task:row.id,p_col:row.col});
+      if(error) throw error;
+      return true;
+    },
+  });
   const liveNotifs=useNotifications(live);
 
   const members=live?dbMembers:localMembers, setMembers=live?setDbMembers:setLocalMembers;
@@ -4140,6 +4163,7 @@ export default function App(){
       // Real login: only the uploaded minutes/documents; the sample minutes are demo data.
       case"minutes": return live?<DocumentsPanel canManage={false}/>:<MemberMinutes members={members}/>;
       case"meso": return <MemberMeso/>;
+      case"tasks": return <MemberTasks me={me} live={live?{tasks:dbTasks,setTasks:setDbTasks}:null}/>;
       default: return <MemberHome me={me} events={events} announcements={announcements} polls={polls} live={live}/>;
     }
   }
@@ -4156,7 +4180,7 @@ export default function App(){
       case"events": return <AdminEvents events={events} setEvents={setEvents} members={members}/>;
       case"calendar": return <AdminCalendar events={events}/>;
       case"checkin": return <AdminCheckin key={live?"live":"demo"} members={members} events={events} live={liveAdmin}/>;
-      case"tasks": return <AdminTasks members={members}/>;
+      case"tasks": return <AdminTasks members={members} meId={me.id} live={live?{tasks:dbTasks,setTasks:setDbTasks}:null}/>;
       case"comms": return <AdminComms members={members} announcements={announcements} setAnnouncements={setAnnouncements}/>;
       case"elections": return <AdminElections members={members}/>;
       case"polls": return <AdminPolls polls={polls} setPolls={setPolls}/>;
@@ -5266,6 +5290,7 @@ const DB_TABLES={
   applications:{cols:{name:"name",email:"email",status:"status"},order:["id",true]},
   donations:{cols:{amount:"amount",memberId:"member_id",status:"status"},order:["id",false]},
   requests:{cols:{status:"status",memberId:"member_id"},order:["id",false]},
+  tasks:{cols:{title:"title",col:"col",assignee:"assignee"},order:["id",true]},
 };
 
 function dbToRow(table,rec){
@@ -5891,7 +5916,7 @@ function LiveDbStats({fullAdmin=true}){
   );
 }
 
-const AUDIT_TABLES={members:"Anëtarët",payments:"Pagesat",events:"Eventet",announcements:"Njoftimet",requests:"Kërkesat",documents:"Dokumentet",applications:"Aplikimet",donations:"Donacionet",event_checkins:"Check-in"};
+const AUDIT_TABLES={tasks:"Detyrat",members:"Anëtarët",payments:"Pagesat",events:"Eventet",announcements:"Njoftimet",requests:"Kërkesat",documents:"Dokumentet",applications:"Aplikimet",donations:"Donacionet",event_checkins:"Check-in"};
 const AUDIT_ACTIONS={INSERT:["shtoi",C.green],UPDATE:["ndryshoi",C.amber],DELETE:["fshiu",C.red]};
 
 // Change history written automatically by the private.log_change() trigger.
@@ -6081,7 +6106,8 @@ const TAB_PERM={members:"members",onboarding:"members",payments:"payments",finan
   events:"events",calendar:"events",checkin:"events",comms:"comms",polls:"comms",requests:"requests",processverbal:"documents"};
 function tabsForRole(role,tabs){
   if(isFullAdmin(role)) return tabs;
-  const out=tabs.filter(t=>t.key==="home"||(TAB_PERM[t.key]&&hasPerm(role,TAB_PERM[t.key])));
+  // "Detyrat" (Kanban) is shared by every staff role.
+  const out=tabs.filter(t=>t.key==="home"||t.key==="tasks"||(TAB_PERM[t.key]&&hasPerm(role,TAB_PERM[t.key])));
   // Keep section headings readable: the first tab after "home" starts a "Përgjegjësitë" section.
   return out.map((t,i)=>i===1?{...t,section:"Përgjegjësitë"}:i>1?{...t,section:undefined}:t);
 }
@@ -6191,4 +6217,70 @@ function isPastDate(str){
 function nextMonthStart(){
   const d=new Date();d.setDate(1);d.setMonth(d.getMonth()+1);
   return d.toLocaleDateString("de-CH",{day:"2-digit",month:"2-digit",year:"numeric"});
+}
+
+/* ── Detyrat e mia (member view of the Kanban) ───────────────────────────────
+   Shows only the tasks assigned to this member; they move them between columns.
+   Real login: RLS returns only own tasks, the move goes through set_my_task_col. */
+function MemberTasks({me,live=null}){
+  const [localTasks,setLocalTasks]=useState(()=>seedTasks.filter(t=>t.assignee===me.id));
+  const all=live?live.tasks:localTasks, setTasks=live?live.setTasks:setLocalTasks;
+  const mine=all.filter(t=>t.assignee===me.id);
+  const [toast,showToast]=useToast();
+  const NEXT={todo:"doing",doing:"done"};
+  const NEXT_LABEL={todo:"Fillo punën",doing:"Shëno si të bërë"};
+  function move(t,col){
+    setTasks(prev=>prev.map(x=>x.id===t.id?{...x,col}:x));
+    showToast(col==="done"?"✓ Faleminderit! Detyra u shënua si e bërë.":`Detyra u zhvendos te "${TASK_COL_LABELS[col]}".`);
+  }
+  const open=mine.filter(t=>t.col!=="done").length;
+  return(
+    <div style={{maxWidth:820}}>
+      <SectionTitle title="Detyrat e mia" sub={mine.length?`${open} të hapura · ${mine.length-open} të kryera`:"Detyrat që të cakton kryesia e Pikës"}/>
+      {mine.length===0?(
+        <Card><div style={{textAlign:"center",padding:"28px 0",color:C.inkSoft,fontSize:14}}>
+          <ClipboardCheck size={28} style={{marginBottom:8,opacity:.5}}/><div>Nuk ke detyra të caktuara për momentin.</div>
+        </div></Card>
+      ):TASK_COLS.map(col=>{
+        const list=mine.filter(t=>t.col===col);
+        if(!list.length) return null;
+        return(
+          <div key={col} style={{marginBottom:20}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+              <div style={{width:10,height:10,borderRadius:"50%",background:TASK_COL_COLORS[col]}}/>
+              <span style={{fontWeight:700,fontSize:14}}>{TASK_COL_LABELS[col]}</span>
+              <span className="vv-chip" style={{background:"rgba(23,18,16,.07)",color:C.inkSoft}}>{list.length}</span>
+            </div>
+            <div style={{display:"grid",gap:10}}>
+              {list.map(t=>{
+                const p=PRIORITY_CFG[t.priority]||PRIORITY_CFG.mesatare;
+                const late=col!=="done"&&isPastDate(t.due);
+                return(
+                  <Card key={t.id} style={{borderLeft:`3px solid ${p.color}`,opacity:col==="done"?.75:1}}>
+                    <div style={{display:"flex",gap:12,alignItems:"flex-start",flexWrap:"wrap"}}>
+                      <div style={{flex:"1 1 240px",minWidth:0}}>
+                        <div style={{fontWeight:700,fontSize:15,textDecoration:col==="done"?"line-through":"none"}}>{t.title}</div>
+                        <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:8,alignItems:"center"}}>
+                          <span className="vv-chip" style={{background:p.bg,color:p.color,fontSize:11}}>{p.label}</span>
+                          {t.due&&<span style={{fontSize:12,color:late?C.red:C.inkSoft,fontWeight:late?700:400}}>📅 {t.due}{late?" · ka kaluar afati":""}</span>}
+                        </div>
+                        {t.note&&<div style={{fontSize:13,color:C.inkSoft,marginTop:8,lineHeight:1.5}}>{t.note}</div>}
+                      </div>
+                      <div style={{display:"flex",gap:8,flexShrink:0}}>
+                        {NEXT[col]&&<button className={`vv-btn${col==="doing"?" grn":""}`} style={{fontSize:13,padding:"8px 14px"}} onClick={()=>move(t,NEXT[col])}>
+                          {col==="doing"?<CheckCircle2 size={14}/>:<ChevronRight size={14}/>}{NEXT_LABEL[col]}
+                        </button>}
+                        {col!=="todo"&&<button className="vv-btn ghost" style={{fontSize:13,padding:"8px 12px"}} onClick={()=>move(t,col==="done"?"doing":"todo")}>Kthe</button>}
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+      <Toast msg={toast}/>
+    </div>
+  );
 }

@@ -37,3 +37,10 @@ test("Procesverbale: vetëm dokumentet e ngarkuara, jo shembujt demo", async ({ 
   await expect(page.getByText("Procesverbalet dhe dokumentet")).toBeVisible();
   await expect(page.getByText("Vendimet dhe raportet e mbledhjeve të pikës")).toHaveCount(0);
 });
+
+test("Detyrat e mia: hapet dhe tregon vetëm detyrat e anëtarit", async ({ page }) => {
+  await page.locator("aside").getByRole("button", { name: "Detyrat e mia" }).click();
+  await expect(page.getByRole("heading", { name: "Detyrat e mia" })).toBeVisible();
+  // Demo tasks of other people must never show up here
+  await expect(page.getByText("Përgatit axhendën e mbledhjes")).toHaveCount(0);
+});
