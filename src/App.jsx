@@ -7,7 +7,7 @@ import {
   User, FileText, Download, Search, Plus, LogOut, Bell, CheckCircle2,
   Clock, XCircle, ShieldCheck, Archive, FileDown, Send, HardDriveDownload,
   Building2, Mail, Phone, MapPin, ChevronRight, ChevronLeft, Filter, BadgeCheck, X,
-  CalendarCheck, CalendarX, Newspaper, KeyRound, Activity,
+  CalendarCheck, CalendarX, Newspaper, KeyRound, Activity, RotateCcw, Trash2,
   ChevronDown, Zap, Target, Video, Star, MessageSquare, Image as ImageIcon,
   Heart, BarChart2, TrendingUp, UserPlus, ThumbsUp, ThumbsDown, Globe, Grid,
   Banknote, ClipboardList, QrCode, BellRing, ClipboardCheck, LineChart,
@@ -4053,6 +4053,8 @@ export default function App(){
 
   // A role change by the admin reaches this person at once: menu and view switch without reloading.
   useMyRoleLive(authUser,profile=>{
+    // null: the account was deleted by an admin → out at once.
+    if(!profile){handleLogout();return;}
     setAuthUser(profile);
     setRole(profile.role);
     setTab("home");
@@ -5162,9 +5164,10 @@ const SUPABASE_KEY=import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const supabase=SUPABASE_URL&&SUPABASE_KEY?createClient(SUPABASE_URL,SUPABASE_KEY):null;
 
 async function loadProfile(user){
-  const {data,error}=await supabase.from("profiles").select("role,full_name").eq("id",user.id).maybeSingle();
+  const {data,error}=await supabase.from("profiles").select("role,full_name,deleted_at").eq("id",user.id).maybeSingle();
   if(error) throw error;
-  if(!data) return null;
+  // A deleted account (waiting 30 days for final deletion) may not enter.
+  if(!data||data.deleted_at) return null;
   // role: which shell to show ("admin" for every staff role); staffRole: the real role from the database.
   const staffRole=STAFF_ROLES[data.role]?data.role:"member";
   return {id:user.id,role:staffRole==="member"?"member":"admin",staffRole,email:user.email,name:(data.full_name||"").trim()||nameFromEmail(user.email)};
@@ -5180,6 +5183,7 @@ function nameFromEmail(email){
 function authErrorText(error){
   const msg=(error&&error.message)||"";
   if(/invalid login credentials/i.test(msg)) return "Email ose fjalëkalim i gabuar.";
+  if(/banned/i.test(msg)) return "Kjo llogari është çaktivizuar. Kontakto kryesinë e Pikës.";
   if(/email not confirmed/i.test(msg)) return "Konfirmo fillimisht email-in tënd.";
   if(/password should be at least/i.test(msg)) return "Fjalëkalimi duhet të ketë të paktën 8 karaktere.";
   if(/rate limit|too many/i.test(msg)) return "Shumë tentativa. Provo përsëri pas pak minutash.";
@@ -5411,7 +5415,8 @@ function usePayments(enabled){
   async function reload(){
     const {data,error}=await supabase.from("payments").select("*").order("created_at",{ascending:false});
     if(error){dbError(error,"Pagesat nuk u ngarkuan.");return;}
-    setPayments((data||[]).map(p=>({...p,amount:Number(p.amount),member_id:Number(p.member_id)})));
+    // member_id is null once the member was deleted for good (payment kept for the finances).
+    setPayments((data||[]).map(p=>({...p,amount:Number(p.amount),member_id:p.member_id==null?null:Number(p.member_id)})));
   }
   useEffect(()=>{if(enabled&&supabase) reload(); else setPayments([]);},[enabled]);
   useRealtime("payments",enabled,reload);
@@ -5446,7 +5451,7 @@ function todayCH(){return new Date().toLocaleDateString("de-CH",{day:"2-digit",m
 function PendingPayments({members,payments,onConfirm,onReject}){
   const pending=payments.filter(p=>p.status==="ne_pritje");
   if(!pending.length) return null;
-  const nameOf=id=>(members.find(m=>m.id===id)||{}).name||`Anëtari #${id}`;
+  const nameOf=id=>id==null?"Anëtar i fshirë":(members.find(m=>m.id===id)||{}).name||`Anëtari #${id}`;
   return(
     <Card p={0} style={{overflow:"hidden",marginBottom:20,border:"1.5px solid #FCD34D"}}>
       <div style={{padding:"14px 18px",background:"#FEF3C7",display:"flex",alignItems:"center",gap:8}}>
@@ -6172,15 +6177,18 @@ function RoleManager(){
         :<div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse"}}>
           <thead><tr><th className="vv-th">Llogaria</th><th className="vv-th">Anëtari</th><th className="vv-th">Roli</th><th className="vv-th"></th></tr></thead>
           <tbody>{list.map(r=>(
-            <tr className="vv-row" key={r.email}>
+            <tr className="vv-row" key={r.email} style={r.deleted_at?{opacity:.75,background:"#FDF2F2"}:undefined}>
               <td className="vv-td"><div style={{fontWeight:600}}>{r.full_name||r.email}</div><div style={{fontSize:12,color:C.inkSoft}}>{r.email}</div></td>
               <td className="vv-td" style={{color:C.inkSoft,fontSize:13}}>{r.member_id?`#${r.member_id}`:"pa lidhje"}</td>
               <td className="vv-td">
-                <select className="vv-input" aria-label={`Roli i ${r.email}`} value={r.role} disabled={busy===r.email} onChange={e=>change(r.email,e.target.value)} style={{minWidth:150}}>
+                <select className="vv-input" aria-label={`Roli i ${r.email}`} value={r.role} disabled={busy===r.email||!!r.deleted_at} onChange={e=>change(r.email,e.target.value)} style={{minWidth:150}}>
                   {Object.entries(STAFF_ROLES).map(([k,v])=><option key={k} value={k}>{v}</option>)}
                 </select>
               </td>
-              <td className="vv-td"><NewPasswordButton email={r.email}/></td>
+              <td className="vv-td"><div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                {!r.deleted_at&&<NewPasswordButton email={r.email}/>}
+                <DeleteAccountButton row={r} onDone={(text)=>{showToast(text);load();}}/>
+              </div></td>
             </tr>
           ))}</tbody>
         </table></div>}
@@ -6440,10 +6448,57 @@ function useMyRoleLive(authUser,onChange){
       .on("postgres_changes",{event:"UPDATE",schema:"public",table:"profiles",filter:`id=eq.${uid}`},async()=>{
         try{
           const p=await loadProfile({id:uid,email});
-          if(p&&p.staffRole!==roleRef.current) cbRef.current(p);
+          if(!p||p.staffRole!==roleRef.current) cbRef.current(p);
         }catch{}
       })
       .subscribe();
     return()=>{supabase.removeChannel(ch);};
   },[uid,email]);
+}
+
+/* ── Soft delete of accounts: blocked at once, kept 30 days, restorable until then ── */
+const ACCOUNT_KEEP_DAYS=30;
+function purgeDate(deletedAt){
+  const d=new Date(deletedAt);d.setDate(d.getDate()+ACCOUNT_KEEP_DAYS);
+  return d.toLocaleDateString("de-CH",{day:"2-digit",month:"2-digit",year:"numeric"});
+}
+
+function DeleteAccountButton({row,onDone}){
+  const [ask,setAsk]=useState(false);
+  const [busy,setBusy]=useState(false);
+  const [err,setErr]=useState("");
+  const who=row.full_name||row.email;
+  async function remove(){
+    setBusy(true);setErr("");
+    const {error}=await supabase.rpc("admin_delete_user",{p_email:row.email});
+    setBusy(false);
+    if(error){setErr(/own/.test(error.message)?"Nuk mund ta fshish llogarinë tënde.":"Llogaria nuk u fshi. Provo përsëri.");return;}
+    setAsk(false);
+    onDone(`${who} u çaktivizua. Fshihet përfundimisht më ${purgeDate(new Date())}.`);
+  }
+  async function restore(){
+    setBusy(true);
+    const {error}=await supabase.rpc("admin_restore_user",{p_email:row.email});
+    setBusy(false);
+    onDone(error?"Llogaria nuk u rikthye. Provo përsëri.":`${who} u rikthye ✓`);
+  }
+  if(row.deleted_at) return(<>
+    <span className="vv-chip" style={{background:"#FDE2E1",color:C.redDark,whiteSpace:"nowrap"}}>Fshihet më {purgeDate(row.deleted_at)}</span>
+    <button className="vv-btn grn" style={{padding:"6px 10px",fontSize:12,whiteSpace:"nowrap"}} disabled={busy} onClick={restore}><RotateCcw size={13}/>{busy?"…":"Rikthe"}</button>
+  </>);
+  return(<>
+    <button className="vv-btn ghost" style={{padding:"6px 10px",fontSize:12,color:C.red,whiteSpace:"nowrap"}} onClick={()=>setAsk(true)}><Trash2 size={13}/>Fshi</button>
+    <Modal open={ask} onClose={()=>{setAsk(false);setErr("");}} title="Fshi llogarinë">
+      <div style={{fontSize:14,lineHeight:1.6}}>
+        <p style={{marginTop:0}}><b>{who}</b> ({row.email}) nuk do të mund të hyjë më, duke filluar nga tani. Nëse është brenda, del menjëherë.</p>
+        <p>Llogaria ruhet edhe <b>{ACCOUNT_KEEP_DAYS} ditë</b>, deri më <b>{purgeDate(new Date())}</b>. Deri atëherë mund ta rikthesh në çdo moment me "Rikthe".</p>
+        <p style={{color:C.inkSoft,fontSize:13}}>Pas kësaj fshihen përfundimisht llogaria dhe të dhënat personale. Pagesat dhe donacionet mbeten te Financat si "Anëtar i fshirë".</p>
+      </div>
+      {err&&<div style={{color:C.red,fontSize:13,marginBottom:10}}>{err}</div>}
+      <div style={{display:"flex",gap:8}}>
+        <button className="vv-btn ghost" onClick={()=>setAsk(false)}>Anulo</button>
+        <button className="vv-btn" disabled={busy} onClick={remove}>{busy?"Duke fshirë…":"Po, fshi llogarinë"}</button>
+      </div>
+    </Modal>
+  </>);
 }
