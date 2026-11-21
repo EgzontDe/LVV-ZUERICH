@@ -4403,7 +4403,7 @@ function OnboardingFlow({me,onDone,onSavePhone,onSaveProfile}){
               </div>
               <div style={{background:"#F8F7F3",borderRadius:12,padding:"16px 18px",marginBottom:16,border:`1px solid ${C.line}`}}>
                 <div style={{fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:".08em",color:C.inkSoft,marginBottom:12}}>Transfertë bankare</div>
-                {[["IBAN","CH56 0483 5012 3456 7800 9"],["Përfituesi","VV Pika Zürich"],["Qëllimi",`Kuota 2026 – ${me.name}`],["Shuma","CHF 150.00"]].map(([lbl,val])=>(
+                {[["Përfituesi","VV Pika Zürich"],["Qëllimi",`Kuota 2026 – ${me.name}`],["Shuma","CHF 150.00"]].map(([lbl,val])=>(
                   <div key={lbl} style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"6px 0",borderBottom:`1px solid ${C.line}`}}>
                     <span style={{fontSize:12,color:C.inkSoft,fontWeight:600}}>{lbl}</span>
                     <span style={{fontSize:12,fontWeight:700,textAlign:"right",maxWidth:"62%"}}>{val}</span>
@@ -4638,7 +4638,7 @@ function AdminOnboarding({live=null}={}){
             {(sel.status==="aprovuar"||sel.status==="pret_pagesen")&&(
               <div style={{background:"#E0F2FE",borderRadius:14,padding:"14px 16px",border:"1px solid #38BDF844"}}>
                 <div className="vv-eyebrow" style={{color:"#0369A1",marginBottom:10}}>Detajet e pagesës — CHF 150</div>
-                {[["IBAN","CH56 0483 5012 3456 7800 9"],["Përfituesi","VV Pika Zürich"],["Qëllimi",`Kuota 2026 – ${sel.name}`],["Shuma","CHF 150.00"]].map(([lbl,val])=>(
+                {[["Përfituesi","VV Pika Zürich"],["Qëllimi",`Kuota 2026 – ${sel.name}`],["Shuma","CHF 150.00"]].map(([lbl,val])=>(
                   <div key={lbl} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid rgba(3,105,161,.1)"}}>
                     <span style={{fontSize:12,color:"#0369A1",fontWeight:600}}>{lbl}</span>
                     <span style={{fontSize:12,fontWeight:700}}>{val}</span>
@@ -5556,8 +5556,17 @@ function CopyRow({label,value,big=false}){
 }
 
 function TwintLivePanel({number,amount,reference,onPaid}){
+  // No TWINT number set (e.g. during tests): the member only reports the payment, the board confirms it.
   if(!number) return(
-    <div className="vv-login-err">Numri TWINT nuk është vendosur ende. Kontakto kryesinë e Pikës.</div>
+    <div style={{display:"grid",gap:14}}>
+      <div style={{background:"#F8F7F3",borderRadius:16,padding:"18px 16px",display:"grid",gap:8}}>
+        <CopyRow label="Shuma" value={`CHF ${amount}`}/>
+        <CopyRow label="Referenca" value={reference}/>
+      </div>
+      <div style={{fontSize:13,color:C.inkSoft,lineHeight:1.6}}>Mënyrën e pagesës ta jep kryesia e Pikës. Pasi të kesh paguar, kliko <b>Kam paguar</b>.</div>
+      <button className="vv-btn" style={{width:"100%",justifyContent:"center"}} onClick={onPaid}><CheckCircle2 size={15}/>Kam paguar</button>
+      <div style={{fontSize:12,color:C.inkSoft,textAlign:"center"}}>Pagesa shfaqet si <b>Paguar</b> pasi kryesia ta konfirmojë.</div>
+    </div>
   );
   return(
     <div style={{display:"grid",gap:14}}>
