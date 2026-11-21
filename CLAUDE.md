@@ -42,6 +42,8 @@ the app only filters the menu (`ROLE_PERMS` / `TAB_PERM` / `tabsForRole` at the 
 | eventet | events, calendar, check-in |
 | member | own data only |
 
+**Accounts:** Cilësimet → Rolet → "Krijo llogari" calls Edge Function `create-account` (modes `password` = returns a generated password, `invite` = Supabase invite email, `new_password` = fresh password for an existing account). It creates the auth user, the `members` row (next id < 9000) and sets `profiles.role`. Admin/kryetar: any role; sekretar: members only. `profiles` is in the realtime publication; `useMyRoleLive` switches the person's menu as soon as their role changes.
+
 Every staff role also sees **Detyrat** (Kanban, table `tasks`). Staff can switch to their own member view ("Pamja ime si anëtar"). Demo buttons are unaffected (demo admin = full access).
 Live tests: `tests/10-rolet.spec.js`, `tests/11-anetari-real.spec.js` need `QA_PASSWORD` (QA accounts `qa-*@vv-test.ch`); without it they are skipped.
 

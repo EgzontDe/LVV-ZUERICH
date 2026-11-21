@@ -4051,6 +4051,14 @@ export default function App(){
     return()=>{alive=false;};
   },[]);
 
+  // A role change by the admin reaches this person at once: menu and view switch without reloading.
+  useMyRoleLive(authUser,profile=>{
+    setAuthUser(profile);
+    setRole(profile.role);
+    setTab("home");
+    showDbToast(`Roli yt u ndryshua: ${STAFF_ROLES[profile.staffRole]||profile.staffRole}`);
+  });
+
   async function finishPasswordSetup(){
     setNeedsPassword(false);
     try{
@@ -5159,7 +5167,7 @@ async function loadProfile(user){
   if(!data) return null;
   // role: which shell to show ("admin" for every staff role); staffRole: the real role from the database.
   const staffRole=STAFF_ROLES[data.role]?data.role:"member";
-  return {role:staffRole==="member"?"member":"admin",staffRole,email:user.email,name:(data.full_name||"").trim()||nameFromEmail(user.email)};
+  return {id:user.id,role:staffRole==="member"?"member":"admin",staffRole,email:user.email,name:(data.full_name||"").trim()||nameFromEmail(user.email)};
 }
 
 // "egzont.demiri@x.ch" -> "Egzont Demiri" (used only when the profile has no full_name)
@@ -6124,6 +6132,7 @@ function RoleManager(){
   const [err,setErr]=useState("");
   const [busy,setBusy]=useState("");
   const [q,setQ]=useState("");
+  const [createOpen,setCreateOpen]=useState(false);
   const [toast,showToast]=useToast();
   async function load(){
     const {data,error}=await supabase.rpc("list_user_roles");
@@ -6142,7 +6151,10 @@ function RoleManager(){
   const list=(rows||[]).filter(r=>!q||`${r.email} ${r.full_name||""}`.toLowerCase().includes(q.toLowerCase()));
   return(
     <div style={{marginBottom:24}}>
-      <SectionTitle title="Rolet dhe përgjegjësitë" sub="Kush menaxhon çfarë. Ndryshimi vlen herën tjetër që personi hyn."/>
+      <SectionTitle title="Rolet dhe përgjegjësitë" sub="Kush menaxhon çfarë. Ndryshimi i rolit i arrin personit menjëherë." action={
+        <button className="vv-btn" onClick={()=>setCreateOpen(true)}><UserPlus size={15}/>Krijo llogari</button>
+      }/>
+      <CreateAccountModal open={createOpen} onClose={()=>setCreateOpen(false)} onCreated={load}/>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(210px,1fr))",gap:10,marginBottom:14}}>
         {Object.keys(STAFF_ROLES).map(k=>(
           <div key={k} className="vv-card" style={{padding:"10px 14px"}}>
@@ -6158,7 +6170,7 @@ function RoleManager(){
         {err?<div style={{padding:16,color:C.red,fontSize:14}}>{err}</div>
         :!rows?<div style={{padding:16,color:C.inkSoft,fontSize:14}}>Duke ngarkuar…</div>
         :<div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse"}}>
-          <thead><tr><th className="vv-th">Llogaria</th><th className="vv-th">Anëtari</th><th className="vv-th">Roli</th></tr></thead>
+          <thead><tr><th className="vv-th">Llogaria</th><th className="vv-th">Anëtari</th><th className="vv-th">Roli</th><th className="vv-th"></th></tr></thead>
           <tbody>{list.map(r=>(
             <tr className="vv-row" key={r.email}>
               <td className="vv-td"><div style={{fontWeight:600}}>{r.full_name||r.email}</div><div style={{fontSize:12,color:C.inkSoft}}>{r.email}</div></td>
@@ -6168,6 +6180,7 @@ function RoleManager(){
                   {Object.entries(STAFF_ROLES).map(([k,v])=><option key={k} value={k}>{v}</option>)}
                 </select>
               </td>
+              <td className="vv-td"><NewPasswordButton email={r.email}/></td>
             </tr>
           ))}</tbody>
         </table></div>}
@@ -6283,4 +6296,154 @@ function MemberTasks({me,live=null}){
       <Toast msg={toast}/>
     </div>
   );
+}
+
+/* ── Accounts: create with password / invite by email, fresh password, live role ── */
+// Calls the create-account Edge Function; returns {ok,data} or {ok:false,text} with an Albanian message.
+async function callCreateAccount(body){
+  const {data,error}=await supabase.functions.invoke("create-account",{body:{redirectTo:window.location.origin,...body}});
+  if(!error) return {ok:true,data};
+  let code="";
+  try{const b=await error.context.json();code=b.error;}catch{}
+  const texts={
+    already_registered:`${body.email} ka tashmë llogari. Përdor "Fjalëkalim i ri" te lista.`,
+    email_rate_limit:"Supabase lejon vetëm pak email-e në orë. Krijoje me fjalëkalim ose konfiguro SMTP-në.",
+    invite_failed:"Email-i i ftesës nuk u dërgua. Krijoje me fjalëkalim ose kontrollo SMTP-në.",
+    invalid_email:"Email-i nuk është i saktë.",
+    missing_name:"Shkruaj emrin.",
+    not_admin:"Nuk ke leje për këtë.",
+    role_not_allowed:"Mund të krijosh vetëm anëtarë.",
+    no_account:"Ky email nuk ka llogari.",
+    own_account:"Fjalëkalimin tënd ndryshoje te profili yt.",
+  };
+  console.error("[create-account]",code,error);
+  return {ok:false,text:texts[code]||"Diçka shkoi keq. Provo përsëri."};
+}
+
+function credentialsText(email,password){
+  return `VV Pika Winterthur\nHyrja: ${window.location.origin}\nEmail: ${email}\nFjalëkalimi: ${password}`;
+}
+
+function CredentialsBox({email,password}){
+  const [copied,setCopied]=useState(false);
+  function copy(){
+    navigator.clipboard?.writeText(credentialsText(email,password)).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000);}).catch(()=>{});
+  }
+  return(
+    <div style={{background:"#E7F4ED",border:`1px solid ${C.green}`,borderRadius:10,padding:14}}>
+      <div style={{fontSize:13,color:C.inkSoft,marginBottom:6}}>Jepja personit këto të dhëna:</div>
+      <div style={{fontFamily:"monospace",fontSize:14,lineHeight:1.7}}>
+        <div>Email: <b>{email}</b></div>
+        <div>Fjalëkalimi: <b data-testid="new-password">{password}</b></div>
+      </div>
+      <button type="button" className="vv-btn grn" style={{marginTop:10}} onClick={copy}>{copied?"U kopjua ✓":"Kopjo të dhënat"}</button>
+      <div style={{fontSize:12,color:C.inkSoft,marginTop:8}}>Fjalëkalimi nuk ruhet askund tjetër. Kopjoje tani.</div>
+    </div>
+  );
+}
+
+function CreateAccountModal({open,onClose,onCreated}){
+  const empty={name:"",email:"",role:"member",mode:"password"};
+  const [f,setF]=useState(empty);
+  const [busy,setBusy]=useState(false);
+  const [err,setErr]=useState("");
+  const [done,setDone]=useState(null);
+  function close(){setF(empty);setErr("");setDone(null);onClose();}
+  async function submit(e){
+    e.preventDefault();
+    setErr("");setBusy(true);
+    const r=await callCreateAccount({name:f.name.trim(),email:f.email.trim(),role:f.role,mode:f.mode});
+    setBusy(false);
+    if(!r.ok){setErr(r.text);return;}
+    setDone(r.data);
+    onCreated&&onCreated();
+  }
+  const lbl={display:"block",fontSize:13,fontWeight:600,marginBottom:4};
+  return(
+    <Modal open={open} onClose={close} title="Krijo llogari">
+      {done?(
+        <div>
+          <div style={{fontWeight:700,marginBottom:10}}>✓ Llogaria u krijua · {STAFF_ROLES[done.role]} · anëtari #{done.memberId}</div>
+          {done.mode==="password"
+            ?<CredentialsBox email={done.email} password={done.password}/>
+            :<div style={{fontSize:14,lineHeight:1.6}}>Ftesa u dërgua te <b>{done.email}</b>. Personi klikon lidhjen në email dhe vendos vetë fjalëkalimin.<br/><span style={{color:C.inkSoft,fontSize:13}}>Nëse email-i nuk arrin, përdor "Fjalëkalim i ri" te lista.</span></div>}
+          <div style={{display:"flex",gap:8,marginTop:16}}>
+            <button className="vv-btn ghost" onClick={()=>{setF(empty);setDone(null);}}>Krijo një tjetër</button>
+            <button className="vv-btn" onClick={close}>Mbyll</button>
+          </div>
+        </div>
+      ):(
+        <form onSubmit={submit}>
+          <div style={{marginBottom:12}}><label style={lbl}>Emri dhe mbiemri</label>
+            <input className="vv-input" aria-label="Emri dhe mbiemri" style={{width:"100%"}} value={f.name} onChange={e=>setF({...f,name:e.target.value})} required/></div>
+          <div style={{marginBottom:12}}><label style={lbl}>Email</label>
+            <input className="vv-input" aria-label="Email i llogarisë së re" type="email" style={{width:"100%"}} value={f.email} onChange={e=>setF({...f,email:e.target.value})} required/></div>
+          <div style={{marginBottom:12}}><label style={lbl}>Roli</label>
+            <select className="vv-input" aria-label="Roli i llogarisë së re" style={{width:"100%"}} value={f.role} onChange={e=>setF({...f,role:e.target.value})}>
+              {Object.entries(STAFF_ROLES).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+            </select>
+            <div style={{fontSize:12,color:C.inkSoft,marginTop:4}}>{ROLE_DESC[f.role]}</div></div>
+          <div style={{marginBottom:14}}><label style={lbl}>Si hyn personi?</label>
+            {[["password","Me fjalëkalim","Ti merr një fjalëkalim dhe ia jep personit. Punon menjëherë."],
+              ["invite","Me ftesë në email","Personi merr email dhe vendos vetë fjalëkalimin. Kërkon SMTP."]].map(([k,t,d])=>(
+              <label key={k} style={{display:"flex",gap:8,alignItems:"flex-start",padding:"8px 10px",border:`1px solid ${f.mode===k?C.red:C.line}`,borderRadius:8,marginBottom:6,cursor:"pointer"}}>
+                <input type="radio" name="acc-mode" checked={f.mode===k} onChange={()=>setF({...f,mode:k})} style={{marginTop:3}}/>
+                <span><b style={{fontSize:14}}>{t}</b><br/><span style={{fontSize:12,color:C.inkSoft}}>{d}</span></span>
+              </label>
+            ))}</div>
+          {err&&<div style={{color:C.red,fontSize:13,marginBottom:10}}>{err}</div>}
+          <button className="vv-btn" type="submit" disabled={busy} style={{width:"100%"}}>{busy?"Duke krijuar…":"Krijo llogarinë"}</button>
+        </form>
+      )}
+    </Modal>
+  );
+}
+
+function NewPasswordButton({email}){
+  const [ask,setAsk]=useState(false);
+  const [busy,setBusy]=useState(false);
+  const [res,setRes]=useState(null);
+  async function go(){
+    setBusy(true);
+    const r=await callCreateAccount({email,mode:"new_password"});
+    setBusy(false);
+    setRes(r.ok?{password:r.data.password}:{err:r.text});
+  }
+  function close(){setAsk(false);setRes(null);}
+  return(<>
+    <button className="vv-btn ghost" style={{padding:"6px 10px",fontSize:12,whiteSpace:"nowrap"}} onClick={()=>setAsk(true)}><KeyRound size={13}/>Fjalëkalim i ri</button>
+    <Modal open={ask} onClose={close} title="Fjalëkalim i ri">
+      {res&&res.password?<CredentialsBox email={email} password={res.password}/>
+      :<div>
+        <div style={{fontSize:14,lineHeight:1.6,marginBottom:12}}>Fjalëkalimi i vjetër i <b>{email}</b> nuk do të vlejë më. Vazhdo?</div>
+        {res&&res.err&&<div style={{color:C.red,fontSize:13,marginBottom:10}}>{res.err}</div>}
+        <div style={{display:"flex",gap:8}}>
+          <button className="vv-btn ghost" onClick={close}>Anulo</button>
+          <button className="vv-btn" disabled={busy} onClick={go}>{busy?"Duke krijuar…":"Krijo fjalëkalim të ri"}</button>
+        </div>
+      </div>}
+    </Modal>
+  </>);
+}
+
+// Listens to the logged-in user's own profile row; calls onChange(profile) when their role changes.
+function useMyRoleLive(authUser,onChange){
+  const cbRef=useRef(onChange);
+  cbRef.current=onChange;
+  const roleRef=useRef(authUser&&authUser.staffRole);
+  roleRef.current=authUser&&authUser.staffRole;
+  const uid=authUser&&authUser.id;
+  const email=authUser&&authUser.email;
+  useEffect(()=>{
+    if(!supabase||!uid) return;
+    const ch=supabase.channel(`rt-myrole-${Math.random().toString(36).slice(2,8)}`)
+      .on("postgres_changes",{event:"UPDATE",schema:"public",table:"profiles",filter:`id=eq.${uid}`},async()=>{
+        try{
+          const p=await loadProfile({id:uid,email});
+          if(p&&p.staffRole!==roleRef.current) cbRef.current(p);
+        }catch{}
+      })
+      .subscribe();
+    return()=>{supabase.removeChannel(ch);};
+  },[uid,email]);
 }
