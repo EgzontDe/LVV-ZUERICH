@@ -4178,6 +4178,7 @@ export default function App(){
     switch(tab){
       case"home": return <>
         {live&&<PaymentReminderBanner notifs={liveNotifs.items.filter(n=>!n.read_at&&n.member_id===me.id&&n.kind==="kujtese_pagese")} paid={me.pay!=="papaguar"} onPay={()=>setTab("invoices")} onDismiss={liveNotifs.markAllRead}/>}
+        {live&&<EventFeedbackPrompt me={me} events={events}/>}
         <MemberHome me={me} events={events} announcements={announcements} polls={polls} live={live}/>
       </>;
       case"profile": return <MemberProfile me={me} onSave={saveMyProfile}/>;
@@ -4205,8 +4206,8 @@ export default function App(){
       case"members": return <AdminMembers members={members} setMembers={setMembers} events={events} polls={polls} live={live}/>;
       case"onboarding": return <AdminOnboarding live={liveAdmin?{apps:dbApplications,setApps:setDbApplications,members,setMembers}:null}/>;
       case"payments": return <AdminPayments members={members} setMembers={setMembers} live={liveAdmin?livePayments:null} fee={quotaFee}/>;
-      case"finance": return <AdminFinance live={liveAdmin} quotaTarget={quotaTarget}/>;
-      case"events": return <>{liveAdmin&&<PendingGroupEvents events={events} setEvents={setEvents}/>}<AdminEvents events={events} setEvents={setEvents} members={members}/></>;
+      case"finance": return <>{liveAdmin&&<BudgetRequestsCard/>}<AdminFinance live={liveAdmin} quotaTarget={quotaTarget}/></>;
+      case"events": return <>{liveAdmin&&<PendingGroupEvents events={events} setEvents={setEvents}/>}{liveAdmin&&<PastEventsFeedback events={events}/>}<AdminEvents events={events} setEvents={setEvents} members={members}/></>;
       case"calendar": return <AdminCalendar events={events}/>;
       case"checkin": return <AdminCheckin key={live?"live":"demo"} members={members} events={events} live={liveAdmin}/>;
       case"tasks": return <AdminTasks members={members} meId={me.id} live={live?{tasks:dbTasks,setTasks:setDbTasks}:null}/>;
@@ -4235,10 +4236,11 @@ export default function App(){
           role={role} tab={tab} setTab={setTab} onLogout={handleLogout}
           adminTabs={myAdminTabs} memberTabs={memberTabs}
           liveNotifs={live?{
-            items:liveNotifs.items.filter(n=>n.member_id===me.id).map(n=>({id:n.id,type:n.kind==="aplikim_i_ri"?"member":n.kind==="kontakt_i_radhes"?"request":"payment",title:n.title,body:n.body,time:timeAgo(n.created_at),read:!!n.read_at,
+            items:liveNotifs.items.filter(n=>n.member_id===me.id).map(n=>({id:n.id,type:n.kind==="aplikim_i_ri"?"member":n.kind==="kontakt_i_radhes"?"request":n.kind==="buxhet"?"poll":"payment",title:n.title,body:n.body,time:timeAgo(n.created_at),read:!!n.read_at,
               // A new application opens Onboarding, a follow-up reminder the Studentët/Rinia page (management view only).
               go:role!=="admin"?null:n.kind==="aplikim_i_ri"&&myAdminTabs.some(t=>t.key==="onboarding")?"onboarding"
-                :n.kind==="kontakt_i_radhes"&&OUTREACH_GROUPS[staffRole]?staffRole:null})),
+                :n.kind==="kontakt_i_radhes"&&OUTREACH_GROUPS[staffRole]?staffRole
+                :n.kind==="buxhet"?(OUTREACH_GROUPS[staffRole]?staffRole:myAdminTabs.some(t=>t.key==="finance")?"finance":null):null})),
             markAll:liveNotifs.markAllRead,
           }:null}
           meName={me.name} roleLabel={role==="admin"?STAFF_ROLES[staffRole]||"Administrator":"Anëtar"}
@@ -6910,7 +6912,7 @@ function AdminOutreach({group,me,live,events=[],announcements=[],polls=[]}){
   const counts=Object.fromEntries(OUTREACH_STATUS.map(([k])=>[k,people.filter(c=>c.status===k).length]));
   const myEvents=events.filter(e=>e.grupi===group);
   const tabs=[["contacts",`Kontaktet (${people.length})`],["members",`${g.membersLabel} (${(o.members||[]).length})`],["referrals",`Aplikuan me lidhjen time (${(o.referrals||[]).length})`],
-    ["events",`Eventet (${myEvents.length})`],["news","Njoftime, sondazhe, email"],...(group==="studentet"?[["orgs",`Shoqatat studentore (${orgs.length})`]]:[])];
+    ["kanban","Kanban"],["events",`Eventet (${myEvents.length})`],["news","Njoftime, sondazhe, email"],["calendar","Kalendari"],["budget","Buxheti"],...(group==="studentet"?[["orgs",`Shoqatat studentore (${orgs.length})`]]:[])];
   const invite=`Përshëndetje! Bashkohu me Lëvizjen VETËVENDOSJE! — Pika Zürich. Formulari i anëtarësimit: ${link}`;
   return(
     <div>
@@ -6951,6 +6953,9 @@ function AdminOutreach({group,me,live,events=[],announcements=[],polls=[]}){
       {view==="members"&&<OutreachMembersTable group={group} g={g} members={o.members} reload={o.loadMembers} showToast={showToast} onMessage={setMsg}/>}
       {view==="referrals"&&<OutreachReferrals referrals={o.referrals}/>}
       {view==="events"&&<OutreachEvents group={group} events={myEvents} showToast={showToast}/>}
+      {view==="kanban"&&<OutreachKanban contacts={o.contacts&&people} onStatus={setStatus} onOpen={c=>setEdit({...c,...(c.extra||{})})}/>}
+      {view==="calendar"&&<OutreachCalendar group={group} showToast={showToast}/>}
+      {view==="budget"&&<OutreachBudget group={group} me={me} events={myEvents} showToast={showToast}/>}
       {view==="news"&&<OutreachNews group={group} g={g} announcements={announcements.filter(a=>a.grupi===group)} polls={polls.filter(p=>p.grupi===group)} showToast={showToast}/>}
 
       <Modal open={!!edit} onClose={()=>setEdit(null)} title={edit&&edit.lloji==="shoqate"?"Shoqata studentore":edit&&edit.id?"Kontakti":"Shto kontakt"}>
@@ -7128,6 +7133,7 @@ function OutreachEvents({group,events,showToast}){
           <div style={{fontSize:13,color:C.inkSoft}}>{ev.date} · {ev.time} · {ev.place}</div></div>
         {ev.miratuar===false?<span className="vv-chip" style={{background:"#FEF3C7",color:"#92400E"}}>Pret aprovimin</span>:<span className="vv-chip" style={{background:"#E7F4ED",color:C.green}}>Aprovuar</span>}
         <button className="vv-btn ghost" style={{padding:"6px 10px",fontSize:12}} onClick={()=>who(ev)}>Kush vjen ({(ev.rsvp||[]).length})</button>
+        {ev.miratuar!==false&&<EventFeedbackButton ev={ev}/>}
         {ev.miratuar===false&&<button className="vv-btn ghost" style={{padding:"6px 10px",fontSize:12,color:C.red}} onClick={()=>remove(ev)}><Trash2 size={13}/></button>}
       </div></Card>))}</div>}
     <Modal open={open} onClose={()=>setOpen(false)} title="Krijo event për grupin">
@@ -7533,6 +7539,224 @@ function OutreachOverviewCard(){
         </div>}
       </Modal>
       <Toast msg={toast}/>
+    </Card>
+  );
+}
+
+/* ── Outreach v4: contacts Kanban, academic calendar, budget requests, event feedback ── */
+// Kanban of contacts: drag a card to another column (or use the select on phones).
+function OutreachKanban({contacts,onStatus,onOpen}){
+  const [over,setOver]=useState(null);
+  if(!contacts) return <Card><div style={{color:C.inkSoft}}>Duke ngarkuar…</div></Card>;
+  return(
+    <div style={{display:"flex",gap:10,overflowX:"auto",paddingBottom:8}}>
+      {OUTREACH_STATUS.map(([k,l,bg,col])=>{const items=contacts.filter(c=>c.status===k);return(
+        <div key={k} onDragOver={e=>{e.preventDefault();setOver(k);}} onDragLeave={()=>setOver(null)}
+          onDrop={e=>{e.preventDefault();setOver(null);const id=Number(e.dataTransfer.getData("text/plain"));const c=contacts.find(x=>x.id===id);if(c&&c.status!==k) onStatus(c,k);}}
+          style={{flex:"0 0 210px",background:over===k?bg:"#F3F2EF",borderRadius:12,padding:10,minHeight:180,outline:over===k?`2px dashed ${col}`:"none"}}>
+          <div style={{fontSize:12,fontWeight:700,color:col,textTransform:"uppercase",letterSpacing:".04em",marginBottom:8}}>{l} ({items.length})</div>
+          {items.map(c=>(
+            <div key={c.id} draggable onDragStart={e=>e.dataTransfer.setData("text/plain",String(c.id))} onClick={()=>onOpen(c)}
+              className="vv-card" style={{padding:"8px 10px",marginBottom:8,cursor:"grab",fontSize:13}}>
+              <div style={{fontWeight:600}}>{c.name}</div>
+              <div style={{fontSize:11,color:C.inkSoft}}>{[(c.extra||{}).universiteti,(c.extra||{}).kontakti_radhes&&`→ ${isoToCH(c.extra.kontakti_radhes)}`].filter(Boolean).join(" · ")}</div>
+            </div>))}
+        </div>);})}
+    </div>
+  );
+}
+
+// Academic calendar (semester start, exams, holidays); reminders 7 days before and on the day.
+function OutreachCalendar({group,showToast}){
+  const [items,setItems]=useState(null);
+  const [f,setF]=useState({date:"",title:"",note:""});
+  async function load(){
+    const {data,error}=await supabase.from("outreach_calendar").select("*").eq("grupi",group).order("date");
+    setItems(error?[]:data||[]);
+  }
+  useEffect(()=>{load();},[group]);
+  async function add(e){
+    e.preventDefault();
+    const {error}=await supabase.from("outreach_calendar").insert({grupi:group,date:f.date,title:f.title.trim(),note:f.note.trim()});
+    if(error){dbError(error,"Data nuk u ruajt.");return;}
+    setF({date:"",title:"",note:""});showToast("U shtua në kalendar ✓");load();
+  }
+  async function del(id){await supabase.from("outreach_calendar").delete().eq("id",id);load();}
+  const today=isoToday();
+  const presets=group==="studentet"?["Fillimi i semestrit","Java e mirëseardhjes (Erstsemestrigen)","Sesioni i provimeve","Pushimet e semestrit","Panairi i shoqatave studentore"]:["Pushimet shkollore","Fillimi i vitit shkollor","Festa e Flamurit","Takim i rinisë"];
+  return(
+    <div style={{display:"grid",gap:14}}>
+      <Card><form onSubmit={add} style={{display:"grid",gap:10}}>
+        <div style={{fontWeight:700}}>Shto datë</div>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{presets.map(p=><button type="button" key={p} className="vv-chip" style={{cursor:"pointer",border:"none"}} onClick={()=>setF({...f,title:p})}>{p}</button>)}</div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <input className="vv-input" type="date" aria-label="Data e kalendarit" value={f.date} onChange={e=>setF({...f,date:e.target.value})} required/>
+          <input className="vv-input" aria-label="Titulli i datës" placeholder="Titulli" style={{flex:"1 1 200px"}} value={f.title} onChange={e=>setF({...f,title:e.target.value})} required/>
+        </div>
+        <input className="vv-input" aria-label="Shënim i datës" placeholder="Shënim (opsional), p.sh. ETH dhe UZH" value={f.note} onChange={e=>setF({...f,note:e.target.value})}/>
+        <button className="vv-btn" type="submit" style={{justifySelf:"start"}}>Shto</button>
+        <div style={{fontSize:12,color:C.inkSoft}}>Të vjen njoftim 7 ditë para dhe në ditën e datës.</div>
+      </form></Card>
+      <Card p={0} style={{overflow:"hidden"}}>
+        {!items?<div style={{padding:16,color:C.inkSoft}}>Duke ngarkuar…</div>
+        :!items.length?<div style={{padding:16,color:C.inkSoft,fontSize:14,textAlign:"center"}}>Kalendari është bosh.</div>
+        :items.map(x=>(
+          <div key={x.id} className="vv-row" style={{display:"flex",gap:12,alignItems:"center",padding:"10px 16px",opacity:x.date<today?.55:1}}>
+            <div style={{width:92,fontWeight:700,fontSize:13}}>{isoToCH(x.date)}</div>
+            <div style={{flex:1}}><b>{x.title}</b>{x.note&&<div style={{fontSize:12,color:C.inkSoft}}>{x.note}</div>}</div>
+            <button className="vv-btn ghost" style={{padding:"6px 10px",fontSize:12,color:C.red}} onClick={()=>del(x.id)} aria-label={`Fshi ${x.title}`}><Trash2 size={13}/></button>
+          </div>))}
+      </Card>
+    </div>
+  );
+}
+
+const BUDGET_STATUS={ne_pritje:["Në pritje","#FEF3C7","#92400E"],aprovuar:["Aprovuar","#E7F4ED","#1E8A4C"],refuzuar:["Refuzuar","#FDE2E1","#B5170F"]};
+
+// Studentët / Rinia: ask Financat for money (optionally for one of the group's events).
+function OutreachBudget({group,me,events,showToast}){
+  const [items,setItems]=useState(null);
+  const [f,setF]=useState({amount:"",description:"",event_id:""});
+  async function load(){
+    const {data,error}=await supabase.from("budget_requests").select("*").eq("grupi",group).order("created_at",{ascending:false});
+    setItems(error?[]:data||[]);
+  }
+  useEffect(()=>{load();},[group]);
+  useRealtime("budget_requests",true,load);
+  async function send(e){
+    e.preventDefault();
+    const amount=Number(String(f.amount).replace(",","."));
+    if(!(amount>0)){showToast("Shkruaj shumën.");return;}
+    const {error}=await supabase.from("budget_requests").insert({grupi:group,amount,description:f.description.trim(),event_id:f.event_id?Number(f.event_id):null,author:me&&me.name||""});
+    if(error){dbError(error,"Kërkesa nuk u dërgua.");return;}
+    setF({amount:"",description:"",event_id:""});showToast("Kërkesa u dërgua te Financat ✓");load();
+  }
+  async function del(id){await supabase.from("budget_requests").delete().eq("id",id);load();}
+  const evName=id=>(events.find(e=>e.id===id)||{}).title;
+  return(
+    <div style={{display:"grid",gap:14}}>
+      <Card><form onSubmit={send} style={{display:"grid",gap:10}}>
+        <div style={{fontWeight:700}}>Kërkesë për buxhet</div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <input className="vv-input" aria-label="Shuma në CHF" inputMode="decimal" placeholder="Shuma (CHF)" style={{width:140}} value={f.amount} onChange={e=>setF({...f,amount:e.target.value})} required/>
+          <select className="vv-input" aria-label="Për eventin" value={f.event_id} onChange={e=>setF({...f,event_id:e.target.value})} style={{flex:"1 1 200px"}}>
+            <option value="">— Pa event —</option>{events.map(ev=><option key={ev.id} value={ev.id}>{ev.title} ({ev.date})</option>)}</select>
+        </div>
+        <textarea className="vv-input" aria-label="Për çfarë" rows={3} placeholder="Për çfarë? p.sh. ushqim e pije për 30 veta, printimi i fletushkave" value={f.description} onChange={e=>setF({...f,description:e.target.value})} required/>
+        <button className="vv-btn" type="submit" style={{justifySelf:"start"}}>Dërgo te Financat</button>
+      </form></Card>
+      {items&&items.length>0&&<Card p={0} style={{overflow:"hidden"}}>{items.map(x=>{const [l,bg,col]=BUDGET_STATUS[x.status];return(
+        <div key={x.id} className="vv-row" style={{display:"flex",gap:12,alignItems:"center",padding:"10px 16px",flexWrap:"wrap"}}>
+          <div style={{width:90,fontWeight:800}}>CHF {Number(x.amount).toFixed(2)}</div>
+          <div style={{flex:"1 1 200px"}}>{x.description}<div style={{fontSize:12,color:C.inkSoft}}>{new Date(x.created_at).toLocaleDateString("de-CH")}{x.event_id&&evName(x.event_id)?` · ${evName(x.event_id)}`:""}{x.answer?` · Përgjigja: ${x.answer}`:""}</div></div>
+          <span className="vv-chip" style={{background:bg,color:col}}>{l}</span>
+          {x.status==="ne_pritje"&&<button className="vv-btn ghost" style={{padding:"6px 10px",fontSize:12,color:C.red}} onClick={()=>del(x.id)} aria-label="Tërhiq kërkesën"><Trash2 size={13}/></button>}
+        </div>);})}</Card>}
+    </div>
+  );
+}
+
+// Financat / admin: decide the budget requests.
+function BudgetRequestsCard(){
+  const [items,setItems]=useState(null);
+  const [answer,setAnswer]=useState({});
+  async function load(){
+    const {data,error}=await supabase.from("budget_requests").select("*").order("created_at",{ascending:false}).limit(30);
+    setItems(error?[]:data||[]);
+  }
+  useEffect(()=>{load();},[]);
+  useRealtime("budget_requests",true,load);
+  async function decide(x,status){
+    const {error}=await supabase.from("budget_requests").update({status,answer:(answer[x.id]||"").trim()}).eq("id",x.id);
+    if(error){dbError(error);return;}
+    load();
+  }
+  if(!items||!items.length) return null;
+  const pending=items.filter(x=>x.status==="ne_pritje");
+  return(
+    <Card p={0} style={{overflow:"hidden",marginBottom:20,border:pending.length?"1.5px solid #FCD34D":undefined}}>
+      <div style={{padding:"12px 18px",background:pending.length?"#FEF3C7":"#F8F7F3",fontWeight:700,color:pending.length?"#92400E":C.ink}}>Kërkesat për buxhet nga Studentët / Rinia{pending.length?` (${pending.length} në pritje)`:""}</div>
+      {items.map(x=>{const [l,bg,col]=BUDGET_STATUS[x.status];return(
+        <div key={x.id} className="vv-row" style={{display:"flex",gap:10,alignItems:"center",padding:"10px 18px",flexWrap:"wrap"}}>
+          <div style={{width:90,fontWeight:800}}>CHF {Number(x.amount).toFixed(2)}</div>
+          <div style={{flex:"1 1 220px"}}>{x.description}<div style={{fontSize:12,color:C.inkSoft}}>{(OUTREACH_GROUPS[x.grupi]||{}).title} · {x.author} · {new Date(x.created_at).toLocaleDateString("de-CH")}{x.answer?` · ${x.answer}`:""}</div></div>
+          {x.status==="ne_pritje"?<>
+            <input className="vv-input" aria-label="Përgjigja" placeholder="Përgjigja (opsionale)" style={{width:170}} value={answer[x.id]||""} onChange={e=>setAnswer({...answer,[x.id]:e.target.value})}/>
+            <button className="vv-btn grn" style={{padding:"6px 12px",fontSize:13}} onClick={()=>decide(x,"aprovuar")}>Aprovo</button>
+            <button className="vv-btn ghost" style={{padding:"6px 12px",fontSize:13,color:C.red}} onClick={()=>decide(x,"refuzuar")}>Refuzo</button>
+          </>:<span className="vv-chip" style={{background:bg,color:col}}>{l}</span>}
+        </div>);})}
+    </Card>
+  );
+}
+
+// Member view: rate past events they said they'd attend (last 21 days), once each.
+function EventFeedbackPrompt({me,events}){
+  const [answered,setAnswered]=useState(null);
+  const [form,setForm]=useState({});
+  useEffect(()=>{
+    if(!supabase||!me||!me.id) return;
+    supabase.from("event_feedback").select("event_id").eq("member_id",me.id).then(({data})=>setAnswered((data||[]).map(r=>Number(r.event_id))));
+  },[me&&me.id]);
+  if(!answered) return null;
+  const recent=events.filter(e=>e.past&&(e.rsvp||[]).includes(me.id)&&!answered.includes(e.id)&&daysSince(e.date)<=21);
+  if(!recent.length) return null;
+  const ev=recent[0];
+  const f=form[ev.id]||{rating:0,liked:"",next:""};
+  const set=(k,v)=>setForm({...form,[ev.id]:{...f,[k]:v}});
+  async function send(){
+    if(!f.rating) return;
+    const {error}=await supabase.from("event_feedback").insert({event_id:ev.id,member_id:me.id,rating:f.rating,liked:f.liked.trim(),next:f.next.trim()});
+    if(error&&!/duplicate/i.test(error.message)){dbError(error,"Vlerësimi nuk u ruajt.");return;}
+    setAnswered([...answered,ev.id]);
+  }
+  return(
+    <Card style={{marginBottom:20,border:"1.5px solid #C4B5FD"}}>
+      <div className="vv-eyebrow" style={{marginBottom:6}}>Si ishte eventi?</div>
+      <div style={{fontWeight:700,marginBottom:10}}>{ev.title} · {ev.date}</div>
+      <div style={{display:"flex",gap:4,marginBottom:10}} role="radiogroup" aria-label="Vlerësimi">
+        {[1,2,3,4,5].map(n=><button key={n} type="button" role="radio" aria-checked={f.rating===n} aria-label={`${n} yje`} onClick={()=>set("rating",n)}
+          style={{fontSize:26,background:"none",border:"none",cursor:"pointer",color:n<=f.rating?"#F59E0B":"#D6D3CE",padding:0}}>★</button>)}
+      </div>
+      <input className="vv-input" aria-label="Çfarë të pëlqeu" placeholder="Çfarë të pëlqeu?" style={{width:"100%",marginBottom:8}} value={f.liked} onChange={e=>set("liked",e.target.value)}/>
+      <input className="vv-input" aria-label="Çfarë do të doje më pas" placeholder="Çfarë do të doje më pas?" style={{width:"100%",marginBottom:10}} value={f.next} onChange={e=>set("next",e.target.value)}/>
+      <div style={{display:"flex",gap:8}}>
+        <button className="vv-btn" disabled={!f.rating} onClick={send}>Dërgo</button>
+        <button className="vv-btn ghost" onClick={()=>setAnswered([...answered,ev.id])}>Më vonë</button>
+      </div>
+    </Card>
+  );
+}
+function daysSince(dateCH){const d=parseEventDate(dateCH);return d?Math.floor((Date.now()-d.getTime())/86400000):999;}
+
+// Staff: anonymous feedback summary of one event.
+function EventFeedbackButton({ev}){
+  const [s,setS]=useState(null);
+  async function open(){const {data,error}=await supabase.rpc("event_feedback_summary",{p_event:ev.id});setS(error?{answers:0}:(data||[])[0]||{answers:0});}
+  return(<>
+    <button className="vv-btn ghost" style={{padding:"6px 10px",fontSize:12}} onClick={open}>Vlerësimet</button>
+    <Modal open={!!s} onClose={()=>setS(null)} title={`Vlerësimet: ${ev.title}`}>
+      {s&&(!s.answers?<div style={{color:C.inkSoft}}>Ende pa vlerësime.</div>:<div style={{fontSize:14,lineHeight:1.6}}>
+        <div style={{fontSize:28,fontWeight:900,color:"#F59E0B"}}>★ {s.avg_rating} <span style={{fontSize:14,color:C.inkSoft,fontWeight:600}}>nga {s.answers} përgjigje</span></div>
+        {(s.liked||[]).length>0&&<><b>Çfarë u pëlqeu</b><ul style={{marginTop:4}}>{s.liked.map((t,i)=><li key={i}>{t}</li>)}</ul></>}
+        {(s.next||[]).length>0&&<><b>Çfarë duan më pas</b><ul style={{marginTop:4}}>{s.next.map((t,i)=><li key={i}>{t}</li>)}</ul></>}
+      </div>)}
+    </Modal>
+  </>);
+}
+
+// Eventet (admin / events role): feedback of the last past events.
+function PastEventsFeedback({events}){
+  const past=events.filter(e=>e.past&&e.miratuar!==false).slice(-5).reverse();
+  if(!past.length) return null;
+  return(
+    <Card style={{marginBottom:20}}>
+      <div style={{fontWeight:700,marginBottom:8}}>Vlerësimet e eventeve të fundit</div>
+      {past.map(ev=>(
+        <div key={ev.id} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",borderTop:`1px solid ${C.line}`}}>
+          <div style={{flex:1,fontSize:14}}><b>{ev.title}</b> <span style={{color:C.inkSoft,fontSize:12}}>{ev.date}</span></div>
+          <EventFeedbackButton ev={ev}/>
+        </div>))}
     </Card>
   );
 }
