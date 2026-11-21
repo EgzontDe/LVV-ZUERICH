@@ -68,13 +68,36 @@ Deno.serve(async (req) => {
   if (!ROLES.includes(role)) return json({ error: "invalid_role" }, 400);
   if (myRole === "sekretar" && role !== "member") return json({ error: "role_not_allowed" }, 403);
 
-  // 1. The login
+  // 1. Which member this login belongs to (reuse one that already has this email, e.g. approved in Onboarding).
+  const { data: existing } = await admin.from("members").select("id,pay").ilike("email", email).maybeSingle();
+  let memberId = existing?.id as number | undefined;
+  const isNewMember = !memberId;
+  if (!memberId) {
+    // Real members are numbered below 9000 (9001+ are test accounts).
+    const { data: last } = await admin.from("members").select("id").lt("id", 9000).order("id", { ascending: false }).limit(1).maybeSingle();
+    memberId = Number(last?.id ?? 0) + 1;
+  }
+
+  // Payment details for the invite email (template: {{ .Data.pay_ref }} etc.), unless already paid/exempt.
+  const meta: Record<string, unknown> = { full_name: name };
+  if (!existing || existing.pay === "papaguar") {
+    const { data: settings } = await admin.from("settings").select("key,value").in("key", ["fee_override", "twint_number"]);
+    const get = (k: string) => settings?.find((s) => s.key === k)?.value;
+    const fee = get("fee_override") != null ? Number(get("fee_override")) : 150;
+    const year = new Date().getFullYear();
+    meta.pay_year = String(year);
+    meta.pay_amount = fee.toFixed(2);
+    meta.pay_ref = `VV-${memberId < 1000 ? String(memberId).padStart(3, "0") : memberId}-${year}`;
+    if (get("twint_number")) meta.twint = String(get("twint_number"));
+  }
+
+  // 2. The login
   let userId: string;
   let password: string | null = null;
   if (mode === "password") {
     password = makePassword();
     const { data, error } = await admin.auth.admin.createUser({
-      email, password, email_confirm: true, user_metadata: { full_name: name },
+      email, password, email_confirm: true, user_metadata: meta,
     });
     if (error || !data.user) {
       const already = /already|registered|exists/i.test(error?.message ?? "");
@@ -83,7 +106,7 @@ Deno.serve(async (req) => {
     userId = data.user.id;
   } else {
     const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-      data: { full_name: name }, redirectTo: body.redirectTo || undefined,
+      data: meta, redirectTo: body.redirectTo || undefined,
     });
     if (error || !data.user) {
       const already = /already|registered|exists/i.test(error?.message ?? "");
@@ -94,13 +117,8 @@ Deno.serve(async (req) => {
     userId = data.user.id;
   }
 
-  // 2. The member row (reuse one that already has this email, e.g. added under Anëtarët)
-  const { data: existing } = await admin.from("members").select("id").ilike("email", email).maybeSingle();
-  let memberId = existing?.id as number | undefined;
-  if (!memberId) {
-    // Real members are numbered below 9000 (9001+ are test accounts).
-    const { data: last } = await admin.from("members").select("id").lt("id", 9000).order("id", { ascending: false }).limit(1).maybeSingle();
-    memberId = Number(last?.id ?? 0) + 1;
+  // 3. The member row, if this person had none yet
+  if (isNewMember) {
     const { error } = await admin.from("members").insert({
       id: memberId, name, email, status: "aktiv", pay: "papaguar",
       extra: { role: "Anëtar", joined: todayCH(), kanton: "Zürich", phone: "", prof: "", dob: "" },
@@ -108,7 +126,7 @@ Deno.serve(async (req) => {
     if (error) return json({ error: "member_failed", detail: error.message, userId }, 500);
   }
 
-  // 3. The role (the auth trigger already created the profile row)
+  // 4. The role (the auth trigger already created the profile row)
   const { error: roleErr } = await admin.from("profiles").update({ role, full_name: name }).eq("id", userId);
   if (roleErr) return json({ error: "role_failed", detail: roleErr.message }, 500);
 

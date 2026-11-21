@@ -1,4 +1,5 @@
-// notify-application: emails the board when a new membership application arrives.
+// notify-application: when a new membership application arrives, emails a thank-you to the applicant
+// ("në shqyrtim", extra.thanks_sent_at) and a notice to the board (extra.notified_at).
 // Called by the public form right after it saved the application: body { id }.
 // Safe to call by anyone: it only sends once per application (extra.notified_at) and only for
 // applications created in the last hour. Sensitive fields (personal number, finances, signature)
@@ -33,11 +34,39 @@ Deno.serve(async (req) => {
   const { data: app } = await db.from("applications").select("*").eq("id", id).maybeSingle();
   if (!app) return json({ error: "not_found" }, 404);
   const x = app.extra ?? {};
-  if (x.notified_at) return json({ ok: true, skipped: "already_notified" });
+  if (x.notified_at && x.thanks_sent_at) return json({ ok: true, skipped: "already_notified" });
   if (Date.now() - new Date(app.created_at).getTime() > 60 * 60 * 1000) return json({ ok: true, skipped: "too_old" });
 
   const user = Deno.env.get("SMTP_USER"), pass = Deno.env.get("SMTP_PASS");
   if (!user || !pass) return json({ error: "smtp_not_configured" }, 503);
+  const mail = nodemailer.createTransport({ host: "smtp.gmail.com", port: 465, secure: true, auth: { user, pass } });
+  const from = `"VV Pika Zürich" <${user}>`;
+  const done: Record<string, string> = {};
+
+  // 1. Thank-you to the applicant: the application was received and is under review.
+  if (!x.thanks_sent_at) {
+    const first = esc(x.emri || String(app.name).split(" ")[0]);
+    const thanks = `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;color:#171210">
+  <div style="background:#E2231A;color:#fff;padding:18px 24px;border-radius:10px 10px 0 0">
+    <div style="font-size:13px;letter-spacing:1px;text-transform:uppercase">Lëvizja VETËVENDOSJE!</div>
+    <div style="font-size:20px;font-weight:bold">Pika Zürich</div></div>
+  <div style="border:1px solid #e5e2dd;border-top:none;padding:24px;border-radius:0 0 10px 10px">
+    <h2 style="margin:0 0 12px;font-size:20px">Faleminderit, ${first}!</h2>
+    <p style="font-size:15px;line-height:1.6">Aplikimi juaj për anëtarësim në Pikën Zürich u pranua dhe tani <b>është në shqyrtim</b> nga kryesia.</p>
+    <p style="font-size:15px;line-height:1.6">Sapo të aprovohet, do t'ju vijë një email tjetër për të krijuar llogarinë tuaj në platformë, bashkë me detajet e pagesës së kuotës.</p>
+    <p style="font-size:13px;color:#5A524E;line-height:1.6">Nëse keni pyetje, thjesht përgjigjuni këtij email-i.</p>
+    <p style="font-size:15px;line-height:1.6;margin-top:20px">Me respekt,<br><b>Kryesia e Pikës Zürich</b></p>
+  </div></div>`;
+    try {
+      await mail.sendMail({ from, to: app.email, subject: "Faleminderit për aplikimin — VV Pika Zürich", html: thanks });
+      done.thanks_sent_at = new Date().toISOString();
+    } catch (e) { console.error("[notify-application] thanks", e); }
+  }
+  if (x.notified_at) {
+    const { data: fresh } = await db.from("applications").select("extra").eq("id", id).maybeSingle();
+    await db.from("applications").update({ extra: { ...(fresh?.extra ?? x), ...done } }).eq("id", id);
+    return json({ ok: true, thanks: !!done.thanks_sent_at });
+  }
 
   let to = (Deno.env.get("NOTIFY_EMAIL") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
   if (!to.length) {
@@ -60,13 +89,16 @@ Deno.serve(async (req) => {
     <p style="font-size:12px;color:#5A524E">Të dhënat e plota (përfshirë numrin personal dhe nënshkrimin) i gjen në platformë te Onboarding.</p>
   </div></div>`;
 
+  // 2. The board.
   try {
-    const mail = nodemailer.createTransport({ host: "smtp.gmail.com", port: 465, secure: true, auth: { user, pass } });
-    await mail.sendMail({ from: `"VV Pika Zürich" <${user}>`, to, subject: `Aplikim i ri: ${app.name}`, html });
+    await mail.sendMail({ from, to, subject: `Aplikim i ri: ${app.name}`, html });
+    done.notified_at = new Date().toISOString();
   } catch (e) {
     console.error("[notify-application] smtp", e);
-    return json({ error: "send_failed" }, 502);
   }
-  await db.from("applications").update({ extra: { ...x, notified_at: new Date().toISOString() } }).eq("id", id);
-  return json({ ok: true, sent: to.length });
+  // Re-read so a change made meanwhile in Onboarding is not overwritten.
+  const { data: fresh } = await db.from("applications").select("extra").eq("id", id).maybeSingle();
+  await db.from("applications").update({ extra: { ...(fresh?.extra ?? x), ...done } }).eq("id", id);
+  if (!done.notified_at) return json({ error: "send_failed", thanks: !!done.thanks_sent_at }, 502);
+  return json({ ok: true, sent: to.length, thanks: !!done.thanks_sent_at });
 });

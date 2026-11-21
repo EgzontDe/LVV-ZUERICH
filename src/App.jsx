@@ -4460,7 +4460,8 @@ function AdminOnboarding({live=null}={}){
   async function inviteApplicant(a){
     showToast("Po krijohet llogaria dhe po dërgohet ftesa…");
     const r=await callCreateAccount({name:a.name,email:a.email,role:"member",mode:"invite"});
-    showToast(r.ok?`Ftesa u dërgua te ${a.email}.`:r.text);
+    showToast(r.ok?`Ftesa me detajet e pagesës u dërgua te ${a.email}.`:r.text);
+    if(r.ok) setApps(prev=>prev.map(x=>x.id===a.id?{...x,inviteSent:todayCH()}:x));
   }
   // Live: the database creates the member and keeps the full form in member_details.
   async function approveLive(a){
@@ -4634,9 +4635,9 @@ function AdminOnboarding({live=null}={}){
               <div className="vv-eyebrow" style={{marginBottom:10}}>Kronologjia</div>
               {[
                 {label:"Aplikimi u dërgua",date:sel.applied,done:true},
+                {label:"Email falënderimi u dërgua (në shqyrtim)",date:sel.thanks_sent_at?new Date(sel.thanks_sent_at).toLocaleDateString("de-CH"):null,done:!!sel.thanks_sent_at},
                 {label:"Aprovuar nga kryesia",date:sel.approvedDate,done:!!sel.approvedDate},
-                {label:"Email mirëseardhjeje u dërgua",date:sel.approvedDate,done:!!sel.approvedDate},
-                {label:"Detajet e pagesës u dërguan",date:sel.approvedDate,done:!!sel.approvedDate},
+                {label:"Llogaria u krijua · email me detajet e pagesës",date:sel.inviteSent,done:!!sel.inviteSent},
                 {label:"Pagesa e kuotës u konfirmua",date:sel.paidDate,done:!!sel.paidDate},
                 {label:"Hyrje në platformë e aktivizuar",date:sel.paidDate,done:sel.status==="aktiv"},
               ].map((ev,i)=>(
