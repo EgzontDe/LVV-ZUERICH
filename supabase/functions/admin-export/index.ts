@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
 
     if (body.type === "backup-json") {
       const tables = ["members", "events", "announcements", "polls", "applications", "donations", "payments",
-        "requests", "event_checkins", "documents", "notifications", "settings"];
+        "requests", "event_checkins", "documents", "notifications", "settings", "member_details", "tasks"];
       const out: Record<string, unknown> = { generated_at: new Date().toISOString(), generated_by: caller.user.email };
       for (const t of tables) {
         const { data, error } = await admin.from(t).select("*");
