@@ -4259,7 +4259,7 @@ export default function App(){
       case"events": return <>{liveAdmin&&<PendingGroupEvents events={events} setEvents={setEvents}/>}{liveAdmin&&<PastEventsFeedback events={events}/>}<AdminEvents events={events} setEvents={setEvents} members={members}/></>;
       case"calendar": return <AdminCalendar events={events}/>;
       case"checkin": return <AdminCheckin key={live?"live":"demo"} members={members} events={events} live={liveAdmin}/>;
-      case"tasks": return <AdminTasks members={members} meId={me.id} live={live?{tasks:dbTasks,setTasks:setDbTasks}:null}/>;
+      case"tasks": return OUTREACH_GROUPS[staffRole]&&liveAdmin?<GroupTasks group={staffRole} members={members} meId={me.id} live={{tasks:dbTasks,setTasks:setDbTasks}}/>:<AdminTasks members={members} meId={me.id} live={live?{tasks:dbTasks,setTasks:setDbTasks}:null}/>;
       case"comms": return <AdminComms members={members} announcements={announcements.filter(a=>!a.grupi)} setAnnouncements={setAnnouncements} live={liveAdmin} canDocs={hasPerm(staffRole,"documents")}/>;
       case"elections": return <AdminElections members={members}/>;
       case"polls": return <AdminPolls polls={polls} setPolls={setPolls}/>;
@@ -6996,7 +6996,7 @@ function AdminOutreach({group,me,live,events=[],announcements=[],polls=[]}){
   const orgs=(o.contacts||[]).filter(c=>(c.extra||{}).lloji==="shoqate");
   const counts=Object.fromEntries(stList(group).map(([k])=>[k,people.filter(c=>c.status===k).length]));
   const myEvents=events.filter(e=>e.grupi===group);
-  const tabs=g.partner?[["contacts",`Kontaktet SP (${people.length})`],["kanban","Kanban"],["calendar","Takimet dhe kalendari"],["events",`Eventet e përbashkëta (${myEvents.length})`],["budget","Buxheti"]]:[["contacts",`Kontaktet (${people.length})`],["members",`${g.membersLabel} (${(o.members||[]).length})`],["referrals",`Aplikuan me lidhjen time (${(o.referrals||[]).length})`],
+  const tabs=g.partner?[["contacts",`Kontaktet SP (${people.length})`],["kanban","Kanban"],["calendar","Takimet dhe kalendari"],["events",`Eventet e përbashkëta (${myEvents.length})`],["budget","Buxheti"],["helpers","Ndihmësit"]]:[["contacts",`Kontaktet (${people.length})`],["members",`${g.membersLabel} (${(o.members||[]).length})`],["referrals",`Aplikuan me lidhjen time (${(o.referrals||[]).length})`],
     ["kanban","Kanban"],["events",`Eventet (${myEvents.length})`],["news","Njoftime, sondazhe, email"],["calendar","Kalendari"],["budget","Buxheti"],...(group==="studentet"?[["orgs",`Shoqatat studentore (${orgs.length})`]]:[])];
   const invite=`Përshëndetje! Bashkohu me Lëvizjen VETËVENDOSJE! — Pika Zürich. Formulari i anëtarësimit: ${link}`;
   return(
@@ -7040,6 +7040,7 @@ function AdminOutreach({group,me,live,events=[],announcements=[],polls=[]}){
       {view==="events"&&<OutreachEvents group={group} events={myEvents} showToast={showToast}/>}
       {view==="kanban"&&<OutreachKanban group={group} contacts={o.contacts&&people} onStatus={setStatus} onOpen={c=>setEdit({...c,...(c.extra||{})})}/>}
       {view==="calendar"&&<OutreachCalendar group={group} showToast={showToast}/>}
+      {view==="helpers"&&<GroupHelpers group={group} showToast={showToast}/>}
       {view==="budget"&&<OutreachBudget group={group} me={me} events={myEvents} showToast={showToast}/>}
       {view==="news"&&<OutreachNews group={group} g={g} announcements={announcements.filter(a=>a.grupi===group)} polls={polls.filter(p=>p.grupi===group)} showToast={showToast}/>}
 
@@ -7188,17 +7189,19 @@ function GroupEmailModal({open,onClose,group,count,showToast}){
 }
 
 // Group events: created by the secretary, shown to members only after events/admin approve them.
+// Joint SP/VV events (marredheniet) are published right away — only budget requests need approval.
 function OutreachEvents({group,events,showToast}){
+  const joint=group==="marredheniet";
   const empty={title:"",dateIso:"",time:"18:00",place:"",max:"40",desc:""};
   const [open,setOpen]=useState(false);
   const [f,setF]=useState(empty);
   const [names,setNames]=useState(null);
   async function create(e){
     e.preventDefault();
-    const {error}=await supabase.from("events").insert({id:Date.now(),title:f.title.trim(),public:false,rsvp:[],
-      extra:{date:isoToCH(f.dateIso),time:f.time,place:f.place.trim(),type:"Takim",max:Number(f.max)||40,past:false,desc:f.desc.trim(),grupi:group,miratuar:false}});
+    const {error}=await supabase.from("events").insert({id:Date.now(),title:f.title.trim(),public:joint,rsvp:[],
+      extra:{date:isoToCH(f.dateIso),time:f.time,place:f.place.trim(),type:"Takim",max:Number(f.max)||40,past:false,desc:f.desc.trim(),grupi:group,miratuar:joint}});
     if(error){dbError(error,"Eventi nuk u krijua.");return;}
-    showToast("Eventi u krijua · pret aprovimin e kryesisë");setF(empty);setOpen(false);
+    showToast(joint?"Eventi u publikua ✓ · e shohin të gjithë anëtarët":"Eventi u krijua · pret aprovimin e kryesisë");setF(empty);setOpen(false);
   }
   async function remove(ev){
     const {error}=await supabase.from("events").delete().eq("id",ev.id);
@@ -7216,10 +7219,10 @@ function OutreachEvents({group,events,showToast}){
       <Card key={ev.id}><div style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
         <div style={{flex:1,minWidth:200}}><div style={{fontWeight:700}}>{ev.title}</div>
           <div style={{fontSize:13,color:C.inkSoft}}>{ev.date} · {ev.time} · {ev.place}</div></div>
-        {ev.miratuar===false?<span className="vv-chip" style={{background:"#FEF3C7",color:"#92400E"}}>Pret aprovimin</span>:<span className="vv-chip" style={{background:"#E7F4ED",color:C.green}}>Aprovuar</span>}
+        {ev.miratuar===false?<span className="vv-chip" style={{background:"#FEF3C7",color:"#92400E"}}>Pret aprovimin</span>:<span className="vv-chip" style={{background:"#E7F4ED",color:C.green}}>{joint?"Publikuar":"Aprovuar"}</span>}
         <button className="vv-btn ghost" style={{padding:"6px 10px",fontSize:12}} onClick={()=>who(ev)}>Kush vjen ({(ev.rsvp||[]).length})</button>
         {ev.miratuar!==false&&<EventFeedbackButton ev={ev}/>}
-        {ev.miratuar===false&&<button className="vv-btn ghost" style={{padding:"6px 10px",fontSize:12,color:C.red}} onClick={()=>remove(ev)}><Trash2 size={13}/></button>}
+        {(joint||ev.miratuar===false)&&<button className="vv-btn ghost" aria-label="Fshi eventin" style={{padding:"6px 10px",fontSize:12,color:C.red}} onClick={()=>remove(ev)}><Trash2 size={13}/></button>}
       </div></Card>))}</div>}
     <Modal open={open} onClose={()=>setOpen(false)} title="Krijo event për grupin">
       <form onSubmit={create} style={{display:"grid",gap:12}}>
@@ -7228,7 +7231,7 @@ function OutreachEvents({group,events,showToast}){
             <input className="vv-input" aria-label={l} type={t} style={{width:"100%"}} value={f[k]} onChange={e=>setF({...f,[k]:e.target.value})} required={k!=="max"}/></div>))}
         <div><label style={{display:"block",fontSize:13,fontWeight:600,marginBottom:4}}>Përshkrimi</label>
           <textarea className="vv-input" aria-label="Përshkrimi" rows={3} style={{width:"100%"}} value={f.desc} onChange={e=>setF({...f,desc:e.target.value})}/></div>
-        <div style={{fontSize:12,color:C.inkSoft}}>Eventi u shfaqet anëtarëve të grupit pasi ta aprovojë kryesia (Eventet).</div>
+        <div style={{fontSize:12,color:C.inkSoft}}>{joint?"Eventi publikohet menjëherë dhe e shohin të gjithë anëtarët. Nëse të duhen para, dërgo kërkesë te Buxheti (aprovohet nga kryesia).":"Eventi u shfaqet anëtarëve të grupit pasi ta aprovojë kryesia (Eventet)."}</div>
         <button className="vv-btn" type="submit">Krijo</button>
       </form>
     </Modal>
@@ -7917,3 +7920,147 @@ const OUTREACH_PARTNER_TEMPLATES=[
   {k:"event",l:"Gemeinsame Veranstaltung",t:"Guten Tag {emri}\n\nWir planen eine gemeinsame Veranstaltung von SP und VV in Zürich. Hätten Sie Interesse, mitzuwirken oder ein Grusswort zu halten?\n\nFreundliche Grüsse\n{une}"},
   {k:"lire",l:"Freier Text",t:"Guten Tag {emri}\n\n"},
 ];
+
+// ── Ndihmësit e grupit (2026-11-22) ─────────────────────────────────────────
+// Personi përgjegjës (p.sh. Fikreti te SP/VV) zgjedh anëtarë që e ndihmojnë, i aktivizon/çaktivizon
+// dhe u cakton detyra. Ndihmësit e shohin detyrën te "Detyrat e mia"; nuk marrin qasje në faqen e grupit.
+function useGroupHelpers(group){
+  const [helpers,setHelpers]=useState(null);
+  const load=React.useCallback(async()=>{
+    const {data,error}=await supabase.rpc("group_helpers_list",{p_grupi:group});
+    setHelpers(error?[]:(data||[]).map(h=>({...h,member_id:Number(h.member_id)})));
+  },[group]);
+  useEffect(()=>{load();},[load]);
+  useRealtime("group_helpers",true,load);
+  return [helpers,load];
+}
+
+function GroupHelpers({group,showToast}){
+  const [helpers,load]=useGroupHelpers(group);
+  const [tasks,setTasks]=useState([]);
+  const [q,setQ]=useState("");
+  const [found,setFound]=useState([]);
+  const [taskFor,setTaskFor]=useState(null);
+  const emptyTask={title:"",dueIso:"",priority:"mesatare",note:""};
+  const [t,setT]=useState(emptyTask);
+  const idKey=(helpers||[]).map(h=>h.member_id).join(",");
+  const loadTasks=React.useCallback(async()=>{
+    const ids=idKey?idKey.split(",").map(Number):[];
+    if(!ids.length){setTasks([]);return;}
+    const {data}=await supabase.from("tasks").select("*").in("assignee",ids).order("id",{ascending:false});
+    setTasks((data||[]).map(r=>dbToRow("tasks",r)));
+  },[idKey]);
+  useEffect(()=>{loadTasks();},[loadTasks]);
+  useRealtime("tasks",true,loadTasks);
+  useEffect(()=>{
+    if(q.trim().length<2){setFound([]);return;}
+    const id=setTimeout(async()=>{
+      const {data,error}=await supabase.rpc("helper_candidates",{p_grupi:group,p_q:q.trim()});
+      setFound(error?[]:(data||[]).map(r=>({...r,id:Number(r.id)})));
+    },250);
+    return()=>clearTimeout(id);
+  },[q,group]);
+
+  async function add(m){
+    const {error}=await supabase.from("group_helpers").insert({grupi:group,member_id:m.id});
+    if(error){dbError(error,"Ndihmësi nuk u shtua.");return;}
+    setQ("");setFound([]);showToast(`${m.name} u shtua si ndihmës ✓`);load();
+  }
+  async function patch(h,vals,msg){
+    const {error}=await supabase.from("group_helpers").update(vals).eq("grupi",group).eq("member_id",h.member_id);
+    if(error){dbError(error);return;}
+    if(msg) showToast(msg);
+    load();
+  }
+  async function removeHelper(h){
+    const {error}=await supabase.from("group_helpers").delete().eq("grupi",group).eq("member_id",h.member_id);
+    if(error){dbError(error);return;}
+    showToast(`${h.name} u hoq nga ndihmësit.`);load();
+  }
+  async function addTask(e){
+    e.preventDefault();
+    if(t.title.trim().length<2) return;
+    const {error}=await supabase.from("tasks").insert({id:Date.now(),title:t.title.trim(),col:"todo",assignee:taskFor.member_id,
+      extra:{priority:t.priority,due:isoToCH(t.dueIso),note:t.note.trim(),grupi:group}});
+    if(error){dbError(error,"Detyra nuk u ruajt.");return;}
+    showToast(`Detyra iu caktua ${taskFor.name} ✓`);setTaskFor(null);setT(emptyTask);loadTasks();
+  }
+  const lbl={display:"block",fontSize:13,fontWeight:600,marginBottom:4};
+  const nameOf=id=>(helpers||[]).find(h=>h.member_id===id)?.name||"—";
+
+  return(<div style={{display:"grid",gap:16}}>
+    <Card>
+      <div className="vv-eyebrow" style={{marginBottom:6}}>Shto ndihmës</div>
+      <div style={{fontSize:13,color:C.inkSoft,marginBottom:10}}>Kërko anëtarin me emër. Ndihmësit aktivë mund të marrin detyra prej teje dhe i shohin te "Detyrat e mia".</div>
+      <div style={{position:"relative"}}>
+        <Search size={15} style={{position:"absolute",left:12,top:12,color:C.inkSoft}}/>
+        <input className="vv-input" aria-label="Kërko anëtarin" placeholder="Emri i anëtarit (min. 2 shkronja)" value={q} onChange={e=>setQ(e.target.value)} style={{width:"100%",paddingLeft:34}}/>
+      </div>
+      {q.trim().length>=2&&<div style={{marginTop:8,display:"grid",gap:6}}>
+        {found.length?found.map(m=>(
+          <div key={m.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",background:"rgba(23,18,16,.04)",borderRadius:10}}>
+            <span style={{flex:1,fontWeight:600}}>{m.name}</span>
+            <button className="vv-btn" style={{padding:"6px 12px",fontSize:13}} onClick={()=>add(m)}><UserPlus size={14}/>Shto</button>
+          </div>)):<div style={{fontSize:13,color:C.inkSoft}}>Asnjë anëtar aktiv me këtë emër (ose është tashmë ndihmës).</div>}
+      </div>}
+    </Card>
+
+    <Card p={0} style={{overflow:"hidden"}}>
+      <div style={{padding:"14px 18px",fontWeight:700,borderBottom:"1px solid rgba(23,18,16,.07)"}}>Ndihmësit ({(helpers||[]).filter(h=>h.active).length} aktivë nga {(helpers||[]).length})</div>
+      {helpers===null?<div style={{padding:18,color:C.inkSoft}}>Duke ngarkuar…</div>:
+       !helpers.length?<div style={{padding:18,color:C.inkSoft,fontSize:14}}>Ende nuk ke ndihmës. Kërko një anëtar më lart.</div>:
+       helpers.map(h=>{const open=tasks.filter(x=>x.assignee===h.member_id&&x.col!=="done").length;return(
+        <div key={h.member_id} className="vv-row" style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",padding:"12px 18px",opacity:h.active?1:.6}}>
+          <div style={{flex:"1 1 180px",minWidth:0}}>
+            <div style={{fontWeight:700}}>{h.name}</div>
+            <input className="vv-input" aria-label={`Detyra kryesore e ${h.name}`} placeholder="p.sh. Përkthime, foto/video, logjistika" defaultValue={h.roli||""}
+              onBlur={e=>{const v=e.target.value.trim().slice(0,80);if(v!==(h.roli||"")) patch(h,{roli:v},"U ruajt ✓");}} style={{marginTop:6,width:"100%",fontSize:13,padding:"6px 10px"}}/>
+          </div>
+          <span style={{fontSize:12,color:C.inkSoft}}>{open} detyra të hapura</span>
+          <label style={{display:"flex",alignItems:"center",gap:6,fontSize:13,fontWeight:600,cursor:"pointer"}}>
+            <input type="checkbox" checked={h.active} onChange={e=>patch(h,{active:e.target.checked},e.target.checked?`${h.name} u aktivizua ✓`:`${h.name} u çaktivizua.`)}/>{h.active?"Aktiv":"Joaktiv"}</label>
+          <button className="vv-btn ghost" style={{padding:"6px 10px",fontSize:12}} disabled={!h.active} title={h.active?"":"Aktivizoje ndihmësin për t'i caktuar detyra"} onClick={()=>setTaskFor(h)}><ClipboardList size={13}/>Cakto detyrë</button>
+          <button className="vv-btn ghost" aria-label={`Hiq ${h.name}`} style={{padding:"6px 10px",fontSize:12,color:C.red}} onClick={()=>removeHelper(h)}><Trash2 size={13}/></button>
+        </div>);})}
+    </Card>
+
+    {tasks.length>0&&<Card p={0} style={{overflow:"hidden"}}>
+      <div style={{padding:"14px 18px",fontWeight:700,borderBottom:"1px solid rgba(23,18,16,.07)"}}>Detyrat e ndihmësve</div>
+      {tasks.map(x=>{const pr=PRIORITY_CFG[x.priority]||PRIORITY_CFG.mesatare;return(
+        <div key={x.id} className="vv-row" style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",padding:"10px 18px"}}>
+          <div style={{flex:"1 1 200px",minWidth:0}}><div style={{fontWeight:600,textDecoration:x.col==="done"?"line-through":"none"}}>{x.title}</div>
+            <div style={{fontSize:12,color:C.inkSoft}}>{nameOf(x.assignee)}{x.due?` · afati ${x.due}`:""}{x.note?` · ${x.note}`:""}</div></div>
+          <span className="vv-chip" style={{background:pr.bg,color:pr.color}}>{pr.label}</span>
+          <span className="vv-chip" style={{background:x.col==="done"?"#E7F4ED":"#F1EFEA",color:x.col==="done"?C.green:C.inkSoft}}>{TASK_COL_LABELS[x.col]||x.col}</span>
+        </div>);})}
+    </Card>}
+
+    <Modal open={!!taskFor} onClose={()=>setTaskFor(null)} title={taskFor?`Detyrë për ${taskFor.name}`:""}>
+      <form onSubmit={addTask} style={{display:"grid",gap:12}}>
+        <div><label style={lbl}>Titulli *</label>
+          <input className="vv-input" aria-label="Titulli i detyrës" required minLength={2} style={{width:"100%"}} value={t.title} onChange={e=>setT({...t,title:e.target.value})} placeholder="p.sh. Përkthe ftesën në gjermanisht"/></div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <div><label style={lbl}>Afati</label>
+            <input className="vv-input" aria-label="Afati" type="date" style={{width:"100%"}} value={t.dueIso} onChange={e=>setT({...t,dueIso:e.target.value})}/></div>
+          <div><label style={lbl}>Prioriteti</label>
+            <select className="vv-input" aria-label="Prioriteti" style={{width:"100%"}} value={t.priority} onChange={e=>setT({...t,priority:e.target.value})}>
+              {Object.entries(PRIORITY_CFG).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</select></div>
+        </div>
+        <div><label style={lbl}>Shënim</label>
+          <textarea className="vv-input" aria-label="Shënim" rows={3} style={{width:"100%"}} value={t.note} onChange={e=>setT({...t,note:e.target.value})}/></div>
+        <div className="vv-modal-actions" style={{display:"flex",gap:8}}><button className="vv-btn" type="submit"><Plus size={14}/>Cakto detyrën</button></div>
+      </form>
+    </Modal>
+  </div>);
+}
+
+// Detyrat (Kanban) për rolet e grupeve: përveç vetes, mund t'u caktojnë detyra ndihmësve aktivë.
+function GroupTasks({group,members,meId,live}){
+  const [helpers]=useGroupHelpers(group);
+  const people=useMemo(()=>{
+    const list=[...members];
+    for(const h of helpers||[]) if(!list.some(m=>m.id===h.member_id)) list.push({id:h.member_id,name:h.name,status:h.active?"aktiv":"joaktiv"});
+    return list;
+  },[members,helpers]);
+  return <AdminTasks members={people} meId={meId} live={live}/>;
+}

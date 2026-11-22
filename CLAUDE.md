@@ -42,7 +42,7 @@ the app only filters the menu (`ROLE_PERMS` / `TAB_PERM` / `tabsForRole` at the 
 | eventet | events, calendar, check-in |
 | studentet | Studentët page: student members (contact fields only, RPC `list_group_members`), own `outreach_contacts`, referral link `?anetaresohu&ref=<id>` |
 | rinia | Rinia page: members aged 14–30 (same as studentet), own contacts, referral link |
-| marredheniet | SP/VV page (relations with SP, the Swiss Social Democrats): partner contacts (organizata/funksioni), partner status labels, German message templates, meetings calendar, joint events (visible to all members once approved), budget. No members list. |
+| marredheniet | SP/VV page (relations with SP, the Swiss Social Democrats): partner contacts (organizata/funksioni), partner status labels, German message templates, meetings calendar, joint events (published immediately, no approval — since 2026-11-22; only budget requests need approval), budget, **Ndihmësit** (table `group_helpers`: add active members by name via RPC `helper_candidates`, activate/deactivate, assign tasks; helpers get no page access). No members list. |
 
 studentet/rinia/marredheniet do NOT read the full `members` table (`private.reads_all_members()`), applications or member_details.
 | member | own data only |
