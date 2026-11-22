@@ -81,7 +81,11 @@ const css = `
 .vv-input{width:100%;box-sizing:border-box;border:1.5px solid rgba(23,18,16,.11);border-radius:10px;padding:10px 14px;font-size:14px;background:#fff;outline:none;transition:all .15s;box-shadow:0 1px 3px rgba(23,18,16,.04)}
 .vv-input:focus{border-color:#E2231A;box-shadow:0 0 0 3px rgba(226,35,26,.10)}
 .vv-overlay{position:fixed;inset:0;background:rgba(23,18,16,.52);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}
-.vv-modal{background:#fff;border-radius:22px;width:100%;max-width:520px;max-height:90vh;overflow:auto;box-shadow:0 30px 90px rgba(23,18,16,.22),0 4px 16px rgba(23,18,16,.10)}
+.vv-modal{background:#fff;border-radius:22px;width:100%;max-width:520px;max-height:calc(100vh - 40px);max-height:calc(100dvh - 40px);overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;box-shadow:0 30px 90px rgba(23,18,16,.22),0 4px 16px rgba(23,18,16,.10)}
+.vv-modal-head{position:sticky;top:0;z-index:2;background:inherit;border-radius:22px 22px 0 0}
+.vv-modal-actions{position:sticky;bottom:0;z-index:2;background:inherit;margin:16px -24px -24px;padding:12px 24px calc(16px + env(safe-area-inset-bottom));border-top:1px solid rgba(23,18,16,.08)}
+.vv--dark .vv-modal-head,.vv--dark .vv-modal-actions{background:#1C1813}
+@media (max-width:600px){.vv-overlay{padding:10px}.vv-modal{max-height:calc(100vh - 20px);max-height:calc(100dvh - 20px)}}
 .vv-eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:#E2231A}
 .vv-stat{font-family:'Archivo';font-weight:800;font-size:30px;line-height:1}
 .vv-link{color:#E2231A;font-weight:600;background:none;padding:0;font-size:13px;transition:opacity .12s;cursor:pointer}
@@ -503,15 +507,17 @@ function exportCSV(rows,filename){
   document.body.removeChild(a);URL.revokeObjectURL(url);
 }
 function Modal({open,onClose,title,children,width=520}){
+  // Lock the page behind the modal so iPhone scrolls the form, not the background.
+  useEffect(()=>{if(!open) return;const prev=document.body.style.overflow;document.body.style.overflow="hidden";return()=>{document.body.style.overflow=prev;};},[open]);
   if(!open)return null;
   return(
     <div className="vv-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="vv-modal" style={{maxWidth:width}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 24px 0"}}>
+        <div className="vv-modal-head" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 24px 10px"}}>
           <h2 style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:20,margin:0}}>{title}</h2>
           <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",padding:4}}><X size={22}/></button>
         </div>
-        <div style={{padding:"18px 24px 24px"}}>{children}</div>
+        <div style={{padding:"8px 24px 24px"}}>{children}</div>
       </div>
     </div>
   );
@@ -7328,7 +7334,7 @@ function OutreachContactForm({group,initial,onSave,onDelete,all=[],me}){
         <div><label style={lbl}>Shënime</label>
           <textarea className="vv-input" aria-label="Shënime" rows={3} style={{width:"100%"}} value={c.shenime||""} onChange={e=>set("shenime",e.target.value)}/></div>
       </div>
-      <div style={{display:"flex",gap:8,marginTop:16,flexWrap:"wrap"}}>
+      <div className={c.id?undefined:"vv-modal-actions"} style={{display:"flex",gap:8,marginTop:16,flexWrap:"wrap"}}>
         <button className="vv-btn" type="submit" disabled={busy}>{busy?"Duke ruajtur…":"Ruaj"}</button>
         {onDelete&&(ask
           ?<><span style={{fontSize:13,alignSelf:"center"}}>Ta fshij?</span><button type="button" className="vv-btn ghost" style={{color:C.red}} onClick={onDelete}>Po, fshije</button><button type="button" className="vv-btn ghost" onClick={()=>setAsk(false)}>Jo</button></>
