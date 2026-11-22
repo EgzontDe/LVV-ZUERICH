@@ -11,7 +11,7 @@ const cors = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-const ROLES = ["member", "admin", "kryetar", "sekretar", "financa", "komunikimi", "eventet", "studentet", "rinia"];
+const ROLES = ["member", "admin", "kryetar", "sekretar", "financa", "komunikimi", "eventet", "studentet", "rinia", "marredheniet"];
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });

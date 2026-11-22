@@ -3981,6 +3981,7 @@ const adminTabs=[
   {key:"map",label:"Harta",icon:<MapPin size={15}/>},
   {key:"studentet",label:"Studentët",icon:<GraduationCap size={15}/>},
   {key:"rinia",label:"Rinia",icon:<Flame size={15}/>},
+  {key:"marredheniet",label:"SP/VV",icon:<Globe size={15}/>},
   {key:"tasks",label:"Detyrat",icon:<ClipboardCheck size={15}/>,section:"Organizimi"},
   {key:"comms",label:"Komunikimi",icon:<Megaphone size={15}/>},
   {key:"polls",label:"Sondazhet",icon:<ClipboardList size={15}/>},
@@ -4257,7 +4258,7 @@ export default function App(){
       case"reminders": return <AdminReminders members={members} events={events} live={liveAdmin?{remindedIds:liveNotifs.remindedIds,notify:liveNotifs.notifyPayment}:null}/>;
       case"growth": return <AdminGrowth members={members} live={liveAdmin}/>;
       case"requests": return <AdminRequests live={live?{requests:dbRequests,setRequests:setDbRequests}:null}/>;
-      case"studentet": case"rinia": return <AdminOutreach key={tab} group={tab} me={me} live={liveAdmin} events={events} announcements={announcements} polls={polls}/>;
+      case"studentet": case"rinia": case"marredheniet": return <AdminOutreach key={tab} group={tab} me={me} live={liveAdmin} events={events} announcements={announcements} polls={polls}/>;
       case"archive": return <AdminArchive live={liveAdmin}/>;
       case"settings": return <>{liveAdmin&&isFullAdmin(staffRole)&&<RoleManager/>}<AdminSettings members={members} live={liveAdmin}/></>;
       default: return <AdminHome members={members} events={events} live={liveAdmin}/>;
@@ -6179,8 +6180,8 @@ function ReceiptsCard({payments,onToast}){
 /* ── Rolet dhe lejet (2026-11-21) ───────────────────────────────────────────
    Must match private.has_perm() in supabase/migrations/20261121000000_roles.sql.
    The database enforces the permissions; this only decides what the menu shows. */
-const STAFF_ROLES={member:"Anëtar",admin:"Administrator",kryetar:"Kryetar",sekretar:"Sekretar",financa:"Financat",komunikimi:"Komunikimi",eventet:"Eventet",studentet:"Studentët",rinia:"Rinia"};
-const ROLE_PERMS={admin:"*",kryetar:"*",sekretar:["members","requests","documents"],financa:["payments","donations"],komunikimi:["comms","requests"],eventet:["events"],studentet:["studentet"],rinia:["rinia"],member:[]};
+const STAFF_ROLES={member:"Anëtar",admin:"Administrator",kryetar:"Kryetar",sekretar:"Sekretar",financa:"Financat",komunikimi:"Komunikimi",eventet:"Eventet",studentet:"Studentët",rinia:"Rinia",marredheniet:"Marrëdhëniet SP/VV"};
+const ROLE_PERMS={admin:"*",kryetar:"*",sekretar:["members","requests","documents"],financa:["payments","donations"],komunikimi:["comms","requests"],eventet:["events"],studentet:["studentet"],rinia:["rinia"],marredheniet:["marredheniet"],member:[]};
 const ROLE_DESC={
   member:"Vetëm të dhënat e veta",
   admin:"Qasje e plotë, cilësimet dhe rolet",
@@ -6191,13 +6192,14 @@ const ROLE_DESC={
   eventet:"Eventet, kalendari, check-in",
   studentet:"Studentët anëtarë (vetëm kontakti), kontaktet e studentëve, lidhja e anëtarësimit",
   rinia:"Anëtarët e rinj deri 30 vjeç (vetëm kontakti), kontaktet e rinisë, lidhja e anëtarësimit",
+  marredheniet:"Kontaktet me SP-në, takimet, eventet e përbashkëta, buxheti (pa të dhënat e anëtarëve)",
 };
 function hasPerm(role,area){const p=ROLE_PERMS[role]||[];return p==="*"||p.includes(area);}
 function isFullAdmin(role){return ROLE_PERMS[role]==="*";}
 // Which permission each admin tab needs. Tabs not listed here are for admin/kryetar only.
 const TAB_PERM={members:"members",onboarding:"members",payments:"payments",finance:"payments",reminders:"payments",donations:"donations",
   events:"events",calendar:"events",checkin:"events",comms:"comms",polls:"comms",requests:"requests",processverbal:"documents",
-  studentet:"studentet",rinia:"rinia"};
+  studentet:"studentet",rinia:"rinia",marredheniet:"marredheniet"};
 function tabsForRole(role,tabs){
   if(isFullAdmin(role)) return tabs;
   // "Detyrat" (Kanban) is shared by every staff role.
@@ -6827,6 +6829,8 @@ function MemberDetailsCard({memberId,title}){
 const OUTREACH_GROUPS={
   studentet:{title:"Studentët",sub:"Identifikimi dhe kontaktimi i studentëve të Zürich-ut",membersLabel:"Studentët anëtarë",empty:"Ende nuk ka anëtarë që janë shënuar si studentë."},
   rinia:{title:"Rinia",sub:"Anëtarët e rinj (14–30 vjeç) dhe kontaktet e rinisë",membersLabel:"Të rinjtë anëtarë",empty:"Ende nuk ka anëtarë nën 30 vjeç me datëlindje të regjistruar."},
+  // Relations between VV (Pika Zürich) and SP (Sozialdemokratische Partei der Schweiz): partner contacts, not recruiting.
+  marredheniet:{title:"Marrëdhëniet SP/VV",sub:"Kontaktet dhe bashkëpunimi me SP-në (Sozialdemokratische Partei)",partner:true},
 };
 const OUTREACH_STATUS=[
   ["identifikuar","I identifikuar","#F3F2EF","#5A524E"],
@@ -6836,7 +6840,10 @@ const OUTREACH_STATUS=[
   ["anetar","U bë anëtar ✓","#E7F4ED","#1E8A4C"],
   ["jo","Nuk është i interesuar","#FDE2E1","#B5170F"],
 ];
-const outreachStatus=k=>OUTREACH_STATUS.find(s=>s[0]===k)||OUTREACH_STATUS[0];
+// SP/VV relations use the same steps with partner wording.
+const OUTREACH_PARTNER_LABELS={identifikuar:"Kontakt i ri",kontaktuar:"Takim i parë",interesuar:"Në bisedime",aplikoi:"Bashkëpunim aktiv",anetar:"Partner i rregullt",jo:"Pa interes"};
+function stList(group){return OUTREACH_GROUPS[group]&&OUTREACH_GROUPS[group].partner?OUTREACH_STATUS.map(([k,l,bg,col])=>[k,OUTREACH_PARTNER_LABELS[k]||l,bg,col]):OUTREACH_STATUS;}
+const outreachStatus=(k,group)=>{const l=stList(group);return l.find(s=>s[0]===k)||l[0];};
 const APP_STATUS_LABEL={aplikim:"Në shqyrtim",aprovuar:"Aprovuar",pret_pagesen:"Pret pagesën",aktiv:"Anëtar aktiv",refuzuar:"Refuzuar"};
 const waToPhone=(phone,text)=>`https://wa.me/${String(phone||"").replace(/[^\d]/g,"").replace(/^0(?=7)/,"41")}?text=${encodeURIComponent(text)}`;
 const isDue=c=>["identifikuar","kontaktuar","interesuar"].includes(c.status)&&c.extra&&c.extra.kontakti_radhes&&c.extra.kontakti_radhes<=isoToday();
@@ -6877,7 +6884,7 @@ function OutreachHome({group,me,live,onOpen}){
   const reached=people.filter(c=>c.status!=="identifikuar").length;
   const joined=people.filter(c=>c.status==="anetar").length;
   const rate=reached?Math.round(joined*100/reached):0;
-  const stats=[["Kontakte gjithsej",people.length,C.ink],["Të kontaktuar",reached,"#0369A1"],["Aplikuan me lidhjen time",(referrals||[]).length,"#6B21A8"],["U bënë anëtarë",joined,C.green],["Shkalla e suksesit",`${rate}%`,C.red],[g.membersLabel,(members||[]).length,C.amber]];
+  const stats=g.partner?[["Kontakte SP",people.length,C.ink],["Në bisedime",people.filter(c=>c.status==="interesuar").length,C.amber],["Bashkëpunime aktive",people.filter(c=>c.status==="aplikoi").length,"#6B21A8"],["Partnerë të rregullt",joined,C.green]]:[["Kontakte gjithsej",people.length,C.ink],["Të kontaktuar",reached,"#0369A1"],["Aplikuan me lidhjen time",(referrals||[]).length,"#6B21A8"],["U bënë anëtarë",joined,C.green],["Shkalla e suksesit",`${rate}%`,C.red],[g.membersLabel,(members||[]).length,C.amber]];
   return(
     <div>
       <SectionTitle title={`Mirë se erdhe, ${String(me&&me.name||"").split(" ")[0]}!`} sub={g.sub} action={<button className="vv-btn" onClick={onOpen}>Hap {g.title}</button>}/>
@@ -6887,7 +6894,7 @@ function OutreachHome({group,me,live,onOpen}){
         :!due.length?<div style={{color:C.inkSoft,fontSize:14}}>Asnjë kontakt për sot. 👍</div>
         :due.map(c=>(
           <div key={c.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderTop:`1px solid ${C.line}`}}>
-            <div style={{flex:1}}><div style={{fontWeight:600}}>{c.name}</div><div style={{fontSize:12,color:C.inkSoft}}>{outreachStatus(c.status)[1]} · afati {isoToCH(c.extra.kontakti_radhes)}</div></div>
+            <div style={{flex:1}}><div style={{fontWeight:600}}>{c.name}</div><div style={{fontSize:12,color:C.inkSoft}}>{outreachStatus(c.status,group)[1]} · afati {isoToCH(c.extra.kontakti_radhes)}</div></div>
             {c.phone&&<a className="vv-btn grn" style={{padding:"6px 10px",fontSize:12,textDecoration:"none"}} href={waToPhone(c.phone,`Përshëndetje ${c.name.split(" ")[0]}! `)} target="_blank" rel="noreferrer">WhatsApp</a>}
           </div>
         ))}
@@ -6895,15 +6902,19 @@ function OutreachHome({group,me,live,onOpen}){
       {contacts&&!people.length&&(
         <Card style={{marginBottom:18,border:`2px solid ${C.red}`,background:"#FFF7F6"}}>
           <div className="vv-eyebrow" style={{marginBottom:6}}>Fillo këtu</div>
-          <div style={{fontWeight:800,fontSize:18,marginBottom:8}}>Puna jote si sekretare e {g.title==="Rinia"?"Rinisë":"Studentëve"} në 3 hapa</div>
-          <ol style={{margin:"0 0 14px",paddingLeft:20,lineHeight:1.8,fontSize:14}}>
+          <div style={{fontWeight:800,fontSize:18,marginBottom:8}}>{g.partner?"Marrëdhëniet SP/VV në 3 hapa":<>Puna jote si sekretare e {g.title==="Rinia"?"Rinisë":"Studentëve"} në 3 hapa</>}</div>
+          {g.partner?<ol style={{margin:"0 0 14px",paddingLeft:20,lineHeight:1.8,fontSize:14}}>
+            <li><b>Shto kontaktet e SP-së</b> që i njeh (emri, funksioni, seksioni, kontakti).</li>
+            <li><b>Regjistro takimet</b> te “Takimet dhe kalendari” dhe çfarë u vendos te historiku i kontaktit.</li>
+            <li><b>Planifiko eventet e përbashkëta</b> dhe ndiq statusin deri te “Partner i rregullt”.</li>
+          </ol>:<ol style={{margin:"0 0 14px",paddingLeft:20,lineHeight:1.8,fontSize:14}}>
             <li><b>Shto kontaktet</b> e {g.title==="Rinia"?"të rinjve":"studentëve"} që i njeh (emri, telefoni, pëlqimi).</li>
             <li><b>Ndaj QR-në “Dua të informohem”</b> në grupet tuaja: kush e plotëson, del vetë këtu.</li>
             <li><b>Kontaktoji</b> me butonin “Mesazh” dhe ndiq statusin deri te “U bë anëtar”.</li>
-          </ol>
+          </ol>}
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
             <button className="vv-btn" onClick={()=>{try{sessionStorage.setItem("vv-outreach-add","1");}catch{}onOpen();}}><Plus size={15}/>Shto kontaktin e parë</button>
-            <button className="vv-btn ghost" onClick={onOpen}>Ndaj formularin me QR</button>
+            {!g.partner&&<button className="vv-btn ghost" onClick={onOpen}>Ndaj formularin me QR</button>}
           </div>
         </Card>
       )}
@@ -6914,7 +6925,7 @@ function OutreachHome({group,me,live,onOpen}){
         ))}
       </div>
       <div style={{marginTop:18}}><OutreachTargets group={group} contacts={contacts}/></div>
-      <div style={{fontSize:13,color:C.inkSoft,marginTop:12}}>Këtë muaj ke shtuar {thisMonth.length} kontakte. Shkalla e suksesit = sa nga të kontaktuarit u bënë anëtarë.</div>
+      <div style={{fontSize:13,color:C.inkSoft,marginTop:12}}>Këtë muaj ke shtuar {thisMonth.length} kontakte.{!g.partner&&" Shkalla e suksesit = sa nga të kontaktuarit u bënë anëtarë."}</div>
     </div>
   );
 }
@@ -6940,7 +6951,7 @@ function AdminOutreach({group,me,live,events=[],announcements=[],polls=[]}){
   async function save(c){
     const {id,name,phone,email,status,...rest}=c;
     const extra={};
-    for(const k of ["universiteti","fakulteti","ku","shenime","kontakti_radhes","pelqimi","lloji","personi","application_id","tags","burimi","referredById"]) if(rest[k]!==undefined&&rest[k]!=="") extra[k]=rest[k];
+    for(const k of ["universiteti","fakulteti","ku","shenime","kontakti_radhes","pelqimi","lloji","personi","application_id","tags","burimi","referredById","funksioni","organizata"]) if(rest[k]!==undefined&&rest[k]!=="") extra[k]=rest[k];
     const row={grupi:group,name:name.trim(),phone:(phone||"").trim(),email:(email||"").trim(),status:status||"identifikuar",extra};
     const {error}=id?await supabase.from("outreach_contacts").update(row).eq("id",id):await supabase.from("outreach_contacts").insert(row);
     if(error){dbError(error,"Nuk u ruajt.");return false;}
@@ -6959,7 +6970,7 @@ function AdminOutreach({group,me,live,events=[],announcements=[],polls=[]}){
   function report(){
     const month=isoToday().slice(0,7);
     const people=(o.contacts||[]).filter(c=>(c.extra||{}).lloji!=="shoqate");
-    const rows=people.map(c=>({"Emri":c.name,"Telefoni":c.phone,"Email":c.email,"Statusi":outreachStatus(c.status)[1],
+    const rows=people.map(c=>({"Emri":c.name,"Telefoni":c.phone,"Email":c.email,"Statusi":outreachStatus(c.status,group)[1],
       "Universiteti / Ku":[(c.extra||{}).universiteti,(c.extra||{}).ku].filter(Boolean).join(" · "),"Pëlqim":(c.extra||{}).pelqimi?"Po":"Jo",
       "Shtuar më":new Date(c.created_at).toLocaleDateString("de-CH"),"Këtë muaj":String(c.created_at).slice(0,7)===month?"Po":""}));
     for(const r of o.referrals||[]) rows.push({"Emri":r.name,"Telefoni":"","Email":"","Statusi":"Aplikoi me lidhjen time: "+(APP_STATUS_LABEL[r.status]||r.status),"Universiteti / Ku":"","Pëlqim":"","Shtuar më":r.applied||"","Këtë muaj":""});
@@ -6971,19 +6982,19 @@ function AdminOutreach({group,me,live,events=[],announcements=[],polls=[]}){
 
   const people=(o.contacts||[]).filter(c=>(c.extra||{}).lloji!=="shoqate");
   const orgs=(o.contacts||[]).filter(c=>(c.extra||{}).lloji==="shoqate");
-  const counts=Object.fromEntries(OUTREACH_STATUS.map(([k])=>[k,people.filter(c=>c.status===k).length]));
+  const counts=Object.fromEntries(stList(group).map(([k])=>[k,people.filter(c=>c.status===k).length]));
   const myEvents=events.filter(e=>e.grupi===group);
-  const tabs=[["contacts",`Kontaktet (${people.length})`],["members",`${g.membersLabel} (${(o.members||[]).length})`],["referrals",`Aplikuan me lidhjen time (${(o.referrals||[]).length})`],
+  const tabs=g.partner?[["contacts",`Kontaktet SP (${people.length})`],["kanban","Kanban"],["calendar","Takimet dhe kalendari"],["events",`Eventet e përbashkëta (${myEvents.length})`],["budget","Buxheti"]]:[["contacts",`Kontaktet (${people.length})`],["members",`${g.membersLabel} (${(o.members||[]).length})`],["referrals",`Aplikuan me lidhjen time (${(o.referrals||[]).length})`],
     ["kanban","Kanban"],["events",`Eventet (${myEvents.length})`],["news","Njoftime, sondazhe, email"],["calendar","Kalendari"],["budget","Buxheti"],...(group==="studentet"?[["orgs",`Shoqatat studentore (${orgs.length})`]]:[])];
   const invite=`Përshëndetje! Bashkohu me Lëvizjen VETËVENDOSJE! — Pika Zürich. Formulari i anëtarësimit: ${link}`;
   return(
     <div>
       <SectionTitle title={g.title} sub={g.sub} action={<div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
         <button className="vv-btn ghost" onClick={report}><Download size={14}/>Raporti (CSV)</button>
-        <button className="vv-btn" onClick={()=>setEdit(view==="orgs"?{name:"",lloji:"shoqate",status:"identifikuar"}:{name:"",status:"identifikuar"})}><Plus size={15}/>{view==="orgs"?"Shto shoqatë":"Shto kontakt"}</button>
+        <button className="vv-btn" onClick={()=>setEdit(view==="orgs"?{name:"",lloji:"shoqate",status:"identifikuar"}:{name:"",status:"identifikuar"})}><Plus size={15}/>{view==="orgs"?"Shto shoqatë":g.partner?"Shto kontakt SP":"Shto kontakt"}</button>
       </div>}/>
 
-      <Card style={{marginBottom:18}}>
+      {!g.partner&&<><Card style={{marginBottom:18}}>
         <div className="vv-eyebrow" style={{marginBottom:6}}>Lidhja ime për anëtarësim</div>
         <div style={{fontSize:13,color:C.inkSoft,marginBottom:10}}>Kush aplikon me këtë lidhje, del te Onboarding si "Referuar nga {me&&me.name}" dhe te "Aplikuan me lidhjen time".</div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
@@ -6992,12 +7003,12 @@ function AdminOutreach({group,me,live,events=[],announcements=[],polls=[]}){
           <a className="vv-btn grn" href={`https://wa.me/?text=${encodeURIComponent(invite)}`} target="_blank" rel="noreferrer" style={{textDecoration:"none"}}>WhatsApp</a>
         </div>
       </Card>
-      <InterestLinkCard group={group} me={me} showToast={showToast}/>
+      <InterestLinkCard group={group} me={me} showToast={showToast}/></>}
       <OutreachTargets group={group} contacts={o.contacts}/>
 
       {/* Compact status counters (one short row on phones too) */}
       <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:16}}>
-        {OUTREACH_STATUS.map(([k,l,bg,col])=>(
+        {stList(group).map(([k,l,bg,col])=>(
           <div key={k} style={{background:bg,color:col,borderRadius:999,padding:"5px 12px",fontSize:12,fontWeight:700,display:"flex",gap:6,alignItems:"baseline"}}>
             <span style={{fontFamily:"'Archivo',sans-serif",fontWeight:900,fontSize:16}}>{counts[k]}</span>{l}
           </div>
@@ -7015,7 +7026,7 @@ function AdminOutreach({group,me,live,events=[],announcements=[],polls=[]}){
       {view==="members"&&<OutreachMembersTable group={group} g={g} members={o.members} reload={o.loadMembers} showToast={showToast} onMessage={setMsg}/>}
       {view==="referrals"&&<OutreachReferrals referrals={o.referrals}/>}
       {view==="events"&&<OutreachEvents group={group} events={myEvents} showToast={showToast}/>}
-      {view==="kanban"&&<OutreachKanban contacts={o.contacts&&people} onStatus={setStatus} onOpen={c=>setEdit({...c,...(c.extra||{})})}/>}
+      {view==="kanban"&&<OutreachKanban group={group} contacts={o.contacts&&people} onStatus={setStatus} onOpen={c=>setEdit({...c,...(c.extra||{})})}/>}
       {view==="calendar"&&<OutreachCalendar group={group} showToast={showToast}/>}
       {view==="budget"&&<OutreachBudget group={group} me={me} events={myEvents} showToast={showToast}/>}
       {view==="news"&&<OutreachNews group={group} g={g} announcements={announcements.filter(a=>a.grupi===group)} polls={polls.filter(p=>p.grupi===group)} showToast={showToast}/>}
@@ -7044,11 +7055,11 @@ function OutreachContactsTable({group,contacts:all,onStatus,onOpen,onMessage}){
   return(<>
     <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
       <input className="vv-input" aria-label="Kërko kontakte" placeholder="Kërko emër, telefon, universitet…" value={q} onChange={e=>setQ(e.target.value)} style={{flex:"1 1 220px"}}/>
-      <select className="vv-input" aria-label="Filtro statusin" value={st} onChange={e=>setSt(e.target.value)}><option value="">Të gjitha statuset</option>{OUTREACH_STATUS.map(([k,l])=><option key={k} value={k}>{l}</option>)}</select>
+      <select className="vv-input" aria-label="Filtro statusin" value={st} onChange={e=>setSt(e.target.value)}><option value="">Të gjitha statuset</option>{stList(group).map(([k,l])=><option key={k} value={k}>{l}</option>)}</select>
       {usedTags.length>0&&<select className="vv-input" aria-label="Filtro etiketën" value={tag} onChange={e=>setTag(e.target.value)}><option value="">Të gjitha etiketat</option>{usedTags.map(t=><option key={t}>{t}</option>)}</select>}
     </div>
     <Card p={0} style={{overflow:"hidden"}}><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse"}}>
-      <thead><tr><th className="vv-th">Emri</th><th className="vv-th">{group==="studentet"?"Universiteti":"Ku u takuam"}</th><th className="vv-th">Statusi</th><th className="vv-th">Kontakti i radhës</th><th className="vv-th"></th></tr></thead>
+      <thead><tr><th className="vv-th">Emri</th><th className="vv-th">{group==="studentet"?"Universiteti":group==="marredheniet"?"Seksioni · funksioni":"Ku u takuam"}</th><th className="vv-th">Statusi</th><th className="vv-th">Kontakti i radhës</th><th className="vv-th"></th></tr></thead>
       <tbody>{contacts.map(c=>{const x=c.extra||{};return(
         <tr className="vv-row" key={c.id}>
           <td className="vv-td"><div style={{fontWeight:600}}>{c.name}</div>
@@ -7056,9 +7067,9 @@ function OutreachContactsTable({group,contacts:all,onStatus,onOpen,onMessage}){
             {!x.pelqimi&&<div style={{fontSize:11,color:C.amber,marginTop:2}}>Pa pëlqim për kontakt</div>}
             {x.burimi==="formulari"&&<span className="vv-chip" style={{fontSize:10,background:"#EDE9FF",color:"#6B21A8",marginRight:4}}>nga formulari</span>}
             {(x.tags||[]).map(t=><span key={t} className="vv-chip" style={{fontSize:10,marginRight:4}}>{t}</span>)}</td>
-          <td className="vv-td" style={{fontSize:13}}>{group==="studentet"?[x.universiteti,x.fakulteti].filter(Boolean).join(" · ")||"—":x.ku||"—"}</td>
-          <td className="vv-td"><select className="vv-input" aria-label={`Statusi i ${c.name}`} value={c.status} onChange={e=>onStatus(c,e.target.value)} style={{minWidth:170,background:outreachStatus(c.status)[2]}}>
-            {OUTREACH_STATUS.map(([k,l])=><option key={k} value={k}>{l}</option>)}</select></td>
+          <td className="vv-td" style={{fontSize:13}}>{group==="studentet"?[x.universiteti,x.fakulteti].filter(Boolean).join(" · ")||"—":group==="marredheniet"?[x.organizata,x.funksioni].filter(Boolean).join(" · ")||"—":x.ku||"—"}</td>
+          <td className="vv-td"><select className="vv-input" aria-label={`Statusi i ${c.name}`} value={c.status} onChange={e=>onStatus(c,e.target.value)} style={{minWidth:170,background:outreachStatus(c.status,group)[2]}}>
+            {stList(group).map(([k,l])=><option key={k} value={k}>{l}</option>)}</select></td>
           <td className="vv-td" style={{fontSize:13,color:isDue(c)?C.red:undefined,fontWeight:isDue(c)?700:400}}>{x.kontakti_radhes?isoToCH(x.kontakti_radhes):"—"}</td>
           <td className="vv-td"><div style={{display:"flex",gap:6}}>
             {(c.phone||c.email)&&<button className="vv-btn grn" style={{padding:"6px 10px",fontSize:12}} onClick={()=>onMessage(c)}>Mesazh</button>}
@@ -7296,6 +7307,7 @@ function OutreachContactForm({group,initial,onSave,onDelete,all=[],me}){
     ?[["name","Emri i shoqatës *","text"],["universiteti","Universiteti","text"],["personi","Personi i kontaktit","text"],["phone","Telefoni","tel"],["email","Email","email"]]
     :[["name","Emri dhe mbiemri *","text"],["phone","Telefoni","tel"],["email","Email","email"],
       ...(group==="studentet"?[["universiteti","Universiteti","text"],["fakulteti","Fakulteti / drejtimi","text"]]:[]),
+      ...(group==="marredheniet"?[["organizata","Seksioni / organizata (p.sh. SP Stadt Zürich, JUSO)","text"],["funksioni","Funksioni (p.sh. Kantonsrätin, Co-Präsident)","text"]]:[]),
       ["ku","Ku u takuat / si u identifikua","text"],["kontakti_radhes","Kontakti i radhës","date"]];
   return(<>
     <form onSubmit={async e=>{e.preventDefault();if(!c.name||!c.name.trim()) return;setBusy(true);await onSave(c);setBusy(false);}}>
@@ -7303,13 +7315,13 @@ function OutreachContactForm({group,initial,onSave,onDelete,all=[],me}){
         {fields.map(([k,l,t])=>(
           <div key={k}><label style={lbl}>{l}</label>
             <input className="vv-input" aria-label={l.replace(" *","")} type={t} style={{width:"100%"}} value={c[k]||""} onChange={e=>set(k,e.target.value)} required={k==="name"}/></div>))}
-        {dup&&<div role="alert" style={{fontSize:13,background:"#FEF3C7",color:"#92400E",padding:"8px 12px",borderRadius:8}}>Kujdes: <b>{dup.name}</b> është tashmë në listë ({outreachStatus(dup.status)[1]}).</div>}
+        {dup&&<div role="alert" style={{fontSize:13,background:"#FEF3C7",color:"#92400E",padding:"8px 12px",borderRadius:8}}>Kujdes: <b>{dup.name}</b> është tashmë në listë ({outreachStatus(dup.status,group)[1]}).</div>}
         {!org&&<div><label style={lbl}>Etiketat</label>
-          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{OUTREACH_TAGS.map(t=>{const on=(c.tags||[]).includes(t);return(
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{(group==="marredheniet"?OUTREACH_PARTNER_TAGS:OUTREACH_TAGS).map(t=>{const on=(c.tags||[]).includes(t);return(
             <button type="button" key={t} aria-pressed={on} onClick={()=>toggleTag(t)} style={{padding:"4px 10px",borderRadius:999,fontSize:12,fontWeight:600,cursor:"pointer",border:`1.5px solid ${on?C.red:"rgba(23,18,16,.15)"}`,background:on?C.red:"#fff",color:on?"#fff":C.ink}}>{t}</button>);})}</div></div>}
         {!org&&<div><label style={lbl}>Statusi</label>
           <select className="vv-input" aria-label="Statusi" style={{width:"100%"}} value={c.status} onChange={e=>set("status",e.target.value)}>
-            {OUTREACH_STATUS.map(([k,l])=><option key={k} value={k}>{l}</option>)}</select></div>}
+            {stList(group).map(([k,l])=><option key={k} value={k}>{l}</option>)}</select></div>}
         {!org&&<label style={{display:"flex",gap:8,alignItems:"flex-start",fontSize:13,lineHeight:1.5,background:"#F8F7F3",padding:"10px 12px",borderRadius:10,cursor:"pointer"}}>
           <input type="checkbox" checked={!!c.pelqimi} onChange={e=>set("pelqimi",e.target.checked)} style={{marginTop:3}}/>
           <span><b>Ka pranuar të kontaktohet</b> nga Pika Zürich (pëlqim). Kontaktet pa aktivitet fshihen automatikisht pas 12 muajsh.</span></label>}
@@ -7380,7 +7392,7 @@ function useMyGroups(live){
 // Group items are shown only to members of that group; unapproved group events to nobody.
 function visibleToMember(item,groups){
   if(item.miratuar===false) return false;
-  return !item.grupi||groups.includes(item.grupi);
+  return !item.grupi||item.grupi==="marredheniet"||groups.includes(item.grupi);
 }
 
 /* ── Outreach v3: "Dua të informohem" form, message templates, contact history, targets ── */
@@ -7447,17 +7459,18 @@ function OutreachInterestForm({group,onBack}){
 
 // Template picker: fills {emri}, {une}, {grupi}, {lidhja}; send by WhatsApp / email or copy.
 function OutreachMessageModal({target,group,me,onClose,onSent}){
-  const [tpl,setTpl]=useState(OUTREACH_TEMPLATES[0].k);
+  const tpls=group==="marredheniet"?OUTREACH_PARTNER_TEMPLATES:OUTREACH_TEMPLATES;
+  const [tpl,setTpl]=useState(tpls[0].k);
   const [text,setText]=useState("");
   const vars=target?{emri:String(target.name||"").split(" ")[0],une:String(me&&me.name||"").split(" ")[0],grupi:group==="studentet"?"studentët":"të rinjtë",
     lidhja:`${window.location.origin}/?anetaresohu&ref=${me&&me.id||""}`}:{};
-  useEffect(()=>{if(target) setText(fillTemplate(OUTREACH_TEMPLATES.find(x=>x.k===tpl).t,vars));},[tpl,target&&target.name]);
+  useEffect(()=>{if(target) setText(fillTemplate(tpls.find(x=>x.k===tpl).t,vars));},[tpl,target&&target.name]);
   if(!target) return null;
   const done=(kanali)=>{onSent&&onSent(kanali,text);onClose();};
   return(
     <Modal open onClose={onClose} title={`Mesazh për ${target.name}`}>
       <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
-        {OUTREACH_TEMPLATES.map(x=><button key={x.k} type="button" onClick={()=>setTpl(x.k)} style={{padding:"5px 12px",borderRadius:999,fontSize:12,fontWeight:600,cursor:"pointer",border:`1.5px solid ${tpl===x.k?C.red:"rgba(23,18,16,.12)"}`,background:tpl===x.k?C.red:"#fff",color:tpl===x.k?"#fff":C.ink}}>{x.l}</button>)}
+        {tpls.map(x=><button key={x.k} type="button" onClick={()=>setTpl(x.k)} style={{padding:"5px 12px",borderRadius:999,fontSize:12,fontWeight:600,cursor:"pointer",border:`1.5px solid ${tpl===x.k?C.red:"rgba(23,18,16,.12)"}`,background:tpl===x.k?C.red:"#fff",color:tpl===x.k?"#fff":C.ink}}>{x.l}</button>)}
       </div>
       <textarea className="vv-input" aria-label="Teksti i mesazhit" rows={6} style={{width:"100%"}} value={text} onChange={e=>setText(e.target.value)}/>
       <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:12}}>
@@ -7573,7 +7586,7 @@ function OutreachOverviewCard(){
   return(
     <Card style={{marginBottom:20}}>
       <div style={{display:"flex",alignItems:"center",marginBottom:12,gap:8}}>
-        <div style={{flex:1,fontWeight:700}}>Rinia & Studentët</div>
+        <div style={{flex:1,fontWeight:700}}>Rinia, Studentët & SP/VV</div>
         {targets&&<button className="vv-btn ghost" style={{padding:"6px 10px",fontSize:12}} onClick={()=>setEdit(JSON.parse(JSON.stringify(targets)))}>Objektivat</button>}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:12}}>
@@ -7607,12 +7620,12 @@ function OutreachOverviewCard(){
 
 /* ── Outreach v4: contacts Kanban, academic calendar, budget requests, event feedback ── */
 // Kanban of contacts: drag a card to another column (or use the select on phones).
-function OutreachKanban({contacts,onStatus,onOpen}){
+function OutreachKanban({group,contacts,onStatus,onOpen}){
   const [over,setOver]=useState(null);
   if(!contacts) return <Card><div style={{color:C.inkSoft}}>Duke ngarkuar…</div></Card>;
   return(
     <div style={{display:"flex",gap:10,overflowX:"auto",paddingBottom:8}}>
-      {OUTREACH_STATUS.map(([k,l,bg,col])=>{const items=contacts.filter(c=>c.status===k);return(
+      {stList(group).map(([k,l,bg,col])=>{const items=contacts.filter(c=>c.status===k);return(
         <div key={k} onDragOver={e=>{e.preventDefault();setOver(k);}} onDragLeave={()=>setOver(null)}
           onDrop={e=>{e.preventDefault();setOver(null);const id=Number(e.dataTransfer.getData("text/plain"));const c=contacts.find(x=>x.id===id);if(c&&c.status!==k) onStatus(c,k);}}
           style={{flex:"0 0 210px",background:over===k?bg:"#F3F2EF",borderRadius:12,padding:10,minHeight:180,outline:over===k?`2px dashed ${col}`:"none"}}>
@@ -7645,7 +7658,7 @@ function OutreachCalendar({group,showToast}){
   }
   async function del(id){await supabase.from("outreach_calendar").delete().eq("id",id);load();}
   const today=isoToday();
-  const presets=group==="studentet"?["Fillimi i semestrit","Java e mirëseardhjes (Erstsemestrigen)","Sesioni i provimeve","Pushimet e semestrit","Panairi i shoqatave studentore"]:["Pushimet shkollore","Fillimi i vitit shkollor","Festa e Flamurit","Takim i rinisë"];
+  const presets=group==="marredheniet"?["Takim me SP Zürich","Asambleja e seksionit SP","Event i përbashkët SP/VV","Takim me JUSO","Zgjedhjet komunale/kantonale"]:group==="studentet"?["Fillimi i semestrit","Java e mirëseardhjes (Erstsemestrigen)","Sesioni i provimeve","Pushimet e semestrit","Panairi i shoqatave studentore"]:["Pushimet shkollore","Fillimi i vitit shkollor","Festa e Flamurit","Takim i rinisë"];
   return(
     <div style={{display:"grid",gap:14}}>
       <Card><form onSubmit={add} style={{display:"grid",gap:10}}>
@@ -7835,7 +7848,7 @@ function usePublicContent(){
         supabase.from("announcements").select("*").order("id",{ascending:false}).limit(5),
         supabase.rpc("public_stats"),
       ]);
-      const events=(ev.data||[]).map(r=>dbToRow("events",r)).filter(e=>!e.grupi&&e.miratuar!==false);
+      const events=(ev.data||[]).map(r=>dbToRow("events",r)).filter(e=>(!e.grupi||e.grupi==="marredheniet")&&e.miratuar!==false);
       const news=(an.data||[]).map(r=>dbToRow("announcements",r)).filter(a=>!a.grupi);
       setState({events,news,stats:st.data||{members:0,events:0}});
     })().catch(()=>{});
@@ -7883,3 +7896,12 @@ function monthsFromPayments(payments){
 function newestFirst(list){return [...list].sort((a,b)=>Number(b.id)-Number(a.id));}
 // Polls: active ones first, then newest first.
 function sortPolls(list){return [...list].sort((a,b)=>((a.status==="aktiv"?0:1)-(b.status==="aktiv"?0:1))||(Number(b.id)-Number(a.id)));}
+
+// SP/VV relations: tags and German message templates for Swiss SP contacts.
+const OUTREACH_PARTNER_TAGS=["SP Stadt Zürich","SP Kanton Zürich","JUSO","Gemeinderat","Kantonsrat","Nationalrat","Migration","Gewerkschaft","Event"];
+const OUTREACH_PARTNER_TEMPLATES=[
+  {k:"kennenlernen",l:"Einladung zum Kennenlernen",t:"Guten Tag {emri}\n\nIch bin {une} von der Lëvizja VETËVENDOSJE! – Pika Zürich. Wir würden uns freuen, Sie zu einem Kennenlern-Treffen einzuladen, um mögliche Zusammenarbeit zwischen SP und VV zu besprechen.\n\nFreundliche Grüsse\n{une}"},
+  {k:"dank",l:"Dank für das Treffen",t:"Guten Tag {emri}\n\nHerzlichen Dank für das gute Gespräch. Wie besprochen melden wir uns mit den nächsten Schritten.\n\nFreundliche Grüsse\n{une}"},
+  {k:"event",l:"Gemeinsame Veranstaltung",t:"Guten Tag {emri}\n\nWir planen eine gemeinsame Veranstaltung von SP und VV in Zürich. Hätten Sie Interesse, mitzuwirken oder ein Grusswort zu halten?\n\nFreundliche Grüsse\n{une}"},
+  {k:"lire",l:"Freier Text",t:"Guten Tag {emri}\n\n"},
+];
