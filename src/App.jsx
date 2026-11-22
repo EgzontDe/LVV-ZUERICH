@@ -7198,6 +7198,7 @@ function OutreachEvents({group,events,showToast}){
   const [names,setNames]=useState(null);
   async function create(e){
     e.preventDefault();
+    if(f.dateIso<isoToday()){showToast("Data e eventit nuk mund të jetë në të kaluarën.");return;}
     const {error}=await supabase.from("events").insert({id:Date.now(),title:f.title.trim(),public:joint,rsvp:[],
       extra:{date:isoToCH(f.dateIso),time:f.time,place:f.place.trim(),type:"Takim",max:Number(f.max)||40,past:false,desc:f.desc.trim(),grupi:group,miratuar:joint}});
     if(error){dbError(error,"Eventi nuk u krijua.");return;}
@@ -7228,7 +7229,7 @@ function OutreachEvents({group,events,showToast}){
       <form onSubmit={create} style={{display:"grid",gap:12}}>
         {[["title","Titulli","text"],["dateIso","Data","date"],["time","Ora","time"],["place","Vendi","text"],["max","Numri maksimal","number"]].map(([k,l,t])=>(
           <div key={k}><label style={{display:"block",fontSize:13,fontWeight:600,marginBottom:4}}>{l}</label>
-            <input className="vv-input" aria-label={l} type={t} style={{width:"100%"}} value={f[k]} onChange={e=>setF({...f,[k]:e.target.value})} required={k!=="max"}/></div>))}
+            <input className="vv-input" aria-label={l} type={t} min={t==="date"?isoToday():t==="number"?1:undefined} style={{width:"100%"}} value={f[k]} onChange={e=>setF({...f,[k]:e.target.value})} required={k!=="max"}/></div>))}
         <div><label style={{display:"block",fontSize:13,fontWeight:600,marginBottom:4}}>Përshkrimi</label>
           <textarea className="vv-input" aria-label="Përshkrimi" rows={3} style={{width:"100%"}} value={f.desc} onChange={e=>setF({...f,desc:e.target.value})}/></div>
         <div style={{fontSize:12,color:C.inkSoft}}>{joint?"Eventi publikohet menjëherë dhe e shohin të gjithë anëtarët. Nëse të duhen para, dërgo kërkesë te Buxheti (aprovohet nga kryesia).":"Eventi u shfaqet anëtarëve të grupit pasi ta aprovojë kryesia (Eventet)."}</div>
