@@ -1,4 +1,5 @@
 ﻿import React, { useState, useMemo, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { createClient } from "@supabase/supabase-js";
 import QRCode from "qrcode";
 import jsQR from "jsqr";
@@ -80,7 +81,7 @@ const css = `
 .vv-row:last-child td{border-bottom:none}
 .vv-input{width:100%;box-sizing:border-box;border:1.5px solid rgba(23,18,16,.11);border-radius:10px;padding:10px 14px;font-size:14px;background:#fff;outline:none;transition:all .15s;box-shadow:0 1px 3px rgba(23,18,16,.04)}
 .vv-input:focus{border-color:#E2231A;box-shadow:0 0 0 3px rgba(226,35,26,.10)}
-.vv-overlay{position:fixed;inset:0;background:rgba(23,18,16,.52);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}
+.vv-overlay{position:fixed;inset:0;background:rgba(23,18,16,.52);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:65;padding:20px}
 .vv-modal{background:#fff;border-radius:22px;width:100%;max-width:520px;max-height:calc(100vh - 40px);max-height:calc(100dvh - 40px);overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;box-shadow:0 30px 90px rgba(23,18,16,.22),0 4px 16px rgba(23,18,16,.10)}
 .vv-modal-head{position:sticky;top:0;z-index:2;background:inherit;border-radius:22px 22px 0 0}
 .vv-modal-actions{position:sticky;bottom:0;z-index:2;background:inherit;margin:16px -24px -24px;padding:12px 24px calc(16px + env(safe-area-inset-bottom));border-top:1px solid rgba(23,18,16,.08)}
@@ -90,9 +91,9 @@ const css = `
 .vv-stat{font-family:'Archivo';font-weight:800;font-size:30px;line-height:1}
 .vv-link{color:#E2231A;font-weight:600;background:none;padding:0;font-size:13px;transition:opacity .12s;cursor:pointer}
 .vv-link:hover{opacity:.72}
-.vv-toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#2A211C,#171210);color:#fff;padding:13px 22px;border-radius:14px;font-size:14px;font-weight:500;z-index:60;box-shadow:0 14px 44px rgba(0,0,0,.26);display:flex;align-items:center;gap:10px;white-space:nowrap;animation:toastIn .25s cubic-bezier(.34,1.56,.64,1)}
+.vv-toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#2A211C,#171210);color:#fff;padding:13px 22px;border-radius:14px;font-size:14px;font-weight:500;z-index:90;box-shadow:0 14px 44px rgba(0,0,0,.26);display:flex;align-items:center;gap:10px;white-space:nowrap;animation:toastIn .25s cubic-bezier(.34,1.56,.64,1)}
 @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(14px) scale(.94)}to{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}}
-@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @keyframes drawLine{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
 @keyframes barGrow{from{transform:scaleY(0)}to{transform:scaleY(1)}}
 .vv-content>*{animation:fadeUp .2s ease both}
@@ -510,17 +511,22 @@ function Modal({open,onClose,title,children,width=520}){
   // Lock the page behind the modal so iPhone scrolls the form, not the background.
   useEffect(()=>{if(!open) return;const prev=document.body.style.overflow;document.body.style.overflow="hidden";return()=>{document.body.style.overflow=prev;};},[open]);
   if(!open)return null;
-  return(
+  // Render on <body>: a transformed/animated ancestor (e.g. .vv-content fadeUp) would otherwise
+  // trap position:fixed and push the modal off-screen on phones. Copy the app's vv / vv--dark classes.
+  const root=typeof document!=="undefined"?document.querySelector(".vv"):null;
+  const body=(
     <div className="vv-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="vv-modal" style={{maxWidth:width}}>
         <div className="vv-modal-head" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 24px 10px"}}>
           <h2 style={{fontFamily:"'Archivo',sans-serif",fontWeight:800,fontSize:20,margin:0}}>{title}</h2>
-          <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",padding:4}}><X size={22}/></button>
+          <button onClick={onClose} aria-label="Mbyll" style={{background:"none",border:"none",cursor:"pointer",padding:4,color:"inherit"}}><X size={22}/></button>
         </div>
         <div style={{padding:"8px 24px 24px"}}>{children}</div>
       </div>
     </div>
   );
+  if(!root) return body;
+  return createPortal(<div className={root.className} style={{minHeight:0,background:"none"}}>{body}</div>,document.body);
 }
 function Card({children,p=20,style={}}){return<div className="vv-card" style={{padding:p,...style}}>{children}</div>;}
 function SectionTitle({title,sub,action}){
